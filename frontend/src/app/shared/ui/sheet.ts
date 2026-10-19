@@ -91,7 +91,8 @@ let openSheets = 0;
       width: 100%;
       max-height: calc(100dvh - 2.5rem);
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      background: var(--material-thick);
+      // Velika površina = "deblji" materijal: skoro puna pozadina radi čitljivosti forme.
+      background: color-mix(in srgb, var(--bg-elevated) 95%, transparent);
       -webkit-backdrop-filter: var(--blur-regular);
       backdrop-filter: var(--blur-regular);
       box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);

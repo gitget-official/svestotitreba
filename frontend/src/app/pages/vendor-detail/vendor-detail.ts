@@ -167,6 +167,19 @@ import { ToastService } from '../../shared/ui/toast';
             }
           </aside>
         </div>
+
+        <!-- Telefon: glavna akcija je uvijek pri ruci, iznad donje trake. -->
+        <div class="mobile-cta material">
+          <div>
+            <p class="t-caption muted">Okvirna cijena</p>
+            <strong>{{ priceRange(v.priceFrom, v.priceTo) }}</strong>
+          </div>
+          @if (v.bookingEnabled && auth.hasRole('Couple')) {
+            <button type="button" class="btn btn-primary" (click)="bookingOpen.set(true)">Rezerviši</button>
+          } @else if (v.phoneNumber) {
+            <a class="btn btn-primary" [href]="'tel:' + v.phoneNumber"><app-icon name="phone" /> Pozovi</a>
+          }
+        </div>
       } @else if (loading()) {
         <div class="skeleton hero-skeleton"></div>
         <div class="skeleton line"></div>
@@ -412,7 +425,33 @@ import { ToastService } from '../../shared/ui/toast';
       width: 35%;
     }
 
+    .mobile-cta {
+      position: fixed;
+      left: var(--space-3);
+      right: var(--space-3);
+      bottom: calc(4.75rem + var(--safe-bottom));
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+      border-radius: var(--radius-full);
+      background: var(--material-thick);
+      box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
+    }
+
+    @media (min-width: 48rem) {
+      .mobile-cta {
+        bottom: var(--space-4);
+      }
+    }
+
     @media (min-width: 60rem) {
+      .mobile-cta {
+        display: none;
+      }
+
       .layout {
         grid-template-columns: minmax(0, 1fr) 22rem;
         align-items: start;

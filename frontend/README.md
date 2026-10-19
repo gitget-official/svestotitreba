@@ -1,59 +1,59 @@
-# Frontend
+# Planiraj: frontend (Angular 22)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.3.
+Web aplikacija za mladence, salone i administratore. Backend je u `../backend`.
 
-## Development server
+## Pokretanje
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Potrebno: **Node.js 22.22.3+ ili 24.15+** (zahtjev Angular CLI 22).
 
 ```bash
-ng generate component component-name
+npm install
+npm start          # http://localhost:4200
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+`ng serve` prosljeđuje sve `/api` pozive na backend `http://localhost:5080` (vidi `proxy.conf.json`),
+pa prvo pokrenite API (`dotnet run --project Planiraj.API --launch-profile http` u folderu `backend`).
 
-```bash
-ng generate --help
+Produkcijski build: `npm run build` → `dist/frontend/browser`.
+
+Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
+
+## Struktura
+
+```
+src/app/
+  core/          modeli (DTO), API klijenti, auth + guardovi, tema, formatiranje, gradovi/kategorije
+  layout/        okvir aplikacije (prozirna gornja traka, donja traka sa karticama na telefonu)
+  shared/motion  spring animacije, projekcija zamaha, rubber-band, praćenje brzine
+  shared/ui      ikone, sheet, toast, potvrda, ocjena, kartica ponuđača, galerija
+  pages/         landing, auth, istraži, ponuđač, moje rezervacije/recenzije, salon, admin, profil
+src/styles/      dizajn tokeni, tipografija, zajedničke komponente
 ```
 
-## Building
+## Ekrani po ulogama
 
-To build the project run:
+| Uloga | Ekrani |
+|---|---|
+| Gost | Početna, prijava, registracija (samo mladenci) |
+| Mladenci | Istraži (filteri: kategorija, grad, cijena, ocjena, slobodan datum), stranica ponuđača, rezervacija termina, recenzije, moje rezervacije, moje recenzije, najava AI planiranja |
+| Salon | Moji saloni, uređivanje (stranica, usluge, galerija, radno vrijeme), rezervacije (potvrda/odbijanje/otkazivanje) |
+| Administrator | Ponuđači (dodavanje, vlasnik, aktivnost, pretplata), korisnici, moderacija recenzija, šifarnici |
 
-```bash
-ng build
-```
+Svi: profil, promjena lozinke, tema (sistemska/svijetla/tamna). Nalog koji kreira administrator mora promijeniti lozinku pri prvoj prijavi.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Dizajn i pokret
 
-## Running unit tests
+Rađeno po principima Apple dizajna prilagođenim za web:
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+- **Odziv odmah:** dugmad i kartice reaguju na pritisak (`:active`), ne tek na klik.
+- **Gestovi 1:1 i prekidivi:** sheet (telefon) i galerija prate prst, mogu se uhvatiti usred animacije, a na otpuštanju projekcija zamaha bira krajnju poziciju i spring preuzima brzinu prsta (`shared/motion/spring.ts`).
+- **Springovi:** zadano kritično prigušeni (bez odskoka); mali odskok samo nakon gesta sa zamahom.
+- **Prostorna dosljednost:** sheet izlazi odozdo i tamo se vraća; meni izlazi iz avatara.
+- **Materijali:** prozirne trake (`backdrop-filter`) iznad sadržaja, ivica ispod gornje trake tek kad sadržaj ode ispod nje.
+- **Tipografija:** sistemski font, tracking i prored zavise od veličine.
+- **Pristupačnost:** `prefers-reduced-motion` (pretapanje umjesto pokreta), `prefers-reduced-transparency`, `prefers-contrast`, tamna tema, fokus prstenovi, ARIA uloge.
 
-```bash
-ng test
-```
+## Napomene
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Slike se za sada dodaju preko URL-a; upload dolazi kasnije.
+- AI planiranje (faza 4) je samo najava; interni chat (faza 2) još nije urađen.
