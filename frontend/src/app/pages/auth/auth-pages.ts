@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angu
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth';
+import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
 
@@ -24,24 +25,8 @@ const AUTH_STYLES = `
   }
 
   .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
     justify-self: center;
     color: var(--text);
-    font-size: 1.375rem;
-    font-weight: 600;
-  }
-
-  .mark {
-    display: grid;
-    place-items: center;
-    width: 2.125rem;
-    height: 2.125rem;
-    border-radius: 10px;
-    background: var(--accent);
-    color: var(--text-on-accent);
-    font-family: var(--font-display);
   }
 
   .card {
@@ -87,11 +72,11 @@ const AUTH_STYLES = `
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Icon],
+  imports: [ReactiveFormsModule, RouterLink, Icon, BrandMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="panel enter">
-      <a class="brand" routerLink="/"><span class="mark" aria-hidden="true">P</span><span class="serif">Planiraj</span></a>
+      <a class="brand" routerLink="/"><app-brand-mark /></a>
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
@@ -125,7 +110,7 @@ const AUTH_STYLES = `
       </form>
 
       <p class="footer t-callout muted">
-        Nemate profil? <a routerLink="/registracija">Registrujte se</a>
+        Nemate profil? <a routerLink="/registracija" [queryParams]="{ povratak: povratak() || null }">Registrujte se</a>
       </p>
     </div>
   `,
@@ -166,11 +151,11 @@ export class Login {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, BrandMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="panel enter">
-      <a class="brand" routerLink="/"><span class="mark" aria-hidden="true">P</span><span class="serif">Planiraj</span></a>
+      <a class="brand" routerLink="/"><app-brand-mark /></a>
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
@@ -225,12 +210,15 @@ export class Login {
         </button>
       </form>
 
-      <p class="footer t-callout muted">Već imate profil? <a routerLink="/prijava">Prijavite se</a></p>
+      <p class="footer t-callout muted">Već imate profil? <a routerLink="/prijava" [queryParams]="{ povratak: povratak() || null }">Prijavite se</a></p>
     </div>
   `,
   styles: AUTH_STYLES,
 })
 export class Register {
+  /** Povratak na stranicu sa koje je gost došao (npr. ponuđač kojeg je htio rezervisati). */
+  readonly povratak = input<string>();
+
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
@@ -255,7 +243,7 @@ export class Register {
     this.auth.register({ ...value, phoneNumber: value.phoneNumber || null }).subscribe({
       next: (r) => {
         this.toasts.success(`Dobro došli, ${r.user.firstName}!`);
-        void this.router.navigateByUrl('/istrazi');
+        void this.router.navigateByUrl(this.povratak() || '/istrazi');
       },
       error: () => this.busy.set(false),
     });
@@ -265,11 +253,11 @@ export class Register {
 /** FR-3: obavezna promjena lozinke nakon prve prijave (nalog kreirao administrator). */
 @Component({
   selector: 'app-change-password',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, BrandMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="panel enter">
-      <span class="brand"><span class="mark" aria-hidden="true">P</span><span class="serif">Planiraj</span></span>
+      <span class="brand"><app-brand-mark /></span>
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
           <h1 class="t-title-2">Postavite svoju lozinku</h1>

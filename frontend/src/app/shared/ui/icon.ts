@@ -38,6 +38,14 @@ const ICONS: Record<string, string> = {
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>',
   alert: '<path d="M12 4 21 19.5H3z"/><path d="M12 10v4M12 17h.01"/>',
+  share: '<path d="M12 3.5v11M8 7.5l4-4 4 4"/><path d="M8.5 10.5h-2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2"/>',
+  compare: '<rect x="3.5" y="5" width="7" height="14" rx="1.5"/><rect x="13.5" y="5" width="7" height="14" rx="1.5"/>',
+  wallet: '<path d="M4.5 7.5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-14a1 1 0 0 1-1-1v-12a1.5 1.5 0 0 1 1.5-1.5h11"/><path d="M15.5 13.5h4"/>',
+  refresh: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/>',
+  'check-circle': '<circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.2 2.4 2.4 4.7-4.9"/>',
+  circle: '<circle cx="12" cy="12" r="8.5"/>',
+  'arrow-left': '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+  inbox: '<path d="M3.5 13.5 6 5.5h12l2.5 8v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M3.5 13.5h5l1 2h5l1-2h5"/>',
   // Kategorije
   dress: '<path d="M9.5 3.5h5l-1 4 3.5 4.5-1.5 2 2.5 6.5h-12l2.5-6.5-1.5-2L10.5 7.5z"/>',
   building: '<path d="M4.5 20.5v-12l7.5-5 7.5 5v12"/><path d="M3 20.5h18M9.5 20.5v-5h5v5M8.5 11h1M14.5 11h1"/>',
@@ -101,6 +109,8 @@ export function categoryIcon(slug: string | null | undefined): string {
       return 'car';
     case 'frizeri':
       return 'scissors';
+    case 'beauty-makeup':
+      return 'sparkles';
     default:
       return 'sparkles';
   }

@@ -1,57 +1,69 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard, roleGuard } from './core/auth';
+import { authGuard, guestGuard, passwordGuard, roleGuard } from './core/auth';
 
+// Naslovi su kratki; brend dodaje BrandTitleStrategy (core/brand.ts).
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
     canActivate: [guestGuard],
-    title: 'Planiraj — sve za vaše vjenčanje',
     loadComponent: () => import('./pages/landing/landing').then((m) => m.Landing),
   },
   {
     path: 'prijava',
     canActivate: [guestGuard],
-    title: 'Prijava · Planiraj',
+    title: 'Prijava',
     loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.Login),
   },
   {
     path: 'registracija',
     canActivate: [guestGuard],
-    title: 'Registracija · Planiraj',
+    title: 'Registracija',
     loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.Register),
   },
   {
     path: 'promjena-lozinke',
     canActivate: [authGuard],
-    title: 'Nova lozinka · Planiraj',
+    title: 'Nova lozinka',
     loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.ChangePassword),
   },
   {
+    // Okvir je dostupan i gostima: katalog, ponuđač, planer i "Sačuvano" su javni u frontendu.
+    // Ako backend za gosta vrati 401, interceptor ga vodi na prijavu i nazad.
     path: '',
-    canActivate: [authGuard],
+    canActivate: [passwordGuard],
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     children: [
       {
         path: 'istrazi',
-        title: 'Istraži · Planiraj',
+        title: 'Istraži ponudu',
         loadComponent: () => import('./pages/explore/explore').then((m) => m.Explore),
       },
       {
         path: 'ponudjaci/:id',
-        title: 'Ponuđač · Planiraj',
+        title: 'Ponuđač',
         loadComponent: () => import('./pages/vendor-detail/vendor-detail').then((m) => m.VendorDetail),
+      },
+      {
+        path: 'sacuvano',
+        title: 'Sačuvano',
+        loadComponent: () => import('./pages/saved/saved').then((m) => m.Saved),
+      },
+      {
+        path: 'planiranje',
+        title: 'Planiranje vjenčanja',
+        loadComponent: () => import('./pages/planning/planning').then((m) => m.Planning),
       },
       {
         path: 'moje-rezervacije',
         canActivate: [roleGuard('Couple')],
-        title: 'Moje rezervacije · Planiraj',
+        title: 'Moje rezervacije',
         loadComponent: () => import('./pages/my/my-pages').then((m) => m.MyBookings),
       },
       {
         path: 'moje-recenzije',
         canActivate: [roleGuard('Couple')],
-        title: 'Moje recenzije · Planiraj',
+        title: 'Moje recenzije',
         loadComponent: () => import('./pages/my/my-pages').then((m) => m.MyReviews),
       },
       {
@@ -60,17 +72,17 @@ export const routes: Routes = [
         children: [
           {
             path: '',
-            title: 'Moj salon · Planiraj',
+            title: 'Moj salon',
             loadComponent: () => import('./pages/salon/salon-home').then((m) => m.SalonHome),
           },
           {
             path: 'rezervacije',
-            title: 'Rezervacije · Planiraj',
+            title: 'Rezervacije',
             loadComponent: () => import('./pages/salon/salon-bookings').then((m) => m.SalonBookings),
           },
           {
             path: ':id',
-            title: 'Uređivanje salona · Planiraj',
+            title: 'Uređivanje salona',
             loadComponent: () => import('./pages/salon/vendor-manage').then((m) => m.VendorManage),
           },
         ],
@@ -109,15 +121,15 @@ export const routes: Routes = [
       },
       {
         path: 'profil',
-        title: 'Profil · Planiraj',
+        canActivate: [authGuard],
+        title: 'Profil',
         loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile),
       },
       {
-        path: 'planiranje',
-        title: 'Planiranje vjenčanja · Planiraj',
-        loadComponent: () => import('./pages/planning/planning').then((m) => m.Planning),
+        path: '**',
+        title: 'Stranica nije pronađena',
+        loadComponent: () => import('./pages/not-found/not-found').then((m) => m.NotFound),
       },
     ],
   },
-  { path: '**', redirectTo: '' },
 ];

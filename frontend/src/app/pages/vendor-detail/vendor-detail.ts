@@ -1,24 +1,56 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
+import { Location } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { BookingApi, ReviewApi, VendorApi } from '../../core/api';
+import { DomSanitizer, Meta, Title } from '@angular/platform-browser';
+import { Router, RouterLink } from '@angular/router';
+import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { BookingApi, ReviewApi, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
-import { DAYS, formatDate, formatPriceRange, formatTime, toTimeOnly, todayIso } from '../../core/format';
+import { BRAND } from '../../core/brand';
+import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso } from '../../core/format';
+import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Offering, Review, Vendor } from '../../core/models';
 import { Gallery } from '../../shared/ui/gallery';
 import { Icon } from '../../shared/ui/icon';
 import { Rating } from '../../shared/ui/rating';
+import { SaveButton } from '../../shared/ui/save-button';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
 
-/** Stranica ponuđača (FR-7): sve iz sekcije 4.3 zahtjeva, rezervacija (ako je uključena) i recenzije. */
+type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
+
+/**
+ * Stranica ponuđača (FR-7): sve iz sekcije 4.3 zahtjeva, rezervacija (ako je uključena) i recenzije.
+ * Link je /ponudjaci/{id}-{slug}; stari /ponudjaci/{id} i dalje radi i tiho se dopunjava slugom.
+ */
 @Component({
   selector: 'app-vendor-detail',
-  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, Sheet],
+  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, SaveButton, Sheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
-      <a class="back btn btn-plain" routerLink="/istrazi"><app-icon name="chevron-left" /> Istraži</a>
+      <div class="top-actions">
+        <button type="button" class="back btn btn-plain" (click)="back()"><app-icon name="chevron-left" /> Nazad</button>
+        @if (vendor(); as v) {
+          <div class="row">
+            <button type="button" class="icon-btn" (click)="share(v)" aria-label="Podijeli"><app-icon name="share" /></button>
+            <app-save-button [vendor]="v" [withLabel]="true" />
+          </div>
+        }
+      </div>
 
       @if (vendor(); as v) {
         <div class="layout enter">
@@ -36,7 +68,9 @@ import { ToastService } from '../../shared/ui/toast';
               <p class="row-wrap muted">
                 <span class="row"><app-icon name="map-pin" /> {{ v.cityName }}</span>
                 @if (v.averageRating; as rating) {
-                  <span class="row"><app-rating [value]="rating" /> {{ rating.toFixed(1) }} ({{ v.reviewCount }})</span>
+                  <a class="row rating-link" href="#recenzije" (click)="scrollTo($event, 'recenzije')">
+                    <app-rating [value]="rating" /> {{ rating.toFixed(1) }} · {{ v.reviewCount }} {{ plural(v.reviewCount, 'recenzija', 'recenzije', 'recenzija') }}
+                  </a>
                 } @else {
                   <span>Još nema recenzija</span>
                 }
@@ -52,29 +86,38 @@ import { ToastService } from '../../shared/ui/toast';
 
             <section class="section">
               <h2 class="t-title-3">Usluge i cijene</h2>
-              <div class="list-group">
-                @for (offer of activeOfferings(); track offer.id) {
-                  <div class="list-row offer">
-                    <div class="grow">
-                      <p class="t-footnote muted">{{ offer.serviceCategoryName }}</p>
-                      <h3 class="t-body strong">{{ offer.title }}</h3>
-                      @if (offer.description) { <p class="t-footnote muted">{{ offer.description }}</p> }
-                    </div>
-                    <span class="price">{{ priceRange(offer.priceFrom, offer.priceTo) }}</span>
+              @for (group of offeringGroups(); track group.category) {
+                <div class="stack-sm">
+                  @if (offeringGroups().length > 1) { <p class="t-eyebrow">{{ group.category }}</p> }
+                  <div class="list-group">
+                    @for (offer of group.offers; track offer.id) {
+                      <div class="list-row offer">
+                        <div class="grow">
+                          <h3 class="t-body strong">{{ offer.title }}</h3>
+                          @if (offer.description) { <p class="t-footnote muted">{{ offer.description }}</p> }
+                        </div>
+                        <span class="price">{{ priceRange(offer.priceFrom, offer.priceTo) }}</span>
+                      </div>
+                    }
                   </div>
-                } @empty {
-                  <div class="list-row muted">Ponuđač još nije dodao usluge.</div>
-                }
-              </div>
+                </div>
+              } @empty {
+                <div class="list-group"><div class="list-row muted">Ponuđač još nije dodao usluge.</div></div>
+              }
+              <p class="t-caption subtle">Cijene su okvirne (od–do) i zavise od dogovora sa ponuđačem.</p>
             </section>
 
-            <section class="section">
+            <section class="section" id="recenzije">
               <div class="section-head">
                 <h2 class="t-title-3">Recenzije</h2>
                 @if (canReview()) {
                   <button type="button" class="btn btn-tinted btn-sm" (click)="openReview()">
                     {{ myReview() ? 'Uredi recenziju' : 'Ostavi recenziju' }}
                   </button>
+                } @else if (!auth.isLoggedIn()) {
+                  <a class="btn btn-plain btn-sm" routerLink="/prijava" [queryParams]="{ povratak: here() }">
+                    Prijavite se za recenziju
+                  </a>
                 }
               </div>
               @if (myReview(); as mine) {
@@ -84,8 +127,26 @@ import { ToastService } from '../../shared/ui/toast';
                   </p>
                 }
               }
+              @if (breakdown(); as b) {
+                <div class="breakdown card">
+                  <div class="score">
+                    <span class="big">{{ b.average.toFixed(1) }}</span>
+                    <app-rating [value]="b.average" />
+                    <span class="t-footnote muted">{{ b.count }} {{ plural(b.count, 'recenzija', 'recenzije', 'recenzija') }}</span>
+                  </div>
+                  <div class="bars">
+                    @for (row of b.rows; track row.stars) {
+                      <div class="bar-row">
+                        <span class="t-footnote">{{ row.stars }}</span>
+                        <span class="bar" aria-hidden="true"><span [style.width.%]="row.percent"></span></span>
+                        <span class="t-footnote muted count">{{ row.count }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
               <div class="reviews">
-                @for (review of reviews(); track review.id) {
+                @for (review of publishedReviews(); track review.id) {
                   <article class="review card">
                     <div class="row">
                       <strong>{{ review.userFullName }}</strong>
@@ -114,6 +175,11 @@ import { ToastService } from '../../shared/ui/toast';
                 <p class="t-caption subtle center">
                   {{ v.autoConfirmBookings ? 'Termin se potvrđuje odmah.' : 'Salon potvrđuje zahtjev.' }}
                 </p>
+              } @else if (v.bookingEnabled && !auth.isLoggedIn()) {
+                <a class="btn btn-primary btn-lg btn-block" routerLink="/prijava" [queryParams]="{ povratak: here() }">
+                  <app-icon name="calendar" /> Prijavite se za rezervaciju
+                </a>
+                <p class="t-caption subtle center">Profil je besplatan i pravi se za manje od minute.</p>
               } @else if (!v.bookingEnabled) {
                 <p class="t-footnote muted">Ovaj salon ne prima rezervacije online. Javite se direktno.</p>
               }
@@ -144,11 +210,16 @@ import { ToastService } from '../../shared/ui/toast';
               </div>
             </div>
 
-            <div class="panel card">
+            <div class="panel card location">
               <h2 class="t-title-3">Lokacija</h2>
+              @if (mapEmbed(); as embed) {
+                <div class="map">
+                  <iframe [src]="embed" title="Mapa lokacije" loading="lazy" referrerpolicy="no-referrer"></iframe>
+                </div>
+              }
               <p class="muted">{{ v.address }}<br />{{ v.cityName }}</p>
               @if (mapUrl(); as url) {
-                <a class="btn btn-tinted btn-sm" [href]="url" target="_blank" rel="noopener"><app-icon name="map-pin" /> Otvori mapu</a>
+                <a class="btn btn-tinted btn-sm" [href]="url" target="_blank" rel="noopener"><app-icon name="map-pin" /> Upute do lokacije</a>
               }
             </div>
 
@@ -176,6 +247,8 @@ import { ToastService } from '../../shared/ui/toast';
           </div>
           @if (v.bookingEnabled && auth.hasRole('Couple')) {
             <button type="button" class="btn btn-primary" (click)="bookingOpen.set(true)">Rezerviši</button>
+          } @else if (v.bookingEnabled && !auth.isLoggedIn()) {
+            <a class="btn btn-primary" routerLink="/prijava" [queryParams]="{ povratak: here() }">Rezerviši</a>
           } @else if (v.phoneNumber) {
             <a class="btn btn-primary" [href]="'tel:' + v.phoneNumber"><app-icon name="phone" /> Pozovi</a>
           }
@@ -209,7 +282,16 @@ import { ToastService } from '../../shared/ui/toast';
           <div class="form-grid">
             <div class="field">
               <label for="b-date">Datum</label>
-              <input id="b-date" class="input" type="date" [min]="today" formControlName="eventDate" />
+              <input id="b-date" class="input" type="date" [min]="today" formControlName="eventDate"
+                aria-describedby="b-date-status" />
+              <span id="b-date-status" class="availability" [class]="availability()" aria-live="polite">
+                @switch (availability()) {
+                  @case ('checking') { <span class="spinner"></span> Provjeravamo datum… }
+                  @case ('free') { <app-icon name="check" /> Datum je slobodan }
+                  @case ('taken') { <app-icon name="alert" /> Datum je već zauzet. Probajte drugi ili pošaljite upit. }
+                  @case ('unknown') { Dostupnost potvrđuje salon. }
+                }
+              </span>
             </div>
             <div class="field">
               <label for="b-time">Vrijeme <span class="subtle">(opciono)</span></label>
@@ -257,8 +339,114 @@ import { ToastService } from '../../shared/ui/toast';
     }
   `,
   styles: `
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-3);
+    }
+
     .back {
-      margin: 0 0 var(--space-3) calc(-1 * var(--space-2));
+      margin-left: calc(-1 * var(--space-2));
+    }
+
+    .rating-link {
+      color: inherit;
+    }
+
+    .rating-link:hover {
+      color: var(--text);
+    }
+
+    .breakdown {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: var(--space-5);
+      padding: var(--space-4) var(--space-5);
+    }
+
+    .score {
+      display: grid;
+      justify-items: center;
+      gap: var(--space-1);
+    }
+
+    .big {
+      font-size: 2.5rem;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bars {
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 0.75rem 1fr 1.5rem;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .bar {
+      height: 0.375rem;
+      border-radius: var(--radius-full);
+      background: var(--fill-strong);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--gold);
+    }
+
+    .count {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .map {
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      border-radius: var(--radius-md);
+      background: var(--bg-sunken);
+    }
+
+    .map iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .availability {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      min-height: 1.25rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .availability app-icon,
+    .availability .spinner {
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+
+    .availability.free {
+      color: var(--success);
+    }
+
+    .availability.taken {
+      color: var(--danger);
     }
 
     .layout {
@@ -464,7 +652,8 @@ import { ToastService } from '../../shared/ui/toast';
     }
   `,
 })
-export class VendorDetail implements OnInit {
+export class VendorDetail {
+  /** Parametar rute: "17-foto-trenutak" ili "17". */
   readonly id = input.required<string>();
 
   protected readonly auth = inject(AuthService);
@@ -473,6 +662,12 @@ export class VendorDetail implements OnInit {
   private readonly bookingApi = inject(BookingApi);
   private readonly toasts = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly titleService = inject(Title);
+  private readonly meta = inject(Meta);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly vendor = signal<Vendor | null>(null);
   protected readonly reviews = signal<Review[]>([]);
@@ -480,12 +675,16 @@ export class VendorDetail implements OnInit {
   protected readonly busy = signal(false);
   protected readonly bookingOpen = signal(false);
   protected readonly reviewOpen = signal(false);
+  protected readonly availability = signal<Availability>('idle');
 
   private readonly bookingSheet = viewChild<Sheet>('bookingSheet');
   private readonly reviewSheet = viewChild<Sheet>('reviewSheet');
+  private readonly dateCheck$ = new Subject<string>();
+  private request?: Subscription;
 
   protected readonly today = todayIso();
   protected readonly priceRange = formatPriceRange;
+  protected readonly plural = plural;
   protected readonly date = (value: string) => formatDate(value);
 
   protected readonly bookingForm = this.fb.group({
@@ -502,9 +701,33 @@ export class VendorDetail implements OnInit {
 
   protected readonly activeOfferings = computed<Offering[]>(() => this.vendor()?.offerings.filter((o) => o.isActive) ?? []);
 
+  /** Usluge grupisane po kategoriji (FR-10: poseban cjenovnik po kategoriji). */
+  protected readonly offeringGroups = computed(() => {
+    const groups = new Map<string, Offering[]>();
+    for (const offer of this.activeOfferings()) {
+      const key = offer.serviceCategoryName ?? 'Ostalo';
+      groups.set(key, [...(groups.get(key) ?? []), offer]);
+    }
+    return [...groups].map(([category, offers]) => ({ category, offers }));
+  });
+
+  /** Javne recenzije; vlastita (ako čeka odobrenje) se ne miješa sa objavljenim. */
+  protected readonly publishedReviews = computed(() => this.reviews().filter((r) => r.status === 'Approved'));
+
+  protected readonly breakdown = computed(() => {
+    const list = this.publishedReviews();
+    if (list.length < 2) return null;
+    const average = list.reduce((sum, r) => sum + r.rating, 0) / list.length;
+    const rows = [5, 4, 3, 2, 1].map((stars) => {
+      const count = list.filter((r) => r.rating === stars).length;
+      return { stars, count, percent: (count / list.length) * 100 };
+    });
+    return { average, count: list.length, rows };
+  });
+
   protected readonly myReview = computed(() => {
     const userId = this.auth.user()?.id;
-    return this.reviews().find((r) => r.userId === userId) ?? null;
+    return userId ? (this.reviews().find((r) => r.userId === userId) ?? null) : null;
   });
 
   protected readonly canReview = computed(() => this.auth.hasRole('Couple'));
@@ -518,6 +741,17 @@ export class VendorDetail implements OnInit {
     return null;
   });
 
+  /** OpenStreetMap ugradnja (bez API ključa i bez kolačića za praćenje). */
+  protected readonly mapEmbed = computed(() => {
+    const v = this.vendor();
+    if (!v || v.latitude === null || v.longitude === null) return null;
+    const d = 0.006;
+    const bbox = [v.longitude - d, v.latitude - d * 0.7, v.longitude + d, v.latitude + d * 0.7].join(',');
+    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${v.latitude},${v.longitude}`;
+    // URL je sastavljen samo od brojeva iz baze, pa je siguran za iframe.
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
+
   protected readonly hours = computed(() => {
     const v = this.vendor();
     if (!v) return [];
@@ -529,16 +763,69 @@ export class VendorDetail implements OnInit {
     }).filter((h) => h.text !== '—');
   });
 
-  ngOnInit(): void {
-    const id = Number(this.id());
-    this.vendorApi.get(id).subscribe({
-      next: (v) => {
-        this.vendor.set(v);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
+  constructor() {
+    // Ista komponenta ostaje kad se pređe sa jednog ponuđača na drugog, pa se učitava na promjenu parametra.
+    effect(() => {
+      const id = vendorIdFromParam(this.id());
+      untracked(() => this.load(id));
     });
-    this.loadReviews(id);
+
+    // Provjera dostupnosti datuma uživo (FR-20), prije slanja zahtjeva.
+    this.dateCheck$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((date) => {
+          const v = this.vendor()!;
+          this.availability.set('checking');
+          const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
+          return this.vendorApi.list({ availableOn: date, fts: v.name, pageSize: 50 }, context);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (result) => {
+          const id = this.vendor()?.id;
+          this.availability.set(result.items.some((x) => x.id === id) ? 'free' : 'taken');
+        },
+        error: () => this.availability.set('unknown'),
+      });
+
+    this.bookingForm.controls.eventDate.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((date) => {
+      if (date) this.dateCheck$.next(date);
+      else this.availability.set('idle');
+    });
+
+    this.destroyRef.onDestroy(() => this.meta.removeTag('name="description"'));
+  }
+
+  protected here(): string {
+    return this.router.url;
+  }
+
+  /** Nazad tamo odakle se došlo (filteri u pretrazi ostaju), a sa direktnog linka na pretragu. */
+  protected back(): void {
+    if (this.router.lastSuccessfulNavigation()?.previousNavigation) this.location.back();
+    else void this.router.navigateByUrl('/istrazi');
+  }
+
+  protected scrollTo(event: Event, id: string): void {
+    event.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ block: 'start' });
+  }
+
+  protected async share(v: Vendor): Promise<void> {
+    const url = location.origin + this.router.serializeUrl(this.router.createUrlTree(vendorLink(v)));
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: v.name, text: `${v.name} · ${BRAND.name}`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      this.toasts.success('Link je kopiran.');
+    } catch {
+      /* korisnik je odustao od dijeljenja */
+    }
   }
 
   protected openReview(): void {
@@ -567,6 +854,7 @@ export class VendorDetail implements OnInit {
             booking.status === 'Confirmed' ? 'Termin je potvrđen.' : 'Zahtjev je poslan. Salon će ga potvrditi.',
           );
           this.bookingForm.reset();
+          this.availability.set('idle');
           this.bookingSheet()?.close();
         },
         error: () => this.busy.set(false),
@@ -591,6 +879,35 @@ export class VendorDetail implements OnInit {
       },
       error: () => this.busy.set(false),
     });
+  }
+
+  private load(id: number | null): void {
+    this.request?.unsubscribe();
+    this.vendor.set(null);
+    this.reviews.set([]);
+    if (id === null) {
+      this.loading.set(false);
+      return;
+    }
+    this.loading.set(true);
+    this.request = this.vendorApi.get(id).subscribe({
+      next: (v) => {
+        this.vendor.set(v);
+        this.loading.set(false);
+        this.applySeo(v);
+      },
+      error: () => this.loading.set(false),
+    });
+    this.loadReviews(id);
+  }
+
+  /** Naslov, opis i čitljiv URL za dijeljenje i pretraživače. */
+  private applySeo(v: Vendor): void {
+    this.titleService.setTitle(`${v.name} · ${v.cityName} · ${BRAND.name}`);
+    const description = (v.description ?? `${v.categories.join(', ')} u gradu ${v.cityName}.`).slice(0, 160);
+    this.meta.updateTag({ name: 'description', content: description });
+    const canonical = this.router.serializeUrl(this.router.createUrlTree(vendorLink(v)));
+    if (!this.router.url.startsWith(canonical)) this.location.replaceState(canonical);
   }
 
   private loadReviews(vendorId: number): void {

@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatPriceRange } from '../../core/format';
+import { vendorLink } from '../../core/links';
 import { Vendor } from '../../core/models';
 import { Icon } from './icon';
+import { SaveButton } from './save-button';
 
 @Component({
   selector: 'app-vendor-card',
-  imports: [RouterLink, Icon],
+  imports: [RouterLink, Icon, SaveButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <a class="card-link" [routerLink]="['/ponudjaci', vendor().id]">
+    <a class="card-link" [routerLink]="link()">
       <div class="media">
         @if (cover(); as url) {
           <img [src]="url" [alt]="vendor().name" loading="lazy" decoding="async" />
@@ -34,10 +36,21 @@ import { Icon } from './icon';
         <p class="price">{{ price() }}</p>
       </div>
     </a>
+    @if (saveable()) {
+      <!-- Izvan linka: dugme unutar linka nije ispravan HTML i zbunjuje čitače ekrana. -->
+      <app-save-button class="save" [vendor]="vendor()" [floating]="true" />
+    }
   `,
   styles: `
     :host {
+      position: relative;
       display: block;
+    }
+
+    .save {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
     }
 
     .card-link {
@@ -160,6 +173,10 @@ import { Icon } from './icon';
 })
 export class VendorCard {
   readonly vendor = input.required<Vendor>();
+  /** Srce za "Sačuvano" (isključeno npr. u pregledu salona). */
+  readonly saveable = input(true);
+
+  protected readonly link = computed(() => vendorLink(this.vendor()));
 
   protected readonly cover = computed(() => {
     const images = this.vendor().images;

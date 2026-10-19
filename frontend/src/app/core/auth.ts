@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { Observable, catchError, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { SKIP_ERROR_TOAST, apiErrorMessage } from './api';
+import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, apiErrorMessage } from './api';
 import {
   AuthResponse,
   ChangePasswordRequest,
@@ -127,10 +127,13 @@ function readSession(): StoredSession | null {
   }
 }
 
+let lastGuestRedirect = 0;
+
 /** Dodaje JWT, odjavljuje na 401 i prikazuje greške kao toast (osim kad zahtjev to isključi). */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const toasts = inject(ToastService);
+  const router = inject(Router);
   const token = auth.token();
 
   const request = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
@@ -140,8 +143,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (error instanceof HttpErrorResponse) {
         const isAuthCall = req.url.includes('/auth/login') || req.url.includes('/auth/register');
         if (error.status === 401 && !isAuthCall) {
-          auth.logout();
-          toasts.info('Sesija je istekla. Prijavite se ponovo.');
+          if (auth.isLoggedIn()) {
+            auth.logout();
+            toasts.info('Sesija je istekla. Prijavite se ponovo.');
+          } else if (!req.context.get(SKIP_AUTH_REDIRECT) && Date.now() - lastGuestRedirect > 2000) {
+            // Gost na stranici koju backend (još) ne dijeli javno: prijava pa povratak na isto mjesto.
+            // Više paralelnih zahtjeva dobije 401 istovremeno, pa se preusmjerava samo jednom.
+            lastGuestRedirect = Date.now();
+            const povratak = location.pathname + location.search;
+            void router.navigate(['/prijava'], { queryParams: { povratak } });
+            toasts.info('Prijavite se da biste vidjeli ponudu.');
+          }
         } else if (!req.context.get(SKIP_ERROR_TOAST)) {
           toasts.error(apiErrorMessage(error));
         }
@@ -163,14 +175,24 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return true;
 };
 
+/** Javne stranice: gost prolazi, a prijavljeni sa privremenom lozinkom prvo je mijenja (FR-3). */
+export const passwordGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthService);
+  if (auth.user()?.mustChangePassword && state.url !== '/promjena-lozinke')
+    return inject(Router).createUrlTree(['/promjena-lozinke']);
+  return true;
+};
+
 export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   return auth.isLoggedIn() ? inject(Router).parseUrl(auth.homeUrl()) : true;
 };
 
 export function roleGuard(...roles: UserRole[]): CanActivateFn {
-  return () => {
+  return (_route, state) => {
     const auth = inject(AuthService);
-    return auth.hasRole(...roles) ? true : inject(Router).parseUrl(auth.homeUrl());
+    const router = inject(Router);
+    if (!auth.isLoggedIn()) return router.createUrlTree(['/prijava'], { queryParams: { povratak: state.url } });
+    return auth.hasRole(...roles) ? true : router.parseUrl(auth.homeUrl());
   };
 }

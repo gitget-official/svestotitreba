@@ -1,4 +1,4 @@
-import { HttpClient, HttpContextToken, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpContextToken, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -48,6 +48,9 @@ import {
 /** Zahtjev sa ovim kontekstom ne prikazuje automatski toast pri grešci (komponenta je sama obrađuje). */
 export const SKIP_ERROR_TOAST = new HttpContextToken<boolean>(() => false);
 
+/** Zahtjev sa ovim kontekstom ne preusmjerava gosta na prijavu kad dobije 401 (npr. dodatni sadržaj na početnoj). */
+export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
+
 /** Poruka greške iz backenda ({ status, message }) ili opšta poruka. */
 export function apiErrorMessage(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
@@ -82,12 +85,12 @@ export abstract class CrudApi<T, TSearch extends BaseSearch, TInsert, TUpdate> {
     this.url = `${environment.apiUrl}/${resource}`;
   }
 
-  list(search: TSearch = {} as TSearch): Observable<PagedResult<T>> {
-    return this.http.get<PagedResult<T>>(this.url, { params: toParams(search) });
+  list(search: TSearch = {} as TSearch, context?: HttpContext): Observable<PagedResult<T>> {
+    return this.http.get<PagedResult<T>>(this.url, { params: toParams(search), context });
   }
 
-  get(id: number): Observable<T> {
-    return this.http.get<T>(`${this.url}/${id}`);
+  get(id: number, context?: HttpContext): Observable<T> {
+    return this.http.get<T>(`${this.url}/${id}`, { context });
   }
 
   create(request: TInsert): Observable<T> {

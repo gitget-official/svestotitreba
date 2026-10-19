@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth';
+import { FavoritesService } from '../core/favorites';
 import { initials } from '../core/format';
 import { ThemeService } from '../core/theme';
+import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
 
 interface NavItem {
@@ -10,6 +12,9 @@ interface NavItem {
   icon: string;
   link: string;
   exact?: boolean;
+  badge?: number;
+  /** Na telefonu se ne prikazuje u donjoj traci (najviše 5 kartica); dostupno je iz menija naloga. */
+  desktopOnly?: boolean;
 }
 
 /**
@@ -19,67 +24,91 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
+
     <header class="topbar material" [class.scrolled]="scrolled()">
       <div class="container bar">
-        <a class="brand" [routerLink]="auth.homeUrl()">
-          <span class="mark" aria-hidden="true">P</span>
-          <span class="serif">Planiraj</span>
-        </a>
+        <a class="brand" [routerLink]="auth.homeUrl()"><app-brand-mark /></a>
 
         <nav class="links" aria-label="Glavna navigacija">
           @for (item of items(); track item.link) {
             <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!item.exact }">
               {{ item.label }}
+              @if (item.badge) { <span class="nav-badge">{{ item.badge }}</span> }
             </a>
           }
         </nav>
 
         <div class="account">
-          <button type="button" class="avatar" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()"
-            aria-haspopup="menu" aria-label="Moj nalog">
-            {{ userInitials() }}
-          </button>
+          @if (auth.isLoggedIn()) {
+            <button type="button" class="avatar" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()"
+              aria-haspopup="menu" aria-label="Moj nalog">
+              {{ userInitials() }}
+            </button>
 
-          @if (menuOpen()) {
-            <div class="menu material" role="menu">
-              <div class="menu-head">
-                <strong>{{ auth.user()?.firstName }} {{ auth.user()?.lastName }}</strong>
-                <span class="t-footnote muted">{{ auth.user()?.email }}</span>
+            @if (menuOpen()) {
+              <div class="menu material" role="menu">
+                <div class="menu-head">
+                  <strong>{{ auth.user()?.firstName }} {{ auth.user()?.lastName }}</strong>
+                  <span class="t-footnote muted">{{ auth.user()?.email }}</span>
+                </div>
+                <a role="menuitem" routerLink="/profil" (click)="menuOpen.set(false)">
+                  <app-icon name="user" /> Profil
+                </a>
+                @if (auth.hasRole('Couple')) {
+                  <a role="menuitem" routerLink="/moje-recenzije" (click)="menuOpen.set(false)">
+                    <app-icon name="star" /> Moje recenzije
+                  </a>
+                }
+                <button type="button" role="menuitem" (click)="cycleTheme()">
+                  <app-icon [name]="theme.preference() === 'dark' ? 'moon' : 'sun'" />
+                  Tema: {{ themeLabel() }}
+                </button>
+                <button type="button" role="menuitem" class="danger" (click)="auth.logout()">
+                  <app-icon name="logout" /> Odjava
+                </button>
               </div>
-              <a role="menuitem" routerLink="/profil" (click)="menuOpen.set(false)">
-                <app-icon name="user" /> Profil
+            }
+          } @else {
+            <div class="guest">
+              <a class="btn btn-plain btn-sm" routerLink="/prijava" [queryParams]="{ povratak: currentUrl() }">Prijava</a>
+              <a class="btn btn-primary btn-sm" routerLink="/registracija" [queryParams]="{ povratak: currentUrl() }">
+                Napravite profil
               </a>
-              <button type="button" role="menuitem" (click)="cycleTheme()">
-                <app-icon [name]="theme.preference() === 'dark' ? 'moon' : 'sun'" />
-                Tema: {{ themeLabel() }}
-              </button>
-              <button type="button" role="menuitem" class="danger" (click)="auth.logout()">
-                <app-icon name="logout" /> Odjava
-              </button>
             </div>
           }
         </div>
       </div>
     </header>
 
-    <main id="sadrzaj">
+    <main id="sadrzaj" tabindex="-1">
       <router-outlet />
     </main>
 
     <nav class="tabbar material" aria-label="Kartice">
-      @for (item of items(); track item.link) {
+      @for (item of tabItems(); track item.link) {
         <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!item.exact }">
-          <app-icon [name]="item.icon" />
+          <span class="tab-icon">
+            <app-icon [name]="item.icon" />
+            @if (item.badge) { <span class="tab-badge">{{ item.badge }}</span> }
+          </span>
           <span>{{ item.label }}</span>
         </a>
       }
-      <a routerLink="/profil" routerLinkActive="active">
-        <app-icon name="user" />
-        <span>Profil</span>
-      </a>
+      @if (auth.isLoggedIn()) {
+        <a routerLink="/profil" routerLinkActive="active">
+          <span class="tab-icon"><app-icon name="user" /></span>
+          <span>Profil</span>
+        </a>
+      } @else {
+        <a routerLink="/prijava" [queryParams]="{ povratak: currentUrl() }">
+          <span class="tab-icon"><app-icon name="user" /></span>
+          <span>Prijava</span>
+        </a>
+      }
     </nav>
   `,
   styles: `
@@ -110,30 +139,79 @@ interface NavItem {
 
     .brand {
       display: inline-flex;
-      align-items: center;
-      gap: var(--space-2);
       color: var(--text);
-      font-size: 1.25rem;
-      font-weight: 600;
-      letter-spacing: -0.015em;
     }
 
-    .mark {
-      display: grid;
+    .skip-link {
+      position: fixed;
+      top: var(--space-2);
+      left: var(--space-2);
+      z-index: 300;
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-full);
+      background: var(--text);
+      color: var(--bg);
+      font-weight: 600;
+      transform: translateY(-200%);
+    }
+
+    .skip-link:focus {
+      transform: none;
+    }
+
+    main:focus {
+      outline: none;
+    }
+
+    .guest {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .nav-badge,
+    .tab-badge {
+      display: inline-grid;
       place-items: center;
-      width: 1.875rem;
-      height: 1.875rem;
-      border-radius: 9px;
+      min-width: 1.125rem;
+      height: 1.125rem;
+      padding: 0 0.3rem;
+      border-radius: var(--radius-full);
       background: var(--accent);
       color: var(--text-on-accent);
-      font-family: var(--font-display);
-      font-size: 1.05rem;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nav-badge {
+      margin-left: 0.25rem;
+      vertical-align: 1px;
+    }
+
+    .tab-icon {
+      position: relative;
+      display: inline-grid;
+    }
+
+    .tab-icon app-icon {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .tab-badge {
+      position: absolute;
+      top: -0.25rem;
+      right: -0.6rem;
+      box-shadow: 0 0 0 2px var(--bg);
     }
 
     .links {
       display: none;
       gap: var(--space-1);
       flex: 1;
+      min-width: 0;
     }
 
     .links a {
@@ -251,7 +329,7 @@ interface NavItem {
       display: grid;
       justify-items: center;
       gap: 0.125rem;
-      min-width: 4rem;
+      min-width: 3.5rem;
       padding: 0.25rem;
       color: var(--text-tertiary);
       font-size: 0.6875rem;
@@ -260,13 +338,17 @@ interface NavItem {
       transition: color var(--dur-fast) ease;
     }
 
-    .tabbar a app-icon {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-
     .tabbar a.active {
       color: var(--accent);
+    }
+
+    // Pritisak na karticu: odmah, bez čekanja na navigaciju.
+    .tabbar a:active .tab-icon {
+      transform: scale(0.9);
+    }
+
+    .tab-icon {
+      transition: transform var(--dur-press) ease-out;
     }
 
     @media (min-width: 48rem) {
@@ -293,12 +375,20 @@ interface NavItem {
 export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  private readonly favorites = inject(FavoritesService);
+  private readonly router = inject(Router);
   protected readonly scrolled = signal(false);
   protected readonly menuOpen = signal(false);
 
   protected readonly userInitials = computed(() => initials(this.auth.user()?.firstName, this.auth.user()?.lastName));
 
+  /** Za "Prijava" iz okvira: vrati gosta tačno tamo gdje je bio. */
+  protected currentUrl(): string {
+    return this.router.url;
+  }
+
   protected readonly items = computed<NavItem[]>(() => {
+    const saved = this.favorites.count() || undefined;
     switch (this.auth.role()) {
       case 'Admin':
         return [
@@ -313,15 +403,25 @@ export class Shell {
           { label: 'Rezervacije', icon: 'calendar', link: '/salon/rezervacije' },
           { label: 'Istraži', icon: 'grid', link: '/istrazi' },
         ];
-      default:
+      case 'Couple':
         return [
           { label: 'Istraži', icon: 'grid', link: '/istrazi' },
-          { label: 'Planiranje', icon: 'sparkles', link: '/planiranje' },
+          { label: 'Planer', icon: 'sparkles', link: '/planiranje' },
+          { label: 'Sačuvano', icon: 'heart', link: '/sacuvano', badge: saved },
           { label: 'Rezervacije', icon: 'calendar', link: '/moje-rezervacije' },
-          { label: 'Recenzije', icon: 'star', link: '/moje-recenzije' },
+          { label: 'Recenzije', icon: 'star', link: '/moje-recenzije', desktopOnly: true },
+        ];
+      default:
+        // Gost: katalog, planer i lokalna lista.
+        return [
+          { label: 'Istraži', icon: 'grid', link: '/istrazi' },
+          { label: 'Planer', icon: 'sparkles', link: '/planiranje' },
+          { label: 'Sačuvano', icon: 'heart', link: '/sacuvano', badge: saved },
         ];
     }
   });
+
+  protected readonly tabItems = computed(() => this.items().filter((i) => !i.desktopOnly));
 
   protected readonly themeLabel = computed(() => {
     switch (this.theme.preference()) {
