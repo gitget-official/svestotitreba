@@ -76,6 +76,38 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'admin',
+        canActivate: [roleGuard('Admin')],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'ponudjaci' },
+          {
+            path: 'ponudjaci',
+            title: 'Ponuđači · Admin',
+            loadComponent: () => import('./pages/admin/admin-vendors').then((m) => m.AdminVendors),
+          },
+          {
+            path: 'ponudjaci/:id',
+            title: 'Uređivanje ponuđača · Admin',
+            loadComponent: () => import('./pages/salon/vendor-manage').then((m) => m.VendorManage),
+          },
+          {
+            path: 'recenzije',
+            title: 'Recenzije · Admin',
+            loadComponent: () => import('./pages/admin/admin-reviews').then((m) => m.AdminReviews),
+          },
+          {
+            path: 'korisnici',
+            title: 'Korisnici · Admin',
+            loadComponent: () => import('./pages/admin/admin-users').then((m) => m.AdminUsers),
+          },
+          {
+            path: 'sifarnici',
+            title: 'Šifarnici · Admin',
+            loadComponent: () => import('./pages/admin/admin-lookups').then((m) => m.AdminLookups),
+          },
+        ],
+      },
+      {
         path: 'profil',
         title: 'Profil · Planiraj',
         loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile),
