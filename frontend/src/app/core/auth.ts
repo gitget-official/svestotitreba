@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { Observable, catchError, tap, throwError } from 'rxjs';
@@ -38,7 +38,9 @@ export class AuthService {
   readonly role = computed(() => this.user()?.role ?? null);
 
   login(request: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.url}/login`, request).pipe(tap((r) => this.store(r)));
+    // Pogrešna lozinka se prikazuje u formi, ne kao toast.
+    const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
+    return this.http.post<AuthResponse>(`${this.url}/login`, request, { context }).pipe(tap((r) => this.store(r)));
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {
