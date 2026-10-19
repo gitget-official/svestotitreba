@@ -55,6 +55,27 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/my/my-pages').then((m) => m.MyReviews),
       },
       {
+        path: 'salon',
+        canActivate: [roleGuard('Vendor')],
+        children: [
+          {
+            path: '',
+            title: 'Moj salon · Planiraj',
+            loadComponent: () => import('./pages/salon/salon-home').then((m) => m.SalonHome),
+          },
+          {
+            path: 'rezervacije',
+            title: 'Rezervacije · Planiraj',
+            loadComponent: () => import('./pages/salon/salon-bookings').then((m) => m.SalonBookings),
+          },
+          {
+            path: ':id',
+            title: 'Uređivanje salona · Planiraj',
+            loadComponent: () => import('./pages/salon/vendor-manage').then((m) => m.VendorManage),
+          },
+        ],
+      },
+      {
         path: 'profil',
         title: 'Profil · Planiraj',
         loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile),
