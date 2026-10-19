@@ -1,0 +1,240 @@
+// Osnova: reset, tipografska skala i raspored.
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  // Glatka promjena teme (bez naglog skoka svjetline).
+  transition: background-color var(--dur-base) ease;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font: 100%/1.5 var(--font);
+  font-optical-sizing: auto;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+// ---- Tipografija: hijerarhija iz težine, veličine i proreda zajedno ----
+// Veći tekst: negativan tracking i tijesan prored; manji tekst: blago pozitivan tracking.
+.t-display {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5.5vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.022em;
+  font-weight: 600;
+}
+
+.t-title-1 {
+  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.018em;
+  font-weight: 700;
+}
+
+.t-title-2 {
+  font-size: 1.375rem;
+  line-height: 1.2;
+  letter-spacing: -0.012em;
+  font-weight: 650;
+}
+
+.t-title-3 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  letter-spacing: -0.006em;
+  font-weight: 600;
+}
+
+.t-body {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.t-callout {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.t-footnote {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  letter-spacing: 0.005em;
+}
+
+.t-caption {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  letter-spacing: 0.012em;
+}
+
+.t-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.subtle {
+  color: var(--text-tertiary);
+}
+
+.serif {
+  font-family: var(--font-display);
+}
+
+// ---- Raspored ----
+.container {
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: max(var(--space-4), env(safe-area-inset-left));
+}
+
+@media (min-width: 48rem) {
+  .container {
+    padding-inline: var(--space-6);
+  }
+}
+
+.page {
+  padding-block: var(--space-6) calc(var(--space-8) + var(--safe-bottom));
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+
+  p {
+    margin-top: var(--space-2);
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.row-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.grid-cards {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Ulaz stranice: kratko, bez pomjeranja kod reduced-motion.
+.enter {
+  animation: enter var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+
+  .enter {
+    animation: fade var(--dur-fast) ease both;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

@@ -1,12 +1,16 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Toasts } from './shared/ui/toast';
+import { ConfirmHost } from './shared/ui/confirm';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.scss',
-  templateUrl: './app.html',
+  imports: [RouterOutlet, Toasts, ConfirmHost],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <router-outlet />
+    <app-toasts />
+    <app-confirm-host />
+  `,
 })
-export class App {
-  protected readonly title = signal('frontend');
-}
+export class App {}
