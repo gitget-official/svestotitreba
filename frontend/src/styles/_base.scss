@@ -238,3 +238,18 @@ h1, h2, h3, h4, p {
     opacity: 0;
   }
 }
+
+// Prijelaz između stranica (View Transitions API): kratko pretapanje, bez kretanja.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
