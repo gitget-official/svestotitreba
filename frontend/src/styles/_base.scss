@@ -131,6 +131,24 @@ h1, h2, h3, h4, p {
   font-family: var(--font-display);
 }
 
+// Link "Preskoči na sadržaj": skriven dok ga tastatura ne fokusira.
+.skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 300;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  transform: translateY(-200%);
+
+  &:focus {
+    transform: none;
+  }
+}
+
 // ---- Raspored ----
 .container {
   width: 100%;

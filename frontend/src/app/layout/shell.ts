@@ -142,23 +142,6 @@ interface NavItem {
       color: var(--text);
     }
 
-    .skip-link {
-      position: fixed;
-      top: var(--space-2);
-      left: var(--space-2);
-      z-index: 300;
-      padding: var(--space-2) var(--space-4);
-      border-radius: var(--radius-full);
-      background: var(--text);
-      color: var(--bg);
-      font-weight: 600;
-      transform: translateY(-200%);
-    }
-
-    .skip-link:focus {
-      transform: none;
-    }
-
     main:focus {
       outline: none;
     }

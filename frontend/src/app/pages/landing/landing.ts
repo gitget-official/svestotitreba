@@ -1,88 +1,271 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { HttpContext } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
+import { BRAND } from '../../core/brand';
+import { LookupStore } from '../../core/lookups';
+import { Vendor } from '../../core/models';
+import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
+import { VendorCard } from '../../shared/ui/vendor-card';
 
-/** Javna početna stranica. Pregled ponude traži prijavu (FR-1), pa ovdje samo predstavljamo platformu. */
+const CATEGORIES = [
+  { slug: 'saloni-za-vjencanje', name: 'Sale i prostori', icon: 'building', text: 'Restorani, sale i bašte za svako slavlje.' },
+  { slug: 'vjencanice-i-odijela', name: 'Vjenčanice i odijela', icon: 'dress', text: 'Najam, prodaja i šivenje po mjeri.' },
+  { slug: 'fotografi', name: 'Fotografi', icon: 'camera', text: 'Fotografija i video za uspomene.' },
+  { slug: 'dekoracije', name: 'Dekoracije', icon: 'flower', text: 'Cvijeće, aranžmani i uređenje sale.' },
+  { slug: 'svecani-automobili', name: 'Svečani automobili', icon: 'car', text: 'Oldtimeri, limuzine i luksuzna vozila.' },
+  { slug: 'frizeri', name: 'Frizeri', icon: 'scissors', text: 'Frizure za mladu, mladoženju i svatove.' },
+  { slug: 'beauty-makeup', name: 'Beauty i make-up', icon: 'sparkles', text: 'Šminka i tretmani pred veliki dan.' },
+];
+
+const FAQ = [
+  {
+    q: 'Da li je korištenje besplatno za mladence?',
+    a: 'Da. Pretraga, poređenje, planer i slanje upita salonima su besplatni.',
+  },
+  {
+    q: 'Kako planer zna šta mi odgovara?',
+    a: 'Odaberete usluge, budžet i grad, a planer raspodijeli budžet po kategorijama i predloži najbolje ocijenjene ponuđače čije cijene staju u taj okvir. Svaki prijedlog možete zamijeniti.',
+  },
+  {
+    q: 'Jesu li cijene konačne?',
+    a: 'Ne. Saloni navode okvirne cijene od–do; tačna cijena zavisi od datuma, broja gostiju i dogovora sa salonom.',
+  },
+  {
+    q: 'Mogu li odmah rezervisati termin?',
+    a: 'Kod salona koji imaju online zakazivanje, da. Neki termin potvrđuju odmah, a neki ručno. Ostale kontaktirate telefonom ili e-mailom sa njihove stranice.',
+  },
+  {
+    q: 'Imam salon. Kako da se pojavim na platformi?',
+    a: 'Pošaljite nam upit preko forme ispod. Otvorićemo vam nalog sa vlastitom stranicom, cjenovnikom, galerijom i (ako želite) online rezervacijama.',
+  },
+];
+
+/**
+ * Javna početna. Prvo ono što gost traži (pretraga i stvarna ponuda), pa kako funkcioniše, planer,
+ * ponuda za salone i česta pitanja. Dijelovi koji traže API (gradovi, istaknuti ponuđači) se tiho
+ * izostavljaju dok backend ne dozvoli javni pristup.
+ */
 @Component({
   selector: 'app-landing',
-  imports: [RouterLink, Icon],
+  imports: [FormsModule, RouterLink, BrandMark, Icon, VendorCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header class="nav material">
+    <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
+
+    <header class="nav material" [class.scrolled]="scrolled()">
       <div class="container bar">
-        <span class="brand"><span class="mark" aria-hidden="true">P</span><span class="serif">Planiraj</span></span>
-        <div class="row">
-          <a class="btn btn-plain" routerLink="/prijava">Prijava</a>
+        <a class="brand" routerLink="/"><app-brand-mark /></a>
+        <nav class="links" aria-label="Glavna navigacija">
+          <a routerLink="/istrazi">Istraži</a>
+          <a routerLink="/planiranje">Planer</a>
+          <a href="#saloni">Za salone</a>
+        </nav>
+        <div class="row actions">
+          <a class="btn btn-plain btn-sm" routerLink="/prijava">Prijava</a>
           <a class="btn btn-primary btn-sm" routerLink="/registracija">Napravite profil</a>
         </div>
       </div>
     </header>
 
-    <section class="hero">
-      <div class="container hero-inner enter">
-        <p class="t-eyebrow">Za mladence u Bosni i Hercegovini</p>
-        <h1 class="t-display">Sve za vaše vjenčanje,<br />na jednom mjestu.</h1>
-        <p class="lead">
-          Saloni vjenčanica, sale, fotografi, dekoracije, frizeri i svečani automobili. Uporedite ponude,
-          pogledajte cijene i rezervišite termin, bez desetina poziva.
-        </p>
-        <div class="row-wrap cta">
-          <a class="btn btn-primary btn-lg" routerLink="/registracija">
-            Počnite planirati <app-icon name="arrow-right" />
-          </a>
-          <a class="btn btn-lg" routerLink="/prijava">Već imam profil</a>
-        </div>
-      </div>
-    </section>
+    <main id="sadrzaj">
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy enter">
+            <p class="t-eyebrow">Za mladence u Bosni i Hercegovini</p>
+            <h1 class="t-display">Sve za vaše vjenčanje, na jednom mjestu.</h1>
+            <p class="lead">
+              Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili. Uporedite cijene, sačuvajte
+              favorite i rezervišite termin, bez desetina poziva.
+            </p>
 
-    <section class="container section">
-      <h2 class="t-title-2">Šta sve možete pronaći</h2>
-      <div class="categories">
-        @for (category of categories; track category.name) {
-          <div class="category card">
-            <span class="cat-icon"><app-icon [name]="category.icon" /></span>
-            <div>
-              <h3 class="t-title-3">{{ category.name }}</h3>
-              <p class="t-footnote muted">{{ category.text }}</p>
-            </div>
+            <form class="search material" (ngSubmit)="search()" role="search" aria-label="Brza pretraga">
+              <label class="search-field">
+                <span class="t-caption muted">Šta tražite</span>
+                <select name="category" [(ngModel)]="category">
+                  <option value="">Sve usluge</option>
+                  @for (c of categories; track c.slug) { <option [value]="c.slug">{{ c.name }}</option> }
+                </select>
+              </label>
+              @if (lookups.cities().length) {
+                <span class="divider" aria-hidden="true"></span>
+                <label class="search-field">
+                  <span class="t-caption muted">Grad</span>
+                  <select name="city" [(ngModel)]="cityId">
+                    <option [ngValue]="null">Cijela BiH</option>
+                    @for (city of lookups.cities(); track city.id) { <option [ngValue]="city.id">{{ city.name }}</option> }
+                  </select>
+                </label>
+              }
+              <button type="submit" class="btn btn-primary search-btn">
+                <app-icon name="search" /> <span>Pretraži</span>
+              </button>
+            </form>
+
+            <p class="t-footnote muted planner-hint">
+              Ne znate odakle početi? <a routerLink="/planiranje">Neka vam planer složi paket po budžetu <app-icon name="arrow-right" /></a>
+            </p>
           </div>
-        }
-      </div>
-    </section>
 
-    <section class="container section">
-      <h2 class="t-title-2">Kako funkcioniše</h2>
-      <ol class="steps">
-        <li>
-          <span class="num">1</span>
-          <h3 class="t-title-3">Napravite profil</h3>
-          <p class="muted">Besplatno, za manje od minute.</p>
-        </li>
-        <li>
-          <span class="num">2</span>
-          <h3 class="t-title-3">Pretražite i uporedite</h3>
-          <p class="muted">Filtrirajte po gradu, cijeni, ocjeni i slobodnom datumu.</p>
-        </li>
-        <li>
-          <span class="num">3</span>
-          <h3 class="t-title-3">Kontaktirajte ili rezervišite</h3>
-          <p class="muted">Pošaljite zahtjev za termin direktno salonu koji to nudi.</p>
-        </li>
-      </ol>
-    </section>
-
-    <section class="container section">
-      <div class="vendor-cta card card-pad">
-        <div>
-          <p class="t-eyebrow">Za salone i ponuđače</p>
-          <h2 class="t-title-2">Imate salon ili nudite usluge za vjenčanja?</h2>
-          <p class="muted">Javite nam se i otvorićemo vam nalog sa vlastitom stranicom, cjenovnikom i rezervacijama.</p>
+          <div class="collage" aria-hidden="true">
+            @for (tile of collage(); track $index; let i = $index) {
+              <div class="tile" [class]="'tile t' + i">
+                @if (tile.image) {
+                  <img [src]="tile.image" alt="" [attr.loading]="i === 0 ? 'eager' : 'lazy'" decoding="async" />
+                } @else {
+                  <span class="tile-icon"><app-icon [name]="tile.icon" [strokeWidth]="1.4" /></span>
+                }
+                <span class="tile-label">{{ tile.label }}</span>
+              </div>
+            }
+          </div>
         </div>
-        <a class="btn btn-tinted" href="mailto:info@planiraj.ba">Kontaktirajte nas</a>
-      </div>
-    </section>
+      </section>
 
-    <footer class="container footer t-footnote subtle">© {{ year }} Planiraj</footer>
+      <section class="container section" aria-labelledby="kategorije">
+        <div class="section-head">
+          <h2 id="kategorije" class="t-title-2">Šta sve možete pronaći</h2>
+          <a class="btn btn-plain btn-sm" routerLink="/istrazi">Sve ponude <app-icon name="chevron-right" /></a>
+        </div>
+        <div class="categories">
+          @for (c of categories; track c.slug) {
+            <a class="category card" routerLink="/istrazi" [queryParams]="{ kategorija: c.slug }">
+              <span class="cat-icon"><app-icon [name]="c.icon" /></span>
+              <span class="cat-text">
+                <span class="t-title-3">{{ c.name }}</span>
+                <span class="t-footnote muted">{{ c.text }}</span>
+              </span>
+              <app-icon name="chevron-right" class="chev" />
+            </a>
+          }
+        </div>
+      </section>
+
+      @if (featured().length) {
+        <section class="container section" aria-labelledby="istaknuti">
+          <div class="section-head">
+            <h2 id="istaknuti" class="t-title-2">Izdvojeni ponuđači</h2>
+            <a class="btn btn-plain btn-sm" routerLink="/istrazi">Pogledaj sve <app-icon name="chevron-right" /></a>
+          </div>
+          <div class="rail">
+            @for (v of featured(); track v.id) {
+              <app-vendor-card [vendor]="v" />
+            }
+          </div>
+        </section>
+      }
+
+      <section class="container section">
+        <div class="planner card">
+          <div class="planner-copy">
+            <span class="badge badge-accent"><app-icon name="sparkles" /> Planer vjenčanja</span>
+            <h2 class="t-title-1 serif">Recite nam budžet, mi složimo paket.</h2>
+            <p class="muted">
+              Odaberite usluge, unesite budžet, grad i datum. Planer raspodijeli novac po kategorijama i predloži
+              najbolje ocijenjene ponuđače koji staju u okvir. Svaki prijedlog možete zamijeniti jednim dodirom.
+            </p>
+            <a class="btn btn-primary btn-lg" routerLink="/planiranje">Isprobajte planer <app-icon name="arrow-right" /></a>
+          </div>
+          <ol class="planner-steps">
+            <li><span class="num">1</span><div><strong>Usluge</strong><p class="t-footnote muted">Sala, fotograf, vjenčanica…</p></div></li>
+            <li><span class="num">2</span><div><strong>Budžet i grad</strong><p class="t-footnote muted">Okvirno, ne mora biti tačno.</p></div></li>
+            <li><span class="num">3</span><div><strong>Vaš paket</strong><p class="t-footnote muted">Sa procjenom ukupne cijene.</p></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="container section" aria-labelledby="kako">
+        <h2 id="kako" class="t-title-2">Kako funkcioniše</h2>
+        <ol class="steps">
+          <li>
+            <span class="step-icon"><app-icon name="search" /></span>
+            <h3 class="t-title-3">Pretražite i uporedite</h3>
+            <p class="muted">Filtrirajte po gradu, cijeni, ocjeni i slobodnom datumu. Sačuvajte favorite i uporedite ih jedno uz drugo.</p>
+          </li>
+          <li>
+            <span class="step-icon"><app-icon name="calendar" /></span>
+            <h3 class="t-title-3">Rezervišite ili pitajte</h3>
+            <p class="muted">Pošaljite zahtjev za termin salonu koji prima rezervacije, ili ga kontaktirajte direktno.</p>
+          </li>
+          <li>
+            <span class="step-icon"><app-icon name="star" /></span>
+            <h3 class="t-title-3">Podijelite iskustvo</h3>
+            <p class="muted">Recenzije mladenaca pomažu drugim parovima. Svaku pregleda naš tim prije objave.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="container section" id="saloni" aria-labelledby="za-salone">
+        <div class="vendors card">
+          <div class="vendors-copy">
+            <p class="t-eyebrow">Za salone i ponuđače</p>
+            <h2 id="za-salone" class="t-title-1">Neka vas mladenci pronađu.</h2>
+            <ul class="benefits">
+              <li><app-icon name="check-circle" /> Vlastita stranica sa galerijom, cjenovnikom i radnim vremenom</li>
+              <li><app-icon name="check-circle" /> Upiti i rezervacije na jednom mjestu, uz automatsku ili ručnu potvrdu</li>
+              <li><app-icon name="check-circle" /> Recenzije koje grade povjerenje</li>
+              <li><app-icon name="check-circle" /> Više kategorija na jednom nalogu (npr. frizer i make-up)</li>
+            </ul>
+          </div>
+          <form class="lead-form stack" (ngSubmit)="sendLead()" #leadForm="ngForm">
+            <div class="field">
+              <label for="l-name">Naziv salona</label>
+              <input id="l-name" class="input" name="name" required [(ngModel)]="lead.name" autocomplete="organization" />
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="l-cat">Usluga</label>
+                <select id="l-cat" class="select" name="category" [(ngModel)]="lead.category">
+                  @for (c of categories; track c.slug) { <option [value]="c.name">{{ c.name }}</option> }
+                  <option value="Drugo">Drugo</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="l-city">Grad</label>
+                <input id="l-city" class="input" name="city" required [(ngModel)]="lead.city" autocomplete="address-level2" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="l-phone">Telefon</label>
+              <input id="l-phone" class="input" name="phone" type="tel" required [(ngModel)]="lead.phone" autocomplete="tel"
+                inputmode="tel" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" [disabled]="leadForm.invalid">Pošaljite upit</button>
+            <p class="t-caption subtle">Javljamo se u roku od jednog radnog dana.</p>
+          </form>
+        </div>
+      </section>
+
+      <section class="container section narrow" aria-labelledby="faq">
+        <h2 id="faq" class="t-title-2">Česta pitanja</h2>
+        <div class="faq list-group">
+          @for (item of faq; track item.q) {
+            <details class="list-row">
+              <summary>{{ item.q }} <app-icon name="chevron-down" class="chev" /></summary>
+              <p class="muted">{{ item.a }}</p>
+            </details>
+          }
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div class="stack-sm">
+          <app-brand-mark />
+          <p class="t-footnote muted">{{ brand.tagline }}</p>
+        </div>
+        <nav class="footer-links t-footnote" aria-label="Podnožje">
+          <a routerLink="/istrazi">Istraži</a>
+          <a routerLink="/planiranje">Planer</a>
+          <a href="#saloni">Za salone</a>
+          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>
+        </nav>
+        <p class="t-caption subtle">© {{ year }} {{ brand.name }}</p>
+      </div>
+    </footer>
   `,
   styles: `
     .nav {
@@ -90,76 +273,239 @@ import { Icon } from '../../shared/ui/icon';
       top: 0;
       z-index: 10;
       height: var(--nav-height);
+      box-shadow: none;
+      transition: box-shadow var(--dur-base) ease;
+    }
+
+    .nav.scrolled {
+      box-shadow: 0 1px 0 var(--separator);
     }
 
     .bar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: var(--space-5);
       height: 100%;
     }
 
     .brand {
       display: inline-flex;
-      align-items: center;
-      gap: var(--space-2);
-      font-size: 1.25rem;
-      font-weight: 600;
     }
 
-    .mark {
-      display: grid;
-      place-items: center;
-      width: 1.875rem;
-      height: 1.875rem;
-      border-radius: 9px;
-      background: var(--accent);
-      color: var(--text-on-accent);
-      font-family: var(--font-display);
+    .links {
+      display: none;
+      gap: var(--space-1);
     }
 
+    .links a {
+      padding: 0.4rem 0.8rem;
+      border-radius: var(--radius-full);
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      transition: color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+    }
+
+    .links a:hover {
+      color: var(--text);
+      background: var(--fill);
+    }
+
+    .actions {
+      margin-left: auto;
+      gap: var(--space-1);
+    }
+
+    // ---- Hero ----
     .hero {
-      padding-block: clamp(3.5rem, 10vw, 7rem) clamp(2.5rem, 6vw, 4.5rem);
+      padding-block: clamp(2.5rem, 7vw, 5.5rem) clamp(2rem, 5vw, 4rem);
       background:
         radial-gradient(60rem 30rem at 85% -10%, var(--accent-soft), transparent 70%),
         radial-gradient(40rem 24rem at 0% 0%, var(--gold-soft), transparent 70%);
     }
 
-    .hero-inner {
+    .hero-grid {
+      display: grid;
+      gap: var(--space-7);
+      align-items: center;
+    }
+
+    .hero-copy {
       display: grid;
       gap: var(--space-4);
-      max-width: 48rem;
+      max-width: 40rem;
     }
 
     .lead {
       font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
       line-height: 1.5;
       color: var(--text-secondary);
-      max-width: 38rem;
     }
 
-    .cta {
+    .search {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: var(--space-1);
       margin-top: var(--space-3);
+      padding: var(--space-2);
+      border-radius: var(--radius-xl);
+      background: var(--material-thick);
+      box-shadow: var(--shadow-md), inset 0 1px 0 var(--material-edge);
+    }
+
+    .search-field {
+      flex: 1 1 10rem;
+      display: grid;
+      gap: 0.125rem;
+      padding: 0.375rem var(--space-4);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: background-color var(--dur-fast) ease;
+    }
+
+    .search-field:hover,
+    .search-field:focus-within {
+      background: var(--fill);
+    }
+
+    .search-field select {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .divider {
+      width: 1px;
+      margin-block: var(--space-2);
+      background: var(--separator);
+    }
+
+    .search-btn {
+      flex: 1 1 100%;
+      min-height: 3rem;
+      border-radius: var(--radius-lg);
+    }
+
+    .planner-hint a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-weight: 600;
+    }
+
+    .planner-hint app-icon {
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+
+    // Kolaž: stvarne fotografije ponuđača kad su dostupne, inače mirne pločice kategorija.
+    .collage {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(6, minmax(0, 3.2rem));
       gap: var(--space-3);
     }
 
+    .tile {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(160deg, var(--bg-elevated), var(--bg-sunken));
+      box-shadow: var(--shadow-md);
+      animation: tile-in 600ms var(--ease-out) both;
+    }
+
+    .t0 { grid-column: 1 / 5; grid-row: 1 / 5; animation-delay: 60ms; }
+    .t1 { grid-column: 5 / 7; grid-row: 1 / 4; animation-delay: 140ms; }
+    .t2 { grid-column: 5 / 7; grid-row: 4 / 7; animation-delay: 220ms; }
+    .t3 { grid-column: 1 / 5; grid-row: 5 / 7; animation-delay: 300ms; }
+
+    .tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .tile-icon {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      color: var(--accent);
+      opacity: 0.55;
+    }
+
+    .tile-icon app-icon {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .tile-label {
+      position: absolute;
+      left: var(--space-2);
+      bottom: var(--space-2);
+      padding: 0.25rem 0.625rem;
+      border-radius: var(--radius-full);
+      background: var(--material-thick);
+      -webkit-backdrop-filter: var(--blur-thin);
+      backdrop-filter: var(--blur-thin);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    @keyframes tile-in {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+      }
+    }
+
+    // ---- Sekcije ----
     .section {
       display: grid;
       gap: var(--space-5);
       padding-block: var(--space-6);
     }
 
+    .narrow {
+      max-width: 52rem;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
     .categories {
       display: grid;
       gap: var(--space-3);
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
     }
 
     .category {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: var(--space-3);
       padding: var(--space-4);
+      color: inherit;
+      transition:
+        transform var(--dur-press) ease-out,
+        box-shadow var(--dur-base) var(--ease-out);
+    }
+
+    .category:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .category:active {
+      transform: scale(0.98);
     }
 
     .cat-icon {
@@ -173,61 +519,333 @@ import { Icon } from '../../shared/ui/icon';
       color: var(--accent);
     }
 
+    .cat-text {
+      display: grid;
+      flex: 1;
+      gap: 0.125rem;
+    }
+
+    .chev {
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-tertiary);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+
+    .category:hover .chev {
+      transform: translateX(2px);
+    }
+
+    // Vodoravni niz koji se prevlači; poravnanje na kartice, rub nestaje mekano.
+    .rail {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(16rem, 20rem);
+      gap: var(--space-4);
+      overflow-x: auto;
+      margin-inline: calc(-1 * var(--space-4));
+      padding: var(--space-1) var(--space-4) var(--space-3);
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: var(--space-4);
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .rail::-webkit-scrollbar {
+      display: none;
+    }
+
+    .rail > * {
+      scroll-snap-align: start;
+    }
+
+    .planner {
+      display: grid;
+      gap: var(--space-6);
+      padding: clamp(var(--space-5), 4vw, var(--space-7));
+      border-radius: var(--radius-xl);
+      background:
+        radial-gradient(36rem 20rem at 100% 0%, var(--accent-soft), transparent 70%),
+        radial-gradient(28rem 18rem at 0% 100%, var(--gold-soft), transparent 70%),
+        var(--bg-elevated);
+    }
+
+    .planner-copy {
+      display: grid;
+      justify-items: start;
+      gap: var(--space-4);
+      max-width: 36rem;
+    }
+
+    .badge app-icon {
+      width: 0.85rem;
+      height: 0.85rem;
+    }
+
+    .planner-steps,
     .steps {
       display: grid;
-      gap: var(--space-5);
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+      gap: var(--space-4);
       margin: 0;
       padding: 0;
       list-style: none;
     }
 
-    .steps li {
-      display: grid;
-      gap: var(--space-2);
+    .planner-steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      background: var(--material-regular);
+      box-shadow: var(--shadow-sm), inset 0 1px 0 var(--material-edge);
     }
 
     .num {
       display: grid;
       place-items: center;
-      width: 2rem;
-      height: 2rem;
+      flex: none;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: 50%;
       background: var(--text);
       color: var(--bg);
       font-weight: 700;
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
     }
 
-    .vendor-cta {
+    .steps {
+      gap: var(--space-5);
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    }
+
+    .steps li {
+      display: grid;
+      gap: var(--space-2);
+      align-content: start;
+    }
+
+    .step-icon {
+      display: grid;
+      place-items: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-md);
+      background: var(--fill);
+      color: var(--text);
+    }
+
+    .vendors {
+      display: grid;
+      gap: var(--space-6);
+      padding: clamp(var(--space-5), 4vw, var(--space-7));
+      border-radius: var(--radius-xl);
+    }
+
+    .vendors-copy {
+      display: grid;
+      gap: var(--space-4);
+      align-content: start;
+    }
+
+    .benefits {
+      display: grid;
+      gap: var(--space-3);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .benefits li {
       display: flex;
-      flex-wrap: wrap;
+      gap: var(--space-3);
+      align-items: flex-start;
+    }
+
+    .benefits app-icon {
+      color: var(--success);
+      margin-top: 0.1rem;
+    }
+
+    .lead-form {
+      padding: var(--space-5);
+      border-radius: var(--radius-lg);
+      background: var(--bg-sunken);
+    }
+
+    .faq details {
+      display: block;
+    }
+
+    .faq summary {
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--space-4);
+      gap: var(--space-3);
+      min-height: 2.25rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+    }
 
-      > div {
-        display: grid;
-        gap: var(--space-2);
-        max-width: 36rem;
-      }
+    .faq summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq details[open] .chev {
+      transform: rotate(180deg);
+    }
+
+    .faq details p {
+      padding-bottom: var(--space-2);
+      max-width: 42rem;
     }
 
     .footer {
-      padding-block: var(--space-6) var(--space-7);
+      margin-top: var(--space-6);
+      padding-block: var(--space-6) calc(var(--space-7) + var(--safe-bottom));
+      border-top: 1px solid var(--separator);
+    }
+
+    .footer-grid {
+      display: grid;
+      gap: var(--space-5);
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-5);
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    @media (min-width: 40rem) {
+      .search {
+        flex-wrap: nowrap;
+        border-radius: var(--radius-full);
+      }
+
+      .search-field {
+        border-radius: var(--radius-full);
+      }
+
+      .search-btn {
+        flex: none;
+        border-radius: var(--radius-full);
+        padding-inline: 1.5rem;
+      }
+    }
+
+    @media (min-width: 48rem) {
+      .links {
+        display: flex;
+      }
+
+      .rail {
+        margin-inline: 0;
+        padding-inline: 0;
+        scroll-padding-inline: 0;
+      }
+    }
+
+    @media (min-width: 60rem) {
+      .hero-grid {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      }
+
+      .planner,
+      .vendors {
+        grid-template-columns: 1.2fr 1fr;
+        align-items: center;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr auto;
+        align-items: center;
+      }
+    }
+
+    @media (max-width: 59.99rem) {
+      .collage {
+        grid-template-rows: repeat(6, minmax(0, 2.4rem));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tile {
+        animation: tile-fade var(--dur-fast) ease both;
+        animation-delay: 0ms !important;
+      }
+
+      @keyframes tile-fade {
+        from {
+          opacity: 0;
+        }
+      }
     }
   `,
+  host: {
+    '(window:scroll)': 'onScroll()',
+  },
 })
-export class Landing {
-  protected readonly year = new Date().getFullYear();
+export class Landing implements OnInit {
+  protected readonly lookups = inject(LookupStore);
+  private readonly vendorApi = inject(VendorApi);
+  private readonly router = inject(Router);
 
-  protected readonly categories = [
-    { name: 'Vjenčanice i odijela', icon: 'dress', text: 'Najam, prodaja i šivenje po mjeri.' },
-    { name: 'Saloni za vjenčanje', icon: 'building', text: 'Sale i prostori za svako slavlje.' },
-    { name: 'Dekoracije', icon: 'flower', text: 'Cvijeće, aranžmani i uređenje sale.' },
-    { name: 'Fotografi', icon: 'camera', text: 'Fotografija i video za uspomene.' },
-    { name: 'Svečani automobili', icon: 'car', text: 'Oldtimeri, limuzine i luksuzna vozila.' },
-    { name: 'Frizeri', icon: 'scissors', text: 'Frizure za mladu, mladoženju i svatove.' },
-    { name: 'Beauty i make-up', icon: 'sparkles', text: 'Šminka i tretmani pred veliki dan.' },
-  ];
+  protected readonly brand = BRAND;
+  protected readonly year = new Date().getFullYear();
+  protected readonly categories = CATEGORIES;
+  protected readonly faq = FAQ;
+  protected readonly featured = signal<Vendor[]>([]);
+  protected readonly scrolled = signal(false);
+
+  protected category = '';
+  protected cityId: number | null = null;
+  protected lead = { name: '', category: CATEGORIES[0].name, city: '', phone: '' };
+
+  /** Četiri pločice kolaža: fotografije istaknutih ponuđača, a dok ih nema, kategorije. */
+  protected readonly collage = computed(() => {
+    const photos = this.featured()
+      .map((v) => ({ image: (v.images.find((i) => i.isCover) ?? v.images[0])?.url ?? null, label: v.name, icon: 'image' }))
+      .filter((t) => t.image);
+    const fallback = CATEGORIES.slice(0, 4).map((c) => ({ image: null, label: c.name, icon: c.icon }));
+    return photos.length >= 4 ? photos.slice(0, 4) : fallback;
+  });
+
+  ngOnInit(): void {
+    this.lookups.ensureLoaded(false, true);
+    // Istaknuti prvi (backend sortira po pretplati, pa ocjeni). Ako API traži prijavu, sekcija se ne prikazuje.
+    const context = new HttpContext().set(SKIP_AUTH_REDIRECT, true).set(SKIP_ERROR_TOAST, true);
+    this.vendorApi.list({ pageSize: 8 }, context).subscribe({
+      next: (r) => this.featured.set(r.items),
+      error: () => this.featured.set([]),
+    });
+  }
+
+  protected onScroll(): void {
+    const scrolled = window.scrollY > 4;
+    if (scrolled !== this.scrolled()) this.scrolled.set(scrolled);
+  }
+
+  protected search(): void {
+    void this.router.navigate(['/istrazi'], {
+      queryParams: { kategorija: this.category || null, grad: this.cityId },
+    });
+  }
+
+  /** @TODO backend: endpoint za upite salona; do tada se upit šalje e-mailom sa popunjenim podacima. */
+  protected sendLead(): void {
+    const { name, category, city, phone } = this.lead;
+    const subject = `Upit salona: ${name}`;
+    const body = `Naziv: ${name}\nUsluga: ${category}\nGrad: ${city}\nTelefon: ${phone}\n`;
+    location.href = `mailto:${BRAND.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
 }

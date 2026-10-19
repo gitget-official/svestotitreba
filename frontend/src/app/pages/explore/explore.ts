@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { VendorApi } from '../../core/api';
-import { todayIso } from '../../core/format';
+import { formatDate, plural, todayIso } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
 import { Vendor, VendorSearch } from '../../core/models';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
@@ -37,7 +37,7 @@ const PAGE_SIZE = 12;
 /** Samostalna pretraga ponude (FR-5, FR-6). Filteri se čuvaju u URL-u, pa "nazad" vraća isti prikaz. */
 @Component({
   selector: 'app-explore',
-  imports: [FormsModule, Icon, Sheet, VendorCard],
+  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -46,6 +46,7 @@ const PAGE_SIZE = 12;
           <h1 class="t-title-1">Istražite ponudu</h1>
           <p class="muted">Saloni, sale, fotografi i sve ostalo za vaše vjenčanje.</p>
         </div>
+        <a class="btn btn-tinted" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
       </header>
 
       <div class="toolbar">
@@ -85,7 +86,7 @@ const PAGE_SIZE = 12;
 
       <p class="t-footnote muted result-count" aria-live="polite">
         @if (!loading() || vendors().length) {
-          {{ total() }} {{ total() === 1 ? 'ponuđač' : 'ponuđača' }}
+          {{ total() }} {{ plural(total(), 'ponuđač', 'ponuđača', 'ponuđača') }}
         }
       </p>
 
@@ -324,6 +325,7 @@ export class Explore implements OnInit {
   protected draft: Filters = { ...EMPTY };
 
   protected readonly today = todayIso();
+  protected readonly plural = plural;
   protected readonly skeletons = [1, 2, 3, 4, 5, 6];
   protected readonly icon = categoryIcon;
   protected readonly ratingOptions = [
@@ -337,6 +339,20 @@ export class Explore implements OnInit {
   private readonly search$ = new Subject<string>();
   private page = 1;
   private request?: Subscription;
+  /** Kategorija iz linka po slug-u (npr. sa početne: ?kategorija=fotografi), razrješava se kad stignu kategorije. */
+  private pendingSlug: string | null = null;
+
+  constructor() {
+    effect(() => {
+      const categories = this.lookups.categories();
+      untracked(() => {
+        if (!this.pendingSlug || !categories.length) return;
+        const match = categories.find((c) => c.slug === this.pendingSlug);
+        this.pendingSlug = null;
+        if (match) this.patch({ categoryId: match.id });
+      });
+    });
+  }
 
   protected readonly activeCount = computed(() => {
     const f = this.filters();
@@ -359,14 +375,18 @@ export class Explore implements OnInit {
         clear: { priceMin: null, priceMax: null },
       });
     if (f.minRating !== null) chips.push({ key: 'rating', label: `Ocjena ${f.minRating}+`, clear: { minRating: null } });
-    if (f.availableOn) chips.push({ key: 'date', label: `Slobodno ${f.availableOn}`, clear: { availableOn: null } });
+    if (f.availableOn)
+      chips.push({ key: 'date', label: `Slobodno ${formatDate(f.availableOn)}`, clear: { availableOn: null } });
     if (f.bookingEnabled) chips.push({ key: 'booking', label: 'Online rezervacija', clear: { bookingEnabled: false } });
     return chips;
   });
 
   ngOnInit(): void {
     this.lookups.ensureLoaded();
-    this.filters.set(fromQuery(this.route.snapshot.queryParamMap));
+    const params = this.route.snapshot.queryParamMap;
+    const category = params.get('kategorija');
+    if (category && isNaN(Number(category))) this.pendingSlug = category;
+    this.filters.set(fromQuery(params));
     this.search$.pipe(debounceTime(250)).subscribe((fts) => this.patch({ fts }));
     this.load(true);
   }

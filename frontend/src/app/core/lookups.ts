@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { HttpContext } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
-import { CategoryApi, CityApi } from './api';
+import { CategoryApi, CityApi, SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST } from './api';
 import { City, ServiceCategory } from './models';
 
 /** Gradovi i kategorije se rijetko mijenjaju: učitaj jednom i dijeli kroz aplikaciju. */
@@ -14,12 +15,14 @@ export class LookupStore {
   readonly loaded = signal(false);
   private loading = false;
 
-  ensureLoaded(force = false): void {
+  /** `quiet`: bez poruke o grešci i bez preusmjeravanja gosta (početna radi i kad API traži prijavu). */
+  ensureLoaded(force = false, quiet = false): void {
     if ((this.loaded() && !force) || this.loading) return;
     this.loading = true;
+    const context = quiet ? new HttpContext().set(SKIP_AUTH_REDIRECT, true).set(SKIP_ERROR_TOAST, true) : undefined;
     forkJoin({
-      cities: this.cityApi.list({ pageSize: 100 }),
-      categories: this.categoryApi.list({ pageSize: 100 }),
+      cities: this.cityApi.list({ pageSize: 100 }, context),
+      categories: this.categoryApi.list({ pageSize: 100 }, context),
     }).subscribe({
       next: ({ cities, categories }) => {
         this.cities.set(cities.items);
