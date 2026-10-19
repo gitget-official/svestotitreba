@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+*.swp
+TestResults/
+publish/
+
+# Angular / Node (frontend)
+node_modules/
+dist/
+.angular/
+
+# OS
+.DS_Store
+Thumbs.db
