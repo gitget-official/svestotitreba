@@ -502,3 +502,103 @@
     }
   }
 }
+
+// ---- "Čarobno" dugme za planer (Složi mi paket) ----
+// Ističe se toplim prelivom i sjajem koji povremeno pređe preko dugmeta (jedan prolaz, pa pauza;
+// bez stalnog pulsiranja). Na reduced-motion ostaje mirno.
+.btn-magic {
+  --btn-fg: var(--text-on-accent);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 72%, var(--gold)) 100%);
+  color: var(--text-on-accent);
+  box-shadow:
+    0 6px 18px color-mix(in srgb, var(--accent) 32%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: -60%;
+    width: 45%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+    transform: skewX(-18deg);
+    pointer-events: none;
+    animation: magic-sheen 6s var(--ease-in-out) 1.5s infinite;
+  }
+
+  app-icon {
+    animation: magic-twinkle 6s var(--ease-in-out) 1.5s infinite;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, var(--accent-hover) 0%, color-mix(in srgb, var(--accent) 62%, var(--gold)) 100%);
+    box-shadow:
+      0 10px 26px color-mix(in srgb, var(--accent) 38%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+    transition-duration: var(--dur-press);
+  }
+}
+
+@keyframes magic-sheen {
+  0%,
+  64% {
+    transform: translateX(0) skewX(-18deg);
+  }
+  86%,
+  100% {
+    transform: translateX(520%) skewX(-18deg);
+  }
+}
+
+@keyframes magic-twinkle {
+  0%,
+  66%,
+  100% {
+    transform: none;
+  }
+  76% {
+    transform: scale(1.22) rotate(14deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-magic::after,
+  .btn-magic app-icon {
+    animation: none;
+  }
+
+  .btn-magic::after {
+    display: none;
+  }
+}
+
+// ---- Ulaz sadržaja redom (kartice, stavke) ----
+.stagger-in {
+  animation: stagger-in 440ms var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 10) * 45ms);
+}
+
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in {
+    animation: fade var(--dur-fast) ease both;
+  }
+}

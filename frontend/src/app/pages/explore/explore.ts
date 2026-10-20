@@ -62,7 +62,7 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
           <h1 class="t-title-1">Istražite ponudu</h1>
           <p class="muted">Saloni, sale, fotografi i sve ostalo za vaše vjenčanje.</p>
         </div>
-        <a class="btn btn-tinted" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
+        <a class="btn btn-magic package-cta" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
       </header>
 
       <div class="toolbar">
@@ -193,10 +193,26 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
     }
   `,
   styles: `
+    @media (max-width: 39.99rem) {
+      .package-cta {
+        width: 100%;
+        min-height: 3rem;
+      }
+    }
+
+    // Pretraga i filteri ostaju pri ruci dok se skrola (prozirni sloj ispod gornje trake).
     .toolbar {
+      position: sticky;
+      top: var(--nav-height);
+      z-index: 20;
       display: flex;
       gap: var(--space-2);
-      margin-bottom: var(--space-4);
+      margin: 0 calc(-1 * var(--space-2)) var(--space-4);
+      padding: var(--space-2);
+      border-radius: var(--radius-full);
+      background: var(--material-regular);
+      -webkit-backdrop-filter: var(--blur-regular);
+      backdrop-filter: var(--blur-regular);
     }
 
     .search {

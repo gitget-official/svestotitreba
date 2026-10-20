@@ -132,7 +132,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
 
             <div class="step-actions">
               <button type="button" class="btn btn-plain" (click)="goTo(0)"><app-icon name="arrow-left" /> Nazad</button>
-              <button type="button" class="btn btn-primary btn-lg" [disabled]="!!budgetError() || !!guestsError()" (click)="compose()">
+              <button type="button" class="btn btn-magic btn-lg" [disabled]="!!budgetError() || !!guestsError()" (click)="compose()">
                 <app-icon name="sparkles" /> Složi paket
               </button>
             </div>
@@ -171,8 +171,8 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
               </div>
 
               <div class="lines">
-                @for (line of p.lines; track line.category.id) {
-                  <article class="line card">
+                @for (line of p.lines; track line.category.id; let i = $index) {
+                  <article class="line card stagger-in" [style.--i]="i">
                     <header class="line-head">
                       <span class="choice-icon small"><app-icon [name]="icon(line.category.slug)" /></span>
                       <h3 class="t-title-3">{{ line.category.name }}</h3>

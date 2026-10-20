@@ -73,7 +73,7 @@ const FAQ = [
     <main id="sadrzaj">
       <section class="hero">
         <div class="container hero-grid">
-          <div class="hero-copy enter">
+          <div class="hero-copy">
             <p class="t-eyebrow">Za mladence u Bosni i Hercegovini</p>
             <h1 class="t-display">Sve za vaše vjenčanje, na jednom mjestu.</h1>
             <p class="lead">
@@ -166,7 +166,7 @@ const FAQ = [
               Odaberite usluge, unesite budžet, grad i datum. Planer raspodijeli novac po kategorijama i predloži
               najbolje ocijenjene ponuđače koji staju u okvir. Svaki prijedlog možete zamijeniti jednim dodirom.
             </p>
-            <a class="btn btn-primary btn-lg" routerLink="/planiranje">Isprobajte planer <app-icon name="arrow-right" /></a>
+            <a class="btn btn-magic btn-lg" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
           </div>
           <ol class="planner-steps">
             <li><span class="num">1</span><div><strong>Usluge</strong><p class="t-footnote muted">Sala, fotograf, vjenčanica…</p></div></li>
@@ -343,6 +343,23 @@ const FAQ = [
       display: grid;
       gap: var(--space-4);
       max-width: 40rem;
+    }
+
+    // Ulaz naslova redom: nadnaslov, naslov, tekst, pretraga.
+    .hero-copy > * {
+      animation: hero-in 620ms var(--ease-out) both;
+    }
+
+    .hero-copy > :nth-child(2) { animation-delay: 70ms; }
+    .hero-copy > :nth-child(3) { animation-delay: 140ms; }
+    .hero-copy > :nth-child(4) { animation-delay: 210ms; }
+    .hero-copy > :nth-child(5) { animation-delay: 280ms; }
+
+    @keyframes hero-in {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
     }
 
     .lead {
@@ -788,6 +805,11 @@ const FAQ = [
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .hero-copy > * {
+        animation: tile-fade var(--dur-fast) ease both;
+        animation-delay: 0ms !important;
+      }
+
       .tile {
         animation: tile-fade var(--dur-fast) ease both;
         animation-delay: 0ms !important;

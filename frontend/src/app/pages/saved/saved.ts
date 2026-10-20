@@ -95,7 +95,7 @@ const MAX_COMPARE = 3;
           <p>Dodirnite srce na ponuđaču koji vam se sviđa i ovdje ćete ih moći uporediti.</p>
           <div class="row-wrap center">
             <a class="btn btn-primary" routerLink="/istrazi">Istražite ponudu</a>
-            <a class="btn" routerLink="/planiranje">Neka planer predloži</a>
+            <a class="btn btn-magic" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
           </div>
         </div>
       }

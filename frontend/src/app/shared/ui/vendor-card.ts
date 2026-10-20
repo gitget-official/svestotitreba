@@ -73,6 +73,20 @@ import { SaveButton } from './save-button';
       box-shadow: var(--shadow-md);
     }
 
+    // Miš: kartica se blago podigne; dodir: samo odziv na pritisak.
+    @media (hover: hover) and (pointer: fine) {
+      .card-link {
+        transition:
+          transform var(--dur-base) var(--ease-out),
+          box-shadow var(--dur-base) var(--ease-out);
+      }
+
+      .card-link:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+      }
+    }
+
     // Odziv na pritisak, odmah.
     .card-link:active {
       transform: scale(0.98);

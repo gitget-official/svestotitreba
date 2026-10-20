@@ -328,14 +328,24 @@ interface NavItem {
       color: var(--accent);
     }
 
+    // Aktivna kartica dobija mekanu "pilulu" iza ikone.
+    .tab-icon {
+      padding: 0.125rem 0.875rem;
+      border-radius: var(--radius-full);
+      transition:
+        background-color var(--dur-base) var(--ease-out),
+        transform var(--dur-press) ease-out;
+    }
+
+    .tabbar a.active .tab-icon {
+      background: var(--accent-soft);
+    }
+
     // Pritisak na karticu: odmah, bez čekanja na navigaciju.
     .tabbar a:active .tab-icon {
       transform: scale(0.9);
     }
 
-    .tab-icon {
-      transition: transform var(--dur-press) ease-out;
-    }
 
     @media (min-width: 48rem) {
       .links {

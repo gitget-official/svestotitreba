@@ -97,7 +97,7 @@ import { ToastService } from './toast';
               <span class="empty-icon"><app-icon name="rings" [strokeWidth]="1.5" /></span>
               <h3 class="t-title-3">Vaš plan je još prazan</h3>
               <p class="muted">Neka planer složi paket po vašem budžetu, ili dodajte ponuđače sa njihove stranice dugmetom „Dodaj u plan“.</p>
-              <a class="btn btn-primary" routerLink="/planiranje" (click)="close()"><app-icon name="sparkles" /> Složi mi paket</a>
+              <a class="btn btn-magic" routerLink="/planiranje" (click)="close()"><app-icon name="sparkles" /> Složi mi paket</a>
               <a class="btn btn-plain" routerLink="/istrazi" (click)="close()">Istražite ponudu</a>
             </div>
           }
