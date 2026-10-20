@@ -53,7 +53,7 @@ const PAGE_SIZE = 12;
         <label class="search">
           <app-icon name="search" />
           <span class="sr-only">Pretraga</span>
-          <input type="search" placeholder="Pretražite po nazivu ili opisu" [ngModel]="filters().fts"
+          <input type="search" placeholder="Pretražite ponuđače" [ngModel]="filters().fts"
             (ngModelChange)="onSearch($event)" />
         </label>
         <button type="button" class="btn filter-btn" (click)="openFilters()">

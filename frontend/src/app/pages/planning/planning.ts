@@ -152,9 +152,11 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                     <p class="t-caption muted">Procjena ukupno</p>
                     <p class="t-title-1 total">{{ range(p.totalFrom, p.totalTo) }}</p>
                   </div>
-                  <span class="badge" [class]="'badge ' + (overBy() > 0 ? 'badge-warning' : 'badge-success')">
-                    @if (overBy() > 0) { Iznad budžeta za {{ price(overBy()) }} } @else { U okviru budžeta }
-                  </span>
+                  @switch (fit()) {
+                    @case ('over') { <span class="badge badge-warning">Iznad budžeta za {{ price(overBy()) }}</span> }
+                    @case ('maybe') { <span class="badge badge-gold">Početne cijene staju u budžet</span> }
+                    @default { <span class="badge badge-success">U okviru budžeta</span> }
+                  }
                 </div>
                 <div class="meter" role="meter" [attr.aria-valuenow]="p.totalFrom" aria-valuemin="0" [attr.aria-valuemax]="p.budget"
                   aria-label="Iskorišteno od budžeta">
@@ -666,6 +668,27 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
     }
 
     @media (max-width: 39.99rem) {
+      // Na uskom ekranu cijena ide ispod naziva, da naziv ne puca u tri reda.
+      .pick,
+      .alt {
+        flex-wrap: wrap;
+      }
+
+      .pick-info {
+        flex-basis: calc(100% - 4.5rem);
+      }
+
+      .pick .pick-price {
+        justify-items: start;
+        margin-left: calc(3.5rem + var(--space-3));
+        text-align: left;
+      }
+
+      .alt .pick-price {
+        justify-items: start;
+        text-align: left;
+      }
+
       .progress .label {
         display: none;
       }
@@ -744,6 +767,14 @@ export class Planning implements OnInit {
   protected readonly overBy = computed(() => {
     const p = this.plan();
     return p ? Math.max(0, p.totalFrom - p.budget) : 0;
+  });
+
+  /** "maybe": početne cijene staju, ali gornja granica raspona prelazi budžet. */
+  protected readonly fit = computed(() => {
+    const p = this.plan();
+    if (!p) return 'ok';
+    if (p.totalFrom > p.budget) return 'over';
+    return p.totalTo > p.budget ? 'maybe' : 'ok';
   });
 
   protected readonly meter = computed(() => {

@@ -635,6 +635,13 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
       }
     }
 
+    // Prostor ispod sadržaja da plutajuća traka ne prekrije zadnju recenziju.
+    @media (max-width: 59.99rem) {
+      .layout {
+        padding-bottom: 4.5rem;
+      }
+    }
+
     @media (min-width: 60rem) {
       .mobile-cta {
         display: none;

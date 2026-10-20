@@ -335,6 +335,9 @@ export class VendorManage implements OnInit {
     { key: 'radno-vrijeme', label: 'Radno vrijeme' },
   ];
 
+  /** `?kartica=galerija` otvara tačnu karticu (npr. iz kontrolne liste na pregledu salona). */
+  readonly kartica = input<string>();
+
   protected readonly tab = signal<Tab>('stranica');
   protected readonly vendor = signal<Vendor | null>(null);
   protected readonly offerings = signal<Offering[]>([]);
@@ -395,6 +398,8 @@ export class VendorManage implements OnInit {
   }
 
   ngOnInit(): void {
+    const requested = this.kartica();
+    if (requested && this.tabs.some((t) => t.key === requested)) this.tab.set(requested as Tab);
     this.lookups.ensureLoaded();
     this.loadAll();
   }
