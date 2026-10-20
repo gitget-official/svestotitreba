@@ -3,30 +3,24 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin, map } from 'rxjs';
 import { VendorApi } from '../../core/api';
-import { AuthService } from '../../core/auth';
 import { FavoritesService } from '../../core/favorites';
 import { formatDate, formatPrice, formatPriceRange, plural, todayIso } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { LookupStore } from '../../core/lookups';
 import { ServiceCategory, Vendor } from '../../core/models';
+import { PlanItem, PlanStore } from '../../core/plan-store';
 import { Plan, PlanAnswers, PlanOption, buildPlan } from '../../core/planner';
 import { DateField } from '../../shared/ui/date-time-fields';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
 
-interface StoredPlan {
-  answers: PlanAnswers;
-  picks: Record<number, number>;
-  savedAt: string;
-}
 
-const PREFIX = 'planiraj.plan.';
 const DEFAULT_SLUGS = ['saloni-za-vjencanje', 'vjencanice-i-odijela', 'fotografi', 'dekoracije'];
 const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
 
 /**
  * Planiranje vjenčanja (FR-24 – FR-28): vođeni upitnik u tri koraka i prijedlog cijelog paketa.
- * Algoritam je u core/planner.ts. Plan se čuva lokalno (@TODO backend: čuvanje plana u profilu, FR-27).
+ * Algoritam je u core/planner.ts; izabrani paket živi u PlanStore ("Moj plan", FR-27).
  */
 @Component({
   selector: 'app-planning',
@@ -734,9 +728,9 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
 export class Planning implements OnInit {
   protected readonly lookups = inject(LookupStore);
   private readonly vendorApi = inject(VendorApi);
-  private readonly auth = inject(AuthService);
   private readonly favorites = inject(FavoritesService);
   private readonly toasts = inject(ToastService);
+  protected readonly store = inject(PlanStore);
 
   protected readonly stepLabels = ['Usluge', 'Budžet i grad', 'Vaš paket'];
   protected readonly presets = BUDGET_PRESETS;
@@ -751,13 +745,15 @@ export class Planning implements OnInit {
   protected readonly step = signal(0);
   protected readonly maxStep = signal(0);
   protected readonly direction = signal<'forward' | 'back'>('forward');
-  protected readonly answers = signal<PlanAnswers>({ categoryIds: [], budget: 20000, cityId: null, date: null, guests: null });
-  protected readonly picks = signal<Record<number, number>>({});
+  /** Odgovori i izbori žive u "Moj plan" (PlanStore), pa su dostupni sa svake stranice i čuvaju se sami. */
+  protected readonly answers = this.store.answers;
+  protected readonly picks = computed<Record<number, number>>(() =>
+    Object.fromEntries(this.store.items().map((i) => [i.categoryId, i.vendorId])),
+  );
   protected readonly candidates = signal<Map<number, Vendor[]>>(new Map());
   protected readonly loading = signal(false);
-  protected readonly savedAt = signal<string | null>(null);
+  protected readonly savedAt = computed(() => this.store.state().savedAt);
   private readonly open = signal<number[]>([]);
-  private readonly key = computed(() => PREFIX + (this.auth.user()?.id ?? 'gost'));
   private defaultsApplied = false;
 
   private readonly chosenCategories = computed<ServiceCategory[]>(() => {
@@ -827,18 +823,16 @@ export class Planning implements OnInit {
 
   ngOnInit(): void {
     this.lookups.ensureLoaded();
-    const stored = this.read();
-    if (stored) {
+    // Postojeći plan: odmah prikaži paket (izbori su sačuvani), a odgovori se mogu urediti.
+    if (this.store.count() && this.answers().categoryIds.length) {
       this.defaultsApplied = true;
-      this.answers.set(stored.answers);
-      this.picks.set(stored.picks);
-      this.savedAt.set(stored.savedAt);
+      this.maxStep.set(2);
       this.compose();
     }
   }
 
   protected patch(change: Partial<PlanAnswers>): void {
-    this.answers.update((a) => ({ ...a, ...change }));
+    this.store.setAnswers({ ...this.answers(), ...change });
   }
 
   protected isChosen(id: number): boolean {
@@ -874,6 +868,13 @@ export class Planning implements OnInit {
       next: (entries) => {
         this.candidates.set(new Map(entries));
         this.loading.set(false);
+        // Prijedlog odmah postaje "Moj plan" (ručni izbori ostaju), da korisnik ništa ne izgubi.
+        const plan = buildPlan(this.chosenCategories(), this.answers().budget, this.candidates(), this.picks());
+        this.store.replaceItems(
+          plan.lines
+            .map((l) => (l.choice ? PlanStore.itemFrom(l.choice.vendor, l.category) : null))
+            .filter((i): i is PlanItem => i !== null),
+        );
       },
       error: () => {
         this.loading.set(false);
@@ -891,7 +892,9 @@ export class Planning implements OnInit {
   }
 
   protected choose(categoryId: number, option: PlanOption): void {
-    this.picks.update((p) => ({ ...p, [categoryId]: option.vendor.id }));
+    const category = this.lookups.categories().find((c) => c.id === categoryId);
+    const item = category ? PlanStore.itemFrom(option.vendor, category) : null;
+    if (item) this.store.put(item);
     this.open.update((list) => list.filter((x) => x !== categoryId));
   }
 
@@ -904,15 +907,11 @@ export class Planning implements OnInit {
     return (v.images.find((i) => i.isCover) ?? v.images[0])?.url ?? null;
   }
 
-  protected savePlan(): void {
-    const stored: StoredPlan = { answers: this.answers(), picks: this.picks(), savedAt: new Date().toISOString() };
-    try {
-      localStorage.setItem(this.key(), JSON.stringify(stored));
-      this.savedAt.set(stored.savedAt);
-      this.toasts.success(this.auth.isLoggedIn() ? 'Plan je sačuvan.' : 'Plan je sačuvan u ovom pregledniku.');
-    } catch {
-      this.toasts.error('Plan nije moguće sačuvati u ovom pregledniku.');
-    }
+  protected async savePlan(): Promise<void> {
+    const result = await this.store.save();
+    if (result === 'server') this.toasts.success('Plan je sačuvan u vašem profilu.');
+    else if (result === 'offline') this.toasts.info('Plan je sačuvan na ovom uređaju. Na server će otići kad bude dostupan.');
+    else this.toasts.info('Plan je sačuvan u ovom pregledniku. Napravite profil da ga ne izgubite.');
   }
 
   protected saveAll(): void {
@@ -922,23 +921,14 @@ export class Planning implements OnInit {
   }
 
   protected restart(): void {
-    try {
-      localStorage.removeItem(this.key());
-    } catch {
-      /* ignoriši */
-    }
-    this.savedAt.set(null);
-    this.picks.set({});
+    this.store.clear();
+    this.defaultsApplied = false;
     this.maxStep.set(0);
     this.goTo(0);
-  }
-
-  private read(): StoredPlan | null {
-    try {
-      const raw = localStorage.getItem(this.key());
-      return raw ? (JSON.parse(raw) as StoredPlan) : null;
-    } catch {
-      return null;
+    const categories = this.lookups.categories();
+    if (categories.length) {
+      this.defaultsApplied = true;
+      this.patch({ categoryIds: categories.filter((c) => DEFAULT_SLUGS.includes(c.slug)).map((c) => c.id) });
     }
   }
 }

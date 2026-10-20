@@ -6,6 +6,7 @@ import { initials } from '../core/format';
 import { ThemeService } from '../core/theme';
 import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
+import { PlanCart } from '../shared/ui/plan-cart';
 
 interface NavItem {
   label: string;
@@ -24,7 +25,7 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark, PlanCart],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
@@ -87,6 +88,8 @@ interface NavItem {
     <main id="sadrzaj" tabindex="-1">
       <router-outlet />
     </main>
+
+    <app-plan-cart />
 
     <nav class="tabbar material" aria-label="Kartice">
       @for (item of tabItems(); track item.link) {

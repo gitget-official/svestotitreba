@@ -26,6 +26,8 @@ import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, tod
 import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Offering, Review, Vendor } from '../../core/models';
 import { Gallery } from '../../shared/ui/gallery';
+import { LookupStore } from '../../core/lookups';
+import { PlanItem, PlanStore } from '../../core/plan-store';
 import { DateField, TimeField } from '../../shared/ui/date-time-fields';
 import { Icon } from '../../shared/ui/icon';
 import { Rating } from '../../shared/ui/rating';
@@ -51,6 +53,13 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
           <div class="row">
             <button type="button" class="icon-btn" (click)="share(v)" aria-label="Podijeli"><app-icon name="share" /></button>
             <app-save-button [vendor]="v" [withLabel]="true" />
+            @if (canPlan()) {
+              <button type="button" class="btn plan-btn" [class.in]="inPlan()" [class.pop]="planPop()" (animationend)="planPop.set(false)"
+                (click)="togglePlan(v)" [attr.aria-pressed]="inPlan()">
+                <app-icon [name]="inPlan() ? 'check' : 'rings'" />
+                <span>{{ inPlan() ? 'U planu' : 'Dodaj u plan' }}</span>
+              </button>
+            }
           </div>
         }
       </div>
@@ -353,6 +362,53 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
 
     .back {
       margin-left: calc(-1 * var(--space-2));
+    }
+
+    .plan-btn {
+      --btn-bg: var(--accent);
+      --btn-fg: var(--text-on-accent);
+      min-height: 2.5rem;
+      padding: 0 0.875rem;
+    }
+
+    .plan-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .plan-btn.in {
+      --btn-bg: var(--sage-soft);
+      --btn-fg: var(--success);
+    }
+
+    .plan-btn.in:hover {
+      background: var(--sage-soft);
+    }
+
+    .plan-btn.pop app-icon {
+      animation: plan-pop 380ms var(--ease-out);
+    }
+
+    @keyframes plan-pop {
+      40% {
+        transform: scale(1.3) rotate(-8deg);
+      }
+    }
+
+    @media (max-width: 29.99rem) {
+      .plan-btn span {
+        display: none;
+      }
+
+      .plan-btn {
+        width: 2.5rem;
+        padding: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .plan-btn.pop app-icon {
+        animation: none;
+      }
     }
 
     .rating-link {
@@ -679,6 +735,8 @@ export class VendorDetail {
   private readonly titleService = inject(Title);
   private readonly meta = inject(Meta);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly plan = inject(PlanStore);
+  private readonly lookups = inject(LookupStore);
 
   protected readonly vendor = signal<Vendor | null>(null);
   protected readonly reviews = signal<Review[]>([]);
@@ -687,6 +745,7 @@ export class VendorDetail {
   protected readonly bookingOpen = signal(false);
   protected readonly reviewOpen = signal(false);
   protected readonly availability = signal<Availability>('idle');
+  protected readonly planPop = signal(false);
 
   private readonly bookingSheet = viewChild<Sheet>('bookingSheet');
   private readonly reviewSheet = viewChild<Sheet>('reviewSheet');
@@ -742,6 +801,17 @@ export class VendorDetail {
   });
 
   protected readonly canReview = computed(() => this.auth.hasRole('Couple'));
+
+  /** "Dodaj u plan" je za mladence i goste (salonima i adminu ne treba). */
+  protected readonly canPlan = computed(() => {
+    const role = this.auth.role();
+    return (role === null || role === 'Couple') && this.activeOfferings().length > 0;
+  });
+
+  protected readonly inPlan = computed(() => {
+    const v = this.vendor();
+    return !!v && this.plan.items().some((i) => i.vendorId === v.id);
+  });
 
   protected readonly mapUrl = computed(() => {
     const v = this.vendor();
@@ -836,6 +906,38 @@ export class VendorDetail {
       this.toasts.success('Link je kopiran.');
     } catch {
       /* korisnik je odustao od dijeljenja */
+    }
+  }
+
+  /** Dodaje ponuđača u "Moj plan" za svaku kategoriju koju nudi; ponovni klik ga uklanja (uz Poništi). */
+  protected togglePlan(v: Vendor): void {
+    if (this.inPlan()) {
+      const removed = this.plan.items().filter((i) => i.vendorId === v.id);
+      removed.forEach((i) => this.plan.remove(i.categoryId));
+      this.toasts.info(`${v.name} je uklonjen iz plana.`, { label: 'Poništi', run: () => removed.forEach((i) => this.plan.put(i)) });
+      return;
+    }
+    const categories = [...new Set(this.activeOfferings().map((o) => o.serviceCategoryId))].map((id) => {
+      const known = this.lookups.categories().find((c) => c.id === id);
+      const name = this.activeOfferings().find((o) => o.serviceCategoryId === id)?.serviceCategoryName ?? '';
+      return { id, name: known?.name ?? name, slug: known?.slug ?? '' };
+    });
+    const replaced = categories
+      .map((c) => PlanStore.itemFrom(v, c))
+      .filter((i): i is PlanItem => i !== null)
+      .map((item) => this.plan.put(item))
+      .filter((i): i is PlanItem => !!i);
+    this.planPop.set(true);
+    if (replaced.length) {
+      this.toasts.info(`Zamijenjen ${replaced.map((i) => i.vendorName).join(', ')} u planu.`, {
+        label: 'Poništi',
+        run: () => {
+          categories.forEach((c) => this.plan.remove(c.id));
+          replaced.forEach((i) => this.plan.put(i));
+        },
+      });
+    } else {
+      this.toasts.success(`${v.name} je dodan u vaš plan.`);
     }
   }
 

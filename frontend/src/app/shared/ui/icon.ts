@@ -46,6 +46,7 @@ const ICONS: Record<string, string> = {
   circle: '<circle cx="12" cy="12" r="8.5"/>',
   'arrow-left': '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   inbox: '<path d="M3.5 13.5 6 5.5h12l2.5 8v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M3.5 13.5h5l1 2h5l1-2h5"/>',
+  rings: '<circle cx="9" cy="14" r="5.5"/><circle cx="15" cy="14" r="5.5"/><path d="m10.5 4.5 1.5-1.5 1.5 1.5-1.5 1.5z"/>',
   // Kategorije
   dress: '<path d="M9.5 3.5h5l-1 4 3.5 4.5-1.5 2 2.5 6.5h-12l2.5-6.5-1.5-2L10.5 7.5z"/>',
   building: '<path d="M4.5 20.5v-12l7.5-5 7.5 5v12"/><path d="M3 20.5h18M9.5 20.5v-5h5v5M8.5 11h1M14.5 11h1"/>',

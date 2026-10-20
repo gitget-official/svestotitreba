@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime } from 'rxjs';
@@ -9,6 +20,7 @@ import { Vendor, VendorSearch } from '../../core/models';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { DateField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
+import { Pagination } from '../../shared/ui/pagination';
 import { VendorCard } from '../../shared/ui/vendor-card';
 
 interface Filters {
@@ -33,12 +45,15 @@ const EMPTY: Filters = {
   bookingEnabled: false,
 };
 
-const PAGE_SIZE = 12;
+/** Na desktopu 12 kartica po stranici (3 reda po 4), na telefonu 6 (3 reda po 2). */
+const PAGE_SIZE_DESKTOP = 12;
+const PAGE_SIZE_PHONE = 6;
+const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 39.99rem)') : null;
 
 /** Samostalna pretraga ponude (FR-5, FR-6). Filteri se čuvaju u URL-u, pa "nazad" vraća isti prikaz. */
 @Component({
   selector: 'app-explore',
-  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard, DateField],
+  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard, DateField, Pagination],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -92,8 +107,8 @@ const PAGE_SIZE = 12;
       </p>
 
       @if (loading() && !vendors().length) {
-        <div class="grid-cards">
-          @for (i of skeletons; track i) {
+        <div class="results">
+          @for (i of skeletons(); track i) {
             <div class="skeleton-card">
               <div class="skeleton media"></div>
               <div class="skeleton line"></div>
@@ -109,18 +124,15 @@ const PAGE_SIZE = 12;
           <button type="button" class="btn btn-tinted" (click)="reset()">Očisti filtere</button>
         </div>
       } @else {
-        <div class="grid-cards">
-          @for (vendor of vendors(); track vendor.id) {
-            <app-vendor-card [vendor]="vendor" />
-          }
-        </div>
-        @if (vendors().length < total()) {
-          <div class="more">
-            <button type="button" class="btn" (click)="loadMore()" [disabled]="loading()">
-              @if (loading()) { <span class="spinner"></span> } @else { Prikaži još }
-            </button>
+        <!-- Ključ je stranica, pa nova stranica dobija kratak ulaz kartica (redom, ne sve odjednom). -->
+        @for (key of [pageKey()]; track key) {
+          <div class="results" [class.dimmed]="loading()" #results>
+            @for (vendor of vendors(); track vendor.id; let i = $index) {
+              <app-vendor-card class="card-in" [style.--i]="i" [vendor]="vendor" />
+            }
           </div>
         }
+        <app-pagination class="paging" [page]="page()" [pageSize]="pageSize()" [total]="total()" (pageChange)="goToPage($event)" />
       }
     </div>
 
@@ -292,10 +304,60 @@ const PAGE_SIZE = 12;
       width: 40%;
     }
 
-    .more {
-      display: flex;
-      justify-content: center;
+    // Mreža: 2 kartice u redu na telefonu, 3 na tabletu, 4 na desktopu.
+    .results {
+      display: grid;
+      gap: var(--space-3);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      transition: opacity var(--dur-fast) ease;
+    }
+
+    .results.dimmed {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .card-in {
+      animation: card-in 420ms var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * 35ms);
+    }
+
+    @keyframes card-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.985);
+      }
+    }
+
+    .paging {
       margin-top: var(--space-6);
+    }
+
+    @media (min-width: 40rem) {
+      .results {
+        gap: var(--space-4);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 64rem) {
+      .results {
+        gap: var(--space-5);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card-in {
+        animation: card-fade var(--dur-fast) ease both;
+        animation-delay: 0ms;
+      }
+
+      @keyframes card-fade {
+        from {
+          opacity: 0;
+        }
+      }
     }
 
     .switch-row {
@@ -329,7 +391,11 @@ export class Explore implements OnInit {
 
   protected readonly today = todayIso();
   protected readonly plural = plural;
-  protected readonly skeletons = [1, 2, 3, 4, 5, 6];
+  protected readonly pageSize = signal(phoneQuery?.matches ? PAGE_SIZE_PHONE : PAGE_SIZE_DESKTOP);
+  protected readonly skeletons = computed(() => Array.from({ length: this.pageSize() }, (_, i) => i));
+  protected readonly page = signal(1);
+  /** Mijenja se sa svakom stranicom i filterom, da kartice ponovo uđu. */
+  protected readonly pageKey = signal(0);
   protected readonly icon = categoryIcon;
   protected readonly ratingOptions = [
     { label: 'Sve', value: null },
@@ -340,12 +406,21 @@ export class Explore implements OnInit {
 
   private readonly sheet = viewChild(Sheet);
   private readonly search$ = new Subject<string>();
-  private page = 1;
   private request?: Subscription;
   /** Kategorija iz linka po slug-u (npr. sa početne: ?kategorija=fotografi), razrješava se kad stignu kategorije. */
   private pendingSlug: string | null = null;
 
   constructor() {
+    // Okretanje telefona ili promjena širine prozora: nova veličina stranice, od prve stranice.
+    const onBreakpoint = () => {
+      this.pageSize.set(phoneQuery?.matches ? PAGE_SIZE_PHONE : PAGE_SIZE_DESKTOP);
+      this.page.set(1);
+      this.syncUrl();
+      this.load(true);
+    };
+    phoneQuery?.addEventListener('change', onBreakpoint);
+    inject(DestroyRef).onDestroy(() => phoneQuery?.removeEventListener('change', onBreakpoint));
+
     effect(() => {
       const categories = this.lookups.categories();
       untracked(() => {
@@ -390,8 +465,10 @@ export class Explore implements OnInit {
     const category = params.get('kategorija');
     if (category && isNaN(Number(category))) this.pendingSlug = category;
     this.filters.set(fromQuery(params));
+    const startPage = Number(params.get('stranica'));
+    if (startPage > 1) this.page.set(startPage);
     this.search$.pipe(debounceTime(250)).subscribe((fts) => this.patch({ fts }));
-    this.load(true);
+    this.load(false);
   }
 
   protected onSearch(value: string): void {
@@ -400,19 +477,25 @@ export class Explore implements OnInit {
 
   protected patch(change: Partial<Filters>): void {
     this.filters.update((f) => ({ ...f, ...change }));
+    this.page.set(1);
     this.syncUrl();
     this.load(true);
   }
 
   protected reset(): void {
     this.filters.set({ ...EMPTY });
+    this.page.set(1);
     this.syncUrl();
     this.load(true);
   }
 
-  protected loadMore(): void {
-    this.page++;
+  protected goToPage(page: number): void {
+    this.page.set(page);
+    this.syncUrl();
     this.load(false);
+    // Na vrh rezultata, da korisnik ne ostane na dnu prethodne stranice.
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelector('.result-count')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   }
 
   /** Filter cijene: nenegativni brojevi i "od" ne veće od "do". */
@@ -427,6 +510,7 @@ export class Explore implements OnInit {
     if (this.priceError()) return;
     const { fts, categoryId } = this.filters();
     this.filters.set({ ...this.draft, fts, categoryId });
+    this.page.set(1);
     this.syncUrl();
     this.load(true);
     this.sheet()?.close();
@@ -443,11 +527,11 @@ export class Explore implements OnInit {
   }
 
   private load(reset: boolean): void {
-    if (reset) this.page = 1;
+    if (reset) this.page.set(1);
     const f = this.filters();
     const search: VendorSearch = {
-      page: this.page,
-      pageSize: PAGE_SIZE,
+      page: this.page(),
+      pageSize: this.pageSize(),
       fts: f.fts || null,
       categoryId: f.categoryId,
       cityId: f.cityId,
@@ -463,7 +547,8 @@ export class Explore implements OnInit {
     this.loading.set(true);
     this.request = this.api.list(search).subscribe({
       next: (result) => {
-        this.vendors.update((list) => (reset ? result.items : [...list, ...result.items]));
+        this.vendors.set(result.items);
+        this.pageKey.update((k) => k + 1);
         this.total.set(result.totalCount);
         this.loading.set(false);
       },
@@ -485,6 +570,7 @@ export class Explore implements OnInit {
         ocjena: f.minRating,
         datum: f.availableOn,
         rezervacija: f.bookingEnabled ? 1 : null,
+        stranica: this.page() > 1 ? this.page() : null,
       },
     });
   }

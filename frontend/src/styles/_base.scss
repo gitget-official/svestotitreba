@@ -276,3 +276,20 @@ h1, h2, h3, h4, p {
     animation: none !important;
   }
 }
+
+// "Moj plan" dugme se pomjera iznad drugih plutajućih traka (stranica ponuđača, poređenje) da se ne preklapaju.
+@media (max-width: 59.99rem) {
+  body:has(.mobile-cta) .plan-fab {
+    bottom: calc(9.5rem + var(--safe-bottom));
+  }
+}
+
+body:has(.compare-bar) .plan-fab {
+  bottom: calc(9.5rem + var(--safe-bottom));
+}
+
+@media (min-width: 48rem) {
+  body:has(.compare-bar) .plan-fab {
+    bottom: calc(6rem + var(--safe-bottom));
+  }
+}
