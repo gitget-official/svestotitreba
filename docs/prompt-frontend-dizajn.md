@@ -1,6 +1,6 @@
 # Prompt: redizajn i dorada frontenda platforme za planiranje vjenčanja
 
-> Ovaj prompt je namijenjen AI asistentu za kodiranje (npr. Claude Code) koji radi u ovom repou.
+> Ovaj prompt je namijenjen AI asistentu za kodiranje koji radi u ovom repou.
 > Može se koristiti više puta: za cijeli frontend ili samo za jedan ekran (tada zadrži sekcije 1–5 i 9–11, a u sekciji 6 ostavi samo taj ekran).
 
 ---
