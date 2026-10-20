@@ -14,6 +14,8 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { DomSanitizer, Meta, Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
@@ -24,6 +26,7 @@ import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, tod
 import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Offering, Review, Vendor } from '../../core/models';
 import { Gallery } from '../../shared/ui/gallery';
+import { DateField, TimeField } from '../../shared/ui/date-time-fields';
 import { Icon } from '../../shared/ui/icon';
 import { Rating } from '../../shared/ui/rating';
 import { SaveButton } from '../../shared/ui/save-button';
@@ -38,7 +41,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
  */
 @Component({
   selector: 'app-vendor-detail',
-  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, SaveButton, Sheet],
+  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, SaveButton, Sheet, DateField, TimeField, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -282,8 +285,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
           <div class="form-grid">
             <div class="field">
               <label for="b-date">Datum</label>
-              <input id="b-date" class="input" type="date" [min]="today" formControlName="eventDate"
-                aria-describedby="b-date-status" />
+              <app-date-field inputId="b-date" [min]="today" formControlName="eventDate" describedBy="b-date-status" />
               <span id="b-date-status" class="availability" [class]="availability()" aria-live="polite">
                 @switch (availability()) {
                   @case ('checking') { <span class="spinner"></span> Provjeravamo datum… }
@@ -295,13 +297,14 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
             </div>
             <div class="field">
               <label for="b-time">Vrijeme <span class="subtle">(opciono)</span></label>
-              <input id="b-time" class="input" type="time" formControlName="startTime" />
+              <app-time-field inputId="b-time" formControlName="startTime" />
             </div>
           </div>
           <div class="field">
             <label for="b-note">Napomena</label>
             <textarea id="b-note" class="textarea" formControlName="note" maxlength="1000"
               placeholder="Npr. broj osoba, posebne želje..."></textarea>
+<app-field-error [control]="bookingForm.controls.note" />
           </div>
           @if (v.requiresDeposit && v.depositNote) {
             <p class="alert alert-info">{{ v.depositNote }}</p>
@@ -327,6 +330,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
             <label for="r-comment">Komentar</label>
             <textarea id="r-comment" class="textarea" formControlName="comment" maxlength="2000"
               placeholder="Kako ste bili zadovoljni?"></textarea>
+<app-field-error [control]="reviewForm.controls.comment" />
           </div>
           <p class="t-footnote muted">Recenzija se objavljuje nakon što je odobri administrator.</p>
           <div class="form-actions">
@@ -696,14 +700,14 @@ export class VendorDetail {
 
   protected readonly bookingForm = this.fb.group({
     offeringId: this.fb.control<number | null>(null),
-    eventDate: this.fb.nonNullable.control('', Validators.required),
+    eventDate: this.fb.nonNullable.control('', [Validators.required, V.notPast]),
     startTime: this.fb.control<string | null>(null),
-    note: this.fb.control<string | null>(null),
+    note: this.fb.control<string | null>(null, V.text(1000)),
   });
 
   protected readonly reviewForm = this.fb.group({
     rating: this.fb.nonNullable.control(0),
-    comment: this.fb.control<string | null>(null),
+    comment: this.fb.control<string | null>(null, V.text(2000)),
   });
 
   protected readonly activeOfferings = computed<Offering[]>(() => this.vendor()?.offerings.filter((o) => o.isActive) ?? []);

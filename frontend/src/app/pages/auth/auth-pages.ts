@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth';
 import { BrandMark } from '../../shared/ui/brand-mark';
@@ -151,7 +153,7 @@ export class Login {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, BrandMark],
+  imports: [ReactiveFormsModule, RouterLink, BrandMark, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="panel enter">
@@ -167,42 +169,38 @@ export class Login {
           <div class="field">
             <label for="firstName">Ime</label>
             <input id="firstName" class="input" formControlName="firstName" autocomplete="given-name" />
+<app-field-error [control]="form.controls.firstName" />
           </div>
           <div class="field">
             <label for="lastName">Prezime</label>
             <input id="lastName" class="input" formControlName="lastName" autocomplete="family-name" />
+<app-field-error [control]="form.controls.lastName" />
           </div>
         </div>
 
         <div class="field">
           <label for="email">E-mail</label>
           <input id="email" class="input" type="email" formControlName="email" autocomplete="email" />
-          @if (form.controls.email.touched && form.controls.email.invalid) {
-            <span class="error">Unesite ispravnu e-mail adresu.</span>
-          }
+<app-field-error [control]="form.controls.email" />
         </div>
 
         <div class="field">
           <label for="username">Korisničko ime</label>
           <input id="username" class="input" formControlName="username" autocomplete="username" autocapitalize="none" />
-          @if (form.controls.username.touched && form.controls.username.invalid) {
-            <span class="error">Najmanje 3 znaka.</span>
-          }
+<app-field-error [control]="form.controls.username" />
         </div>
 
         <div class="field">
           <label for="phone">Telefon <span class="subtle">(opciono)</span></label>
           <input id="phone" class="input" type="tel" formControlName="phoneNumber" autocomplete="tel" />
+<app-field-error [control]="form.controls.phoneNumber" />
         </div>
 
         <div class="field">
           <label for="password">Lozinka</label>
           <input id="password" class="input" type="password" formControlName="password" autocomplete="new-password" />
-          @if (form.controls.password.touched && form.controls.password.invalid) {
-            <span class="error">Najmanje 8 znakova.</span>
-          } @else {
-            <span class="hint">Najmanje 8 znakova.</span>
-          }
+<app-field-error [control]="form.controls.password" />
+          <span class="hint">Najmanje 8 znakova, barem jedno slovo i jedan broj.</span>
         </div>
 
         <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy()">
@@ -224,12 +222,12 @@ export class Register {
   private readonly toasts = inject(ToastService);
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    firstName: ['', [Validators.required, Validators.maxLength(100)]],
-    lastName: ['', [Validators.required, Validators.maxLength(100)]],
-    email: ['', [Validators.required, Validators.email]],
-    username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(50)]],
-    phoneNumber: [''],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    firstName: ['', [Validators.required, ...V.personName]],
+    lastName: ['', [Validators.required, ...V.personName]],
+    email: ['', [Validators.required, ...V.email]],
+    username: ['', [Validators.required, ...V.username]],
+    phoneNumber: ['', V.phone],
+    password: ['', [Validators.required, ...V.password]],
   });
   protected readonly busy = signal(false);
 
@@ -253,7 +251,7 @@ export class Register {
 /** FR-3: obavezna promjena lozinke nakon prve prijave (nalog kreirao administrator). */
 @Component({
   selector: 'app-change-password',
-  imports: [ReactiveFormsModule, BrandMark],
+  imports: [ReactiveFormsModule, BrandMark, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="panel enter">
@@ -270,6 +268,7 @@ export class Register {
         <div class="field">
           <label for="new">Nova lozinka</label>
           <input id="new" class="input" type="password" formControlName="newPassword" autocomplete="new-password" />
+<app-field-error [control]="form.controls.newPassword" />
           <span class="hint">Najmanje 8 znakova.</span>
         </div>
         <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy() || form.invalid">
@@ -288,7 +287,7 @@ export class ChangePassword {
 
   protected readonly form = inject(FormBuilder).nonNullable.group({
     currentPassword: ['', Validators.required],
-    newPassword: ['', [Validators.required, Validators.minLength(8)]],
+    newPassword: ['', [Validators.required, ...V.password]],
   });
   protected readonly busy = signal(false);
 

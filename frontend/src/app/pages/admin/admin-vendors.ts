@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
 import { SubscriptionPlanApi, UserApi, VendorApi } from '../../core/api';
@@ -8,13 +10,14 @@ import { LookupStore } from '../../core/lookups';
 import { SubscriptionPlan, User, Vendor } from '../../core/models';
 import { ConfirmService } from '../../shared/ui/confirm';
 import { Icon } from '../../shared/ui/icon';
+import { DateField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
 
 /** Administrator: dodavanje ponuđača i dodjela naloga (FR-29), aktivnost i pretplata (FR-33). */
 @Component({
   selector: 'app-admin-vendors',
-  imports: [RouterLink, FormsModule, ReactiveFormsModule, Icon, Sheet],
+  imports: [RouterLink, FormsModule, ReactiveFormsModule, Icon, Sheet, DateField, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -81,17 +84,21 @@ import { ToastService } from '../../shared/ui/toast';
     @if (createOpen()) {
       <app-sheet #createSheet title="Novi ponuđač" (closed)="createOpen.set(false)">
         <form class="stack" [formGroup]="createForm" (ngSubmit)="create()">
-          <div class="field"><label for="c-name">Naziv</label><input id="c-name" class="input" formControlName="name" /></div>
+          <div class="field"><label for="c-name">Naziv</label><input id="c-name" class="input" formControlName="name" />
+<app-field-error [control]="createForm.controls.name" /></div>
           <div class="field">
             <label for="c-city">Grad</label>
             <select id="c-city" class="select" formControlName="cityId">
               @for (c of lookups.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
             </select>
           </div>
-          <div class="field"><label for="c-desc">Opis</label><textarea id="c-desc" class="textarea" formControlName="description"></textarea></div>
+          <div class="field"><label for="c-desc">Opis</label><textarea id="c-desc" class="textarea" formControlName="description"></textarea>
+<app-field-error [control]="createForm.controls.description" /></div>
           <div class="form-grid">
-            <div class="field"><label for="c-phone">Telefon</label><input id="c-phone" class="input" formControlName="phoneNumber" /></div>
-            <div class="field"><label for="c-email">E-mail</label><input id="c-email" class="input" type="email" formControlName="email" /></div>
+            <div class="field"><label for="c-phone">Telefon</label><input id="c-phone" class="input" formControlName="phoneNumber" />
+<app-field-error [control]="createForm.controls.phoneNumber" /></div>
+            <div class="field"><label for="c-email">E-mail</label><input id="c-email" class="input" type="email" formControlName="email" />
+<app-field-error [control]="createForm.controls.email" /></div>
           </div>
           <div class="field">
             <label for="c-owner">Vlasnik naloga</label>
@@ -132,7 +139,7 @@ import { ToastService } from '../../shared/ui/toast';
             </div>
             <div class="field">
               <label for="s-exp">Ističe</label>
-              <input id="s-exp" class="input" type="date" formControlName="subscriptionExpiresAt" />
+              <app-date-field inputId="s-exp" formControlName="subscriptionExpiresAt" />
             </div>
           </div>
           @if (v.subscriptionExpiresAt) { <p class="t-footnote muted">Trenutna pretplata ističe {{ date(v.subscriptionExpiresAt) }}.</p> }
@@ -182,11 +189,11 @@ export class AdminVendors implements OnInit {
   protected readonly date = (v: string) => formatDate(v);
 
   protected readonly createForm = this.fb.group({
-    name: this.fb.nonNullable.control('', Validators.required),
+    name: this.fb.nonNullable.control('', [Validators.required, ...V.businessName]),
     cityId: this.fb.nonNullable.control(0, Validators.min(1)),
-    description: this.fb.control<string | null>(null),
-    phoneNumber: this.fb.control<string | null>(null),
-    email: this.fb.control<string | null>(null, Validators.email),
+    description: this.fb.control<string | null>(null, V.text(2000)),
+    phoneNumber: this.fb.control<string | null>(null, V.phone),
+    email: this.fb.control<string | null>(null, V.email),
     ownerUserId: this.fb.control<number | null>(null),
   });
 

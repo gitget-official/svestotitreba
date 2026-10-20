@@ -7,6 +7,7 @@ import { formatDate, plural, todayIso } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
 import { Vendor, VendorSearch } from '../../core/models';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
+import { DateField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { VendorCard } from '../../shared/ui/vendor-card';
 
@@ -37,7 +38,7 @@ const PAGE_SIZE = 12;
 /** Samostalna pretraga ponude (FR-5, FR-6). Filteri se čuvaju u URL-u, pa "nazad" vraća isti prikaz. */
 @Component({
   selector: 'app-explore',
-  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard],
+  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard, DateField],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -146,6 +147,8 @@ const PAGE_SIZE = 12;
             </div>
           </div>
 
+          @if (priceError()) { <p class="error t-footnote" role="alert">{{ priceError() }}</p> }
+
           <div class="field">
             <span class="label">Ocjena</span>
             <div class="segmented" role="radiogroup" aria-label="Minimalna ocjena">
@@ -160,7 +163,7 @@ const PAGE_SIZE = 12;
 
           <div class="field">
             <label for="f-date">Slobodan datum</label>
-            <input id="f-date" class="input" type="date" name="availableOn" [min]="today" [(ngModel)]="draft.availableOn" />
+            <app-date-field inputId="f-date" name="availableOn" [min]="today" [(ngModel)]="draft.availableOn" />
             <span class="hint">Saloni bez online rezervacija se uvijek prikazuju; dostupnost provjerite kod njih.</span>
           </div>
 
@@ -171,7 +174,7 @@ const PAGE_SIZE = 12;
 
           <div class="form-actions">
             <button type="button" class="btn" (click)="clearDraft()">Očisti</button>
-            <button type="submit" class="btn btn-primary">Prikaži rezultate</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!!priceError()">Prikaži rezultate</button>
           </div>
         </form>
       </app-sheet>
@@ -412,7 +415,16 @@ export class Explore implements OnInit {
     this.load(false);
   }
 
+  /** Filter cijene: nenegativni brojevi i "od" ne veće od "do". */
+  protected priceError(): string | null {
+    const { priceMin, priceMax } = this.draft;
+    if ((priceMin ?? 0) < 0 || (priceMax ?? 0) < 0) return 'Cijena ne može biti negativna.';
+    if (priceMin !== null && priceMax !== null && priceMin > priceMax) return 'Cijena "od" ne može biti veća od cijene "do".';
+    return null;
+  }
+
   protected applyDraft(): void {
+    if (this.priceError()) return;
     const { fts, categoryId } = this.filters();
     this.filters.set({ ...this.draft, fts, categoryId });
     this.syncUrl();

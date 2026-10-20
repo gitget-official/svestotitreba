@@ -12,6 +12,7 @@ import localeBs from '@angular/common/locales/bs';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth';
 import { BrandTitleStrategy } from './core/brand';
+import { provideBsDates } from './core/date-adapter';
 
 registerLocaleData(localeBs);
 
@@ -28,5 +29,6 @@ export const appConfig: ApplicationConfig = {
     ),
     { provide: LOCALE_ID, useValue: 'bs' },
     { provide: TitleStrategy, useClass: BrandTitleStrategy },
+    provideBsDates(),
   ],
 };

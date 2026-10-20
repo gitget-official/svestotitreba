@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { OfferingApi, VendorApi, VendorImageApi, WorkingHourApi } from '../../core/api';
@@ -9,6 +11,7 @@ import { LookupStore } from '../../core/lookups';
 import { DayOfWeek, Offering, Vendor, VendorImage } from '../../core/models';
 import { ConfirmService } from '../../shared/ui/confirm';
 import { Icon } from '../../shared/ui/icon';
+import { TimeField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
 
@@ -28,7 +31,7 @@ interface HourRow {
  */
 @Component({
   selector: 'app-vendor-manage',
-  imports: [RouterLink, ReactiveFormsModule, FormsModule, Icon, Sheet],
+  imports: [RouterLink, ReactiveFormsModule, FormsModule, Icon, Sheet, TimeField, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -63,14 +66,17 @@ interface HourRow {
                   <div class="field span-all">
                     <label for="name">Naziv</label>
                     <input id="name" class="input" formControlName="name" />
+<app-field-error [control]="form.controls.name" />
                   </div>
                   <div class="field span-all">
                     <label for="description">Opis</label>
                     <textarea id="description" class="textarea" rows="5" formControlName="description"></textarea>
+<app-field-error [control]="form.controls.description" />
                   </div>
                   <div class="field">
                     <label for="logo">Logo (URL)</label>
                     <input id="logo" class="input" formControlName="logoUrl" placeholder="https://" />
+<app-field-error [control]="form.controls.logoUrl" />
                   </div>
                 </div>
               </section>
@@ -87,14 +93,17 @@ interface HourRow {
                   <div class="field">
                     <label for="address">Adresa</label>
                     <input id="address" class="input" formControlName="address" />
+<app-field-error [control]="form.controls.address" />
                   </div>
                   <div class="field">
                     <label for="lat">Geografska širina</label>
                     <input id="lat" class="input" type="number" step="any" formControlName="latitude" />
+<app-field-error [control]="form.controls.latitude" />
                   </div>
                   <div class="field">
                     <label for="lng">Geografska dužina</label>
                     <input id="lng" class="input" type="number" step="any" formControlName="longitude" />
+<app-field-error [control]="form.controls.longitude" />
                   </div>
                 </div>
               </section>
@@ -102,12 +111,18 @@ interface HourRow {
               <section class="card card-pad stack">
                 <h2 class="t-title-3">Kontakt i društvene mreže</h2>
                 <div class="form-grid">
-                  <div class="field"><label for="phone">Telefon</label><input id="phone" class="input" type="tel" formControlName="phoneNumber" /></div>
-                  <div class="field"><label for="email">E-mail</label><input id="email" class="input" type="email" formControlName="email" /></div>
-                  <div class="field"><label for="web">Web stranica</label><input id="web" class="input" formControlName="website" placeholder="https://" /></div>
-                  <div class="field"><label for="ig">Instagram</label><input id="ig" class="input" formControlName="instagramUrl" placeholder="https://instagram.com/..." /></div>
-                  <div class="field"><label for="fb">Facebook</label><input id="fb" class="input" formControlName="facebookUrl" placeholder="https://facebook.com/..." /></div>
-                  <div class="field"><label for="tt">TikTok</label><input id="tt" class="input" formControlName="tikTokUrl" placeholder="https://tiktok.com/@..." /></div>
+                  <div class="field"><label for="phone">Telefon</label><input id="phone" class="input" type="tel" formControlName="phoneNumber" />
+<app-field-error [control]="form.controls.phoneNumber" /></div>
+                  <div class="field"><label for="email">E-mail</label><input id="email" class="input" type="email" formControlName="email" />
+<app-field-error [control]="form.controls.email" /></div>
+                  <div class="field"><label for="web">Web stranica</label><input id="web" class="input" formControlName="website" placeholder="https://" />
+<app-field-error [control]="form.controls.website" /></div>
+                  <div class="field"><label for="ig">Instagram</label><input id="ig" class="input" formControlName="instagramUrl" placeholder="https://instagram.com/..." />
+<app-field-error [control]="form.controls.instagramUrl" /></div>
+                  <div class="field"><label for="fb">Facebook</label><input id="fb" class="input" formControlName="facebookUrl" placeholder="https://facebook.com/..." />
+<app-field-error [control]="form.controls.facebookUrl" /></div>
+                  <div class="field"><label for="tt">TikTok</label><input id="tt" class="input" formControlName="tikTokUrl" placeholder="https://tiktok.com/@..." />
+<app-field-error [control]="form.controls.tikTokUrl" /></div>
                 </div>
               </section>
 
@@ -142,6 +157,7 @@ interface HourRow {
                   <div class="field">
                     <label for="deposit">Uslovi avansa</label>
                     <input id="deposit" class="input" formControlName="depositNote" placeholder="Npr. avans 20% pri potvrdi" />
+<app-field-error [control]="form.controls.depositNote" />
                   </div>
                 }
               </section>
@@ -212,9 +228,9 @@ interface HourRow {
                     <strong class="day">{{ row.label }}</strong>
                     <label class="checkbox"><input type="checkbox" [(ngModel)]="row.isClosed" /> Zatvoreno</label>
                     @if (!row.isClosed) {
-                      <input class="input time" type="time" [(ngModel)]="row.open" [attr.aria-label]="row.label + ' od'" />
+                      <app-time-field class="time" min="05:00" max="23:30" [(ngModel)]="row.open" [inputId]="'h-open-' + row.day" [ariaLabel]="row.label + ' od'" />
                       <span class="muted">–</span>
-                      <input class="input time" type="time" [(ngModel)]="row.close" [attr.aria-label]="row.label + ' do'" />
+                      <app-time-field class="time" min="05:00" max="23:59" [(ngModel)]="row.close" [inputId]="'h-close-' + row.day" [ariaLabel]="row.label + ' do'" />
                     }
                   </div>
                 }
@@ -242,14 +258,18 @@ interface HourRow {
           <div class="field">
             <label for="o-title">Naziv usluge</label>
             <input id="o-title" class="input" formControlName="title" />
+<app-field-error [control]="offeringForm.controls.title" />
           </div>
           <div class="field">
             <label for="o-desc">Opis</label>
             <textarea id="o-desc" class="textarea" formControlName="description"></textarea>
+<app-field-error [control]="offeringForm.controls.description" />
           </div>
           <div class="form-grid">
-            <div class="field"><label for="o-from">Cijena od (KM)</label><input id="o-from" class="input" type="number" min="0" formControlName="priceFrom" /></div>
-            <div class="field"><label for="o-to">Cijena do (KM)</label><input id="o-to" class="input" type="number" min="0" formControlName="priceTo" /></div>
+            <div class="field"><label for="o-from">Cijena od (KM)</label><input id="o-from" class="input" type="number" min="0" formControlName="priceFrom" />
+<app-field-error [control]="offeringForm.controls.priceFrom" /></div>
+            <div class="field"><label for="o-to">Cijena do (KM)</label><input id="o-to" class="input" type="number" min="0" formControlName="priceTo" />
+<app-field-error [control]="offeringForm.controls.priceTo" /></div>
           </div>
           @if (priceError()) { <p class="error t-footnote">Cijena „od“ ne može biti veća od cijene „do“.</p> }
           @if (editingOffering()) {
@@ -271,6 +291,7 @@ interface HourRow {
           <div class="field">
             <label for="i-url">Adresa slike (URL)</label>
             <input id="i-url" class="input" formControlName="url" placeholder="https://" />
+<app-field-error [control]="imageForm.controls.url" />
             <span class="hint">Upload fajlova dolazi uskoro; za sada zalijepite link do slike.</span>
           </div>
           @if (imageForm.controls.url.valid && imageForm.controls.url.value) {
@@ -279,6 +300,7 @@ interface HourRow {
           <div class="field">
             <label for="i-caption">Opis</label>
             <input id="i-caption" class="input" formControlName="caption" />
+<app-field-error [control]="imageForm.controls.caption" />
           </div>
           <label class="checkbox"><input type="checkbox" formControlName="isCover" /> Postavi kao naslovnu</label>
           <div class="form-actions">
@@ -309,7 +331,7 @@ interface HourRow {
     .preview { width: 100%; max-height: 14rem; object-fit: cover; border-radius: var(--radius-md); }
     .hour { flex-wrap: wrap; }
     .day { width: 7.5rem; }
-    .time { width: 7.5rem; min-height: 2.5rem; }
+    .time { width: 8.75rem; }
     .error { color: var(--danger); }
     .block { height: 20rem; border-radius: var(--radius-lg); }
   `,
@@ -358,37 +380,40 @@ export class VendorManage implements OnInit {
   protected readonly backLabel = computed(() => (this.isAdmin() ? 'Ponuđači' : 'Moji saloni'));
 
   protected readonly form = this.fb.group({
-    name: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(150)]),
-    description: this.fb.control<string | null>(null),
+    name: this.fb.nonNullable.control('', [Validators.required, ...V.businessName]),
+    description: this.fb.control<string | null>(null, V.text(2000)),
     cityId: this.fb.nonNullable.control(0, Validators.required),
-    address: this.fb.control<string | null>(null),
-    latitude: this.fb.control<number | null>(null),
-    longitude: this.fb.control<number | null>(null),
-    phoneNumber: this.fb.control<string | null>(null),
-    email: this.fb.control<string | null>(null, Validators.email),
-    website: this.fb.control<string | null>(null),
-    instagramUrl: this.fb.control<string | null>(null),
-    facebookUrl: this.fb.control<string | null>(null),
-    tikTokUrl: this.fb.control<string | null>(null),
-    logoUrl: this.fb.control<string | null>(null),
+    address: this.fb.control<string | null>(null, V.text(200)),
+    latitude: this.fb.control<number | null>(null, V.latitude),
+    longitude: this.fb.control<number | null>(null, V.longitude),
+    phoneNumber: this.fb.control<string | null>(null, V.phone),
+    email: this.fb.control<string | null>(null, V.email),
+    website: this.fb.control<string | null>(null, V.url),
+    instagramUrl: this.fb.control<string | null>(null, V.social('instagram.com')),
+    facebookUrl: this.fb.control<string | null>(null, V.social('facebook.com')),
+    tikTokUrl: this.fb.control<string | null>(null, V.social('tiktok.com')),
+    logoUrl: this.fb.control<string | null>(null, V.url),
     bookingEnabled: this.fb.nonNullable.control(false),
     autoConfirmBookings: this.fb.nonNullable.control(false),
     requiresDeposit: this.fb.nonNullable.control(false),
-    depositNote: this.fb.control<string | null>(null),
+    depositNote: this.fb.control<string | null>(null, V.text(300)),
   });
 
-  protected readonly offeringForm = this.fb.group({
-    serviceCategoryId: this.fb.nonNullable.control(0, Validators.min(1)),
-    title: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(150)]),
-    description: this.fb.control<string | null>(null),
-    priceFrom: this.fb.nonNullable.control(0, [Validators.required, Validators.min(0)]),
-    priceTo: this.fb.nonNullable.control(0, [Validators.required, Validators.min(0)]),
-    isActive: this.fb.nonNullable.control(true),
-  });
+  protected readonly offeringForm = this.fb.group(
+    {
+      serviceCategoryId: this.fb.nonNullable.control(0, Validators.min(1)),
+      title: this.fb.nonNullable.control('', [Validators.required, ...V.businessName]),
+      description: this.fb.control<string | null>(null, V.text(1000)),
+      priceFrom: this.fb.nonNullable.control(0, V.price),
+      priceTo: this.fb.nonNullable.control(0, V.price),
+      isActive: this.fb.nonNullable.control(true),
+    },
+    { validators: V.range('priceFrom', 'priceTo') },
+  );
 
   protected readonly imageForm = this.fb.group({
-    url: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]),
-    caption: this.fb.control<string | null>(null),
+    url: this.fb.nonNullable.control('', [Validators.required, ...V.url]),
+    caption: this.fb.control<string | null>(null, V.text(150)),
     isCover: this.fb.nonNullable.control(false),
   });
 

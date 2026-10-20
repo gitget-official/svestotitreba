@@ -10,6 +10,7 @@ import { vendorLink } from '../../core/links';
 import { LookupStore } from '../../core/lookups';
 import { ServiceCategory, Vendor } from '../../core/models';
 import { Plan, PlanAnswers, PlanOption, buildPlan } from '../../core/planner';
+import { DateField } from '../../shared/ui/date-time-fields';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
 
@@ -29,7 +30,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
  */
 @Component({
   selector: 'app-planning',
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, DateField],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page planner">
@@ -97,6 +98,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                     [ngModel]="answers().budget" (ngModelChange)="patch({ budget: +$event || 0 })" />
                   <span class="unit">KM</span>
                 </div>
+                @if (budgetError(); as e) { <span class="error" role="alert">{{ e }}</span> }
                 <input class="range" type="range" min="3000" max="100000" step="500" aria-label="Budžet klizač"
                   [ngModel]="answers().budget" (ngModelChange)="patch({ budget: +$event })" />
                 <div class="row-wrap">
@@ -118,21 +120,25 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                 </div>
                 <div class="field">
                   <label for="p-date">Datum vjenčanja <span class="subtle">(opciono)</span></label>
-                  <input id="p-date" class="input" type="date" [min]="today" [ngModel]="answers().date"
+                  <app-date-field inputId="p-date" [min]="today" [ngModel]="answers().date"
                     (ngModelChange)="patch({ date: $event || null })" />
                 </div>
                 <div class="field">
                   <label for="p-guests">Broj gostiju <span class="subtle">(opciono)</span></label>
                   <input id="p-guests" class="input" type="number" min="1" inputmode="numeric" [ngModel]="answers().guests"
-                    (ngModelChange)="patch({ guests: +$event || null })" />
-                  <span class="hint">Pomaže pri razgovoru sa salom; cijena sale često zavisi od broja gostiju.</span>
+                    (ngModelChange)="patch({ guests: $event === null || $event === '' ? null : +$event })" />
+                  @if (guestsError(); as e) {
+                    <span class="error" role="alert">{{ e }}</span>
+                  } @else {
+                    <span class="hint">Pomaže pri razgovoru sa salom; cijena sale često zavisi od broja gostiju.</span>
+                  }
                 </div>
               </div>
             </div>
 
             <div class="step-actions">
               <button type="button" class="btn btn-plain" (click)="goTo(0)"><app-icon name="arrow-left" /> Nazad</button>
-              <button type="button" class="btn btn-primary btn-lg" [disabled]="answers().budget < 1000" (click)="compose()">
+              <button type="button" class="btn btn-primary btn-lg" [disabled]="!!budgetError() || !!guestsError()" (click)="compose()">
                 <app-icon name="sparkles" /> Složi paket
               </button>
             </div>
@@ -780,6 +786,21 @@ export class Planning implements OnInit {
   protected readonly meter = computed(() => {
     const p = this.plan();
     return p && p.budget > 0 ? Math.min(1, p.totalFrom / p.budget) : 0;
+  });
+
+  protected readonly budgetError = computed(() => {
+    const b = this.answers().budget;
+    if (!b || b < 1000) return 'Unesite budžet od najmanje 1.000 KM.';
+    if (b > 1_000_000) return 'Budžet može biti najviše 1.000.000 KM.';
+    return null;
+  });
+
+  protected readonly guestsError = computed(() => {
+    const g = this.answers().guests;
+    if (g === null) return null;
+    if (!Number.isInteger(g) || g < 1) return 'Broj gostiju mora biti cijeli broj veći od 0.';
+    if (g > 2000) return 'Najviše 2.000 gostiju.';
+    return null;
   });
 
   protected readonly cityName = computed(

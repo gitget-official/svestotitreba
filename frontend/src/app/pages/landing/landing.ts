@@ -212,7 +212,9 @@ const FAQ = [
           <form class="lead-form stack" (ngSubmit)="sendLead()" #leadForm="ngForm">
             <div class="field">
               <label for="l-name">Naziv salona</label>
-              <input id="l-name" class="input" name="name" required [(ngModel)]="lead.name" autocomplete="organization" />
+              <input id="l-name" class="input" name="name" required minlength="2" maxlength="150" [(ngModel)]="lead.name"
+                autocomplete="organization" #leadName="ngModel" />
+              @if (leadName.invalid && leadName.touched) { <span class="error">Unesite naziv salona (najmanje 2 znaka).</span> }
             </div>
             <div class="form-grid">
               <div class="field">
@@ -224,13 +226,20 @@ const FAQ = [
               </div>
               <div class="field">
                 <label for="l-city">Grad</label>
-                <input id="l-city" class="input" name="city" required [(ngModel)]="lead.city" autocomplete="address-level2" />
+                <input id="l-city" class="input" name="city" required [pattern]="cityPattern" maxlength="100" [(ngModel)]="lead.city"
+                  autocomplete="address-level2" #leadCity="ngModel" />
+                @if (leadCity.invalid && (leadCity.touched || leadCity.dirty)) {
+                  <span class="error">{{ leadCity.errors?.['pattern'] ? 'Naziv grada može sadržavati samo slova.' : 'Unesite grad.' }}</span>
+                }
               </div>
             </div>
             <div class="field">
               <label for="l-phone">Telefon</label>
-              <input id="l-phone" class="input" name="phone" type="tel" required [(ngModel)]="lead.phone" autocomplete="tel"
-                inputmode="tel" />
+              <input id="l-phone" class="input" name="phone" type="tel" required [pattern]="phonePattern" [(ngModel)]="lead.phone"
+                autocomplete="tel" inputmode="tel" #leadPhone="ngModel" />
+              @if (leadPhone.invalid && (leadPhone.touched || leadPhone.dirty)) {
+                <span class="error">Unesite broj telefona (npr. +387 61 123 456).</span>
+              }
             </div>
             <button type="submit" class="btn btn-primary btn-block" [disabled]="leadForm.invalid">Pošaljite upit</button>
             <p class="t-caption subtle">Javljamo se u roku od jednog radnog dana.</p>
@@ -810,6 +819,8 @@ export class Landing implements OnInit {
   protected category = '';
   protected cityId: number | null = null;
   protected lead = { name: '', category: CATEGORIES[0].name, city: '', phone: '' };
+  protected readonly cityPattern = "^[A-Za-zČčĆćĐđŠšŽž]+(?:[ .\\-][A-Za-zČčĆćĐđŠšŽž]+)*$";
+  protected readonly phonePattern = '^\\+?[0-9 ()/\\-]{8,20}$';
 
   /** Četiri pločice kolaža: fotografije istaknutih ponuđača, a dok ih nema, kategorije. */
   protected readonly collage = computed(() => {

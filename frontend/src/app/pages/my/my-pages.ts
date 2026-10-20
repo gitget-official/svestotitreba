@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { RouterLink } from '@angular/router';
 import { BookingApi, ReviewApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
@@ -142,7 +144,7 @@ export class MyBookings implements OnInit {
 /** Recenzije koje su mladenci ostavili, sa statusom moderacije. */
 @Component({
   selector: 'app-my-reviews',
-  imports: [RouterLink, ReactiveFormsModule, Icon, Rating, Sheet],
+  imports: [RouterLink, ReactiveFormsModule, Icon, Rating, Sheet, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page narrow">
@@ -187,9 +189,10 @@ export class MyBookings implements OnInit {
         <form class="stack" [formGroup]="form" (ngSubmit)="save(r)">
           <app-rating [editable]="true" [value]="form.controls.rating.value" (valueChange)="form.controls.rating.setValue($event)" />
           <textarea class="textarea" formControlName="comment" maxlength="2000" aria-label="Komentar"></textarea>
+<app-field-error [control]="form.controls.comment" />
           <p class="t-footnote muted">Izmijenjena recenzija ponovo ide na odobrenje.</p>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Sačuvaj</button>
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid || form.controls.rating.value < 1">Sačuvaj</button>
           </div>
         </form>
       </app-sheet>
@@ -217,7 +220,7 @@ export class MyReviews implements OnInit {
   private readonly fb = inject(FormBuilder);
   protected readonly form = this.fb.group({
     rating: this.fb.nonNullable.control(0),
-    comment: this.fb.control<string | null>(null),
+    comment: this.fb.control<string | null>(null, V.text(2000)),
   });
 
   ngOnInit(): void {

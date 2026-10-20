@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { AuthService } from '../../core/auth';
 import { ROLE_LABEL, initials } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
@@ -8,7 +10,7 @@ import { ToastService } from '../../shared/ui/toast';
 
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page enter narrow">
@@ -29,14 +31,17 @@ import { ToastService } from '../../shared/ui/toast';
             <div class="field">
               <label for="firstName">Ime</label>
               <input id="firstName" class="input" formControlName="firstName" />
+<app-field-error [control]="profile.controls.firstName" />
             </div>
             <div class="field">
               <label for="lastName">Prezime</label>
               <input id="lastName" class="input" formControlName="lastName" />
+<app-field-error [control]="profile.controls.lastName" />
             </div>
             <div class="field">
               <label for="phone">Telefon</label>
               <input id="phone" class="input" type="tel" formControlName="phoneNumber" />
+<app-field-error [control]="profile.controls.phoneNumber" />
             </div>
             <div class="field">
               <label for="city">Grad</label>
@@ -67,6 +72,7 @@ import { ToastService } from '../../shared/ui/toast';
             <div class="field">
               <label for="new">Nova lozinka</label>
               <input id="new" class="input" type="password" formControlName="newPassword" autocomplete="new-password" />
+<app-field-error [control]="password.controls.newPassword" />
               <span class="hint">Najmanje 8 znakova.</span>
             </div>
           </div>
@@ -146,15 +152,15 @@ export class Profile implements OnInit {
   ];
 
   protected readonly profile = this.fb.group({
-    firstName: this.fb.nonNullable.control('', Validators.required),
-    lastName: this.fb.nonNullable.control('', Validators.required),
-    phoneNumber: this.fb.control<string | null>(null),
+    firstName: this.fb.nonNullable.control('', [Validators.required, ...V.personName]),
+    lastName: this.fb.nonNullable.control('', [Validators.required, ...V.personName]),
+    phoneNumber: this.fb.control<string | null>(null, V.phone),
     cityId: this.fb.control<number | null>(null),
   });
 
   protected readonly password = this.fb.nonNullable.group({
     currentPassword: ['', Validators.required],
-    newPassword: ['', [Validators.required, Validators.minLength(8)]],
+    newPassword: ['', [Validators.required, ...V.password]],
   });
 
   protected readonly savingProfile = signal(false);

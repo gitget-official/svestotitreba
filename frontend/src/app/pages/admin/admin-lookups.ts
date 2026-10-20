@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { Observable } from 'rxjs';
 import { CategoryApi, CityApi, SubscriptionPlanApi } from '../../core/api';
 import { LookupStore } from '../../core/lookups';
@@ -14,7 +16,7 @@ type Section = 'kategorije' | 'gradovi' | 'planovi';
 /** Šifarnici: kategorije usluga (lista nije fiksna, FR-30), gradovi i planovi pretplate. */
 @Component({
   selector: 'app-admin-lookups',
-  imports: [ReactiveFormsModule, Icon, Sheet],
+  imports: [ReactiveFormsModule, Icon, Sheet, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page narrow">
@@ -77,18 +79,24 @@ type Section = 'kategorije' | 'gradovi' | 'planovi';
     @if (editOpen()) {
       <app-sheet [title]="title()" (closed)="editOpen.set(false)">
         <form class="stack" [formGroup]="form" (ngSubmit)="save()">
-          <div class="field"><label for="l-name">Naziv</label><input id="l-name" class="input" formControlName="name" /></div>
+          <div class="field"><label for="l-name">Naziv</label><input id="l-name" class="input" formControlName="name" />
+<app-field-error [control]="form.controls.name" /></div>
           @if (section() !== 'gradovi') {
-            <div class="field"><label for="l-desc">Opis</label><textarea id="l-desc" class="textarea" formControlName="description"></textarea></div>
+            <div class="field"><label for="l-desc">Opis</label><textarea id="l-desc" class="textarea" formControlName="description"></textarea>
+<app-field-error [control]="form.controls.description" /></div>
           }
           @if (section() === 'kategorije') {
-            <div class="field"><label for="l-sort">Redoslijed</label><input id="l-sort" class="input" type="number" formControlName="sortOrder" /></div>
+            <div class="field"><label for="l-sort">Redoslijed</label><input id="l-sort" class="input" type="number" formControlName="sortOrder" />
+<app-field-error [control]="form.controls.sortOrder" /></div>
           }
           @if (section() === 'planovi') {
             <div class="form-grid">
-              <div class="field"><label for="l-price">Cijena (KM)</label><input id="l-price" class="input" type="number" min="0" formControlName="price" /></div>
-              <div class="field"><label for="l-days">Trajanje (dana)</label><input id="l-days" class="input" type="number" min="1" formControlName="durationDays" /></div>
-              <div class="field"><label for="l-weight">Prioritet</label><input id="l-weight" class="input" type="number" min="0" max="100" formControlName="priorityWeight" /></div>
+              <div class="field"><label for="l-price">Cijena (KM)</label><input id="l-price" class="input" type="number" min="0" formControlName="price" />
+<app-field-error [control]="form.controls.price" /></div>
+              <div class="field"><label for="l-days">Trajanje (dana)</label><input id="l-days" class="input" type="number" min="1" formControlName="durationDays" />
+<app-field-error [control]="form.controls.durationDays" /></div>
+              <div class="field"><label for="l-weight">Prioritet</label><input id="l-weight" class="input" type="number" min="0" max="100" formControlName="priorityWeight" />
+<app-field-error [control]="form.controls.priorityWeight" /></div>
             </div>
           }
           @if (section() !== 'gradovi' && editing()) {
@@ -134,12 +142,12 @@ export class AdminLookups implements OnInit {
   protected readonly icon = categoryIcon;
 
   protected readonly form = this.fb.group({
-    name: this.fb.nonNullable.control('', Validators.required),
-    description: this.fb.control<string | null>(null),
-    sortOrder: this.fb.nonNullable.control(0),
-    price: this.fb.nonNullable.control(0),
-    durationDays: this.fb.nonNullable.control(30),
-    priorityWeight: this.fb.nonNullable.control(1),
+    name: this.fb.nonNullable.control('', [Validators.required, ...V.businessName]),
+    description: this.fb.control<string | null>(null, V.text(500)),
+    sortOrder: this.fb.nonNullable.control(0, V.integer(0, 1000)),
+    price: this.fb.nonNullable.control(0, [Validators.min(0), Validators.max(100_000)]),
+    durationDays: this.fb.nonNullable.control(30, V.integer(1, 3650)),
+    priorityWeight: this.fb.nonNullable.control(1, V.integer(0, 100)),
     isActive: this.fb.nonNullable.control(true),
   });
 

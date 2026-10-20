@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FieldError } from '../../shared/ui/field-error';
+import { AppValidators as V } from '../../core/validators';
 import { Subject, debounceTime } from 'rxjs';
 import { UserApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
@@ -14,7 +16,7 @@ import { ToastService } from '../../shared/ui/toast';
 /** Korisnici: administrator kreira naloge za salone (FR-29) i upravlja postojećim nalozima. */
 @Component({
   selector: 'app-admin-users',
-  imports: [FormsModule, ReactiveFormsModule, Icon, Sheet],
+  imports: [FormsModule, ReactiveFormsModule, Icon, Sheet, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -72,13 +74,18 @@ import { ToastService } from '../../shared/ui/toast';
       <app-sheet [title]="editing() ? 'Uredi korisnika' : 'Novi korisnik'" (closed)="editOpen.set(false)">
         <form class="stack" [formGroup]="form" (ngSubmit)="save()">
           <div class="form-grid">
-            <div class="field"><label for="u-first">Ime</label><input id="u-first" class="input" formControlName="firstName" /></div>
-            <div class="field"><label for="u-last">Prezime</label><input id="u-last" class="input" formControlName="lastName" /></div>
-            <div class="field"><label for="u-email">E-mail</label><input id="u-email" class="input" type="email" formControlName="email" /></div>
+            <div class="field"><label for="u-first">Ime</label><input id="u-first" class="input" formControlName="firstName" />
+<app-field-error [control]="form.controls.firstName" /></div>
+            <div class="field"><label for="u-last">Prezime</label><input id="u-last" class="input" formControlName="lastName" />
+<app-field-error [control]="form.controls.lastName" /></div>
+            <div class="field"><label for="u-email">E-mail</label><input id="u-email" class="input" type="email" formControlName="email" />
+<app-field-error [control]="form.controls.email" /></div>
             @if (!editing()) {
-              <div class="field"><label for="u-user">Korisničko ime</label><input id="u-user" class="input" formControlName="username" /></div>
+              <div class="field"><label for="u-user">Korisničko ime</label><input id="u-user" class="input" formControlName="username" />
+<app-field-error [control]="form.controls.username" /></div>
             }
-            <div class="field"><label for="u-phone">Telefon</label><input id="u-phone" class="input" formControlName="phoneNumber" /></div>
+            <div class="field"><label for="u-phone">Telefon</label><input id="u-phone" class="input" formControlName="phoneNumber" />
+<app-field-error [control]="form.controls.phoneNumber" /></div>
             <div class="field">
               <label for="u-city">Grad</label>
               <select id="u-city" class="select" formControlName="cityId">
@@ -97,6 +104,7 @@ import { ToastService } from '../../shared/ui/toast';
             <div class="field">
               <label for="u-pass">{{ editing() ? 'Nova lozinka (opciono)' : 'Početna lozinka' }}</label>
               <input id="u-pass" class="input" type="text" formControlName="password" autocomplete="off" />
+<app-field-error [control]="form.controls.password" />
               <span class="hint">Najmanje 8 znakova. Korisnik je mijenja pri prvoj prijavi.</span>
             </div>
           </div>
@@ -148,11 +156,11 @@ export class AdminUsers implements OnInit {
   protected fts = '';
 
   protected readonly form = this.fb.group({
-    firstName: this.fb.nonNullable.control('', Validators.required),
-    lastName: this.fb.nonNullable.control('', Validators.required),
-    email: this.fb.nonNullable.control('', [Validators.required, Validators.email]),
+    firstName: this.fb.nonNullable.control('', [Validators.required, ...V.personName]),
+    lastName: this.fb.nonNullable.control('', [Validators.required, ...V.personName]),
+    email: this.fb.nonNullable.control('', [Validators.required, ...V.email]),
     username: this.fb.nonNullable.control(''),
-    phoneNumber: this.fb.control<string | null>(null),
+    phoneNumber: this.fb.control<string | null>(null, V.phone),
     cityId: this.fb.control<number | null>(null),
     role: this.fb.nonNullable.control<UserRole>('Vendor'),
     password: this.fb.nonNullable.control(''),
@@ -187,8 +195,8 @@ export class AdminUsers implements OnInit {
     });
     const username = this.form.controls.username;
     const password = this.form.controls.password;
-    username.setValidators(user ? [] : [Validators.required, Validators.minLength(3)]);
-    password.setValidators(user ? [Validators.minLength(8)] : [Validators.required, Validators.minLength(8)]);
+    username.setValidators(user ? [] : [Validators.required, ...V.username]);
+    password.setValidators(user ? V.password : [Validators.required, ...V.password]);
     username.updateValueAndValidity();
     password.updateValueAndValidity();
     this.editOpen.set(true);
