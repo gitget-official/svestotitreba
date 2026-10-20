@@ -61,17 +61,21 @@ h1, h2, h3, h4, p {
 // Veći tekst: negativan tracking i tijesan prored; manji tekst: blago pozitivan tracking.
 .t-display {
   font-family: var(--font-display);
-  font-size: clamp(2.25rem, 5.5vw, 4rem);
-  line-height: 1.04;
-  letter-spacing: -0.022em;
-  font-weight: 600;
+  font-optical-sizing: auto;
+  font-size: clamp(2.375rem, 5.5vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+  font-weight: 560;
 }
 
+// Naslov stranice nosi isti serif (Fraunces sa optičkim skaliranjem), ostalo je sistemski font.
 .t-title-1 {
-  font-size: clamp(1.75rem, 3.2vw, 2.25rem);
-  line-height: 1.12;
-  letter-spacing: -0.018em;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: clamp(1.875rem, 3.4vw, 2.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.024em;
+  font-weight: 580;
 }
 
 .t-title-2 {
@@ -129,6 +133,7 @@ h1, h2, h3, h4, p {
 
 .serif {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
 }
 
 // Link "Preskoči na sadržaj": skriven dok ga tastatura ne fokusira.

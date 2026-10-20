@@ -66,6 +66,13 @@ se spuštaju na jeftinije opcije. Bira se samo iz baze (FR-28). Logika je u `cor
 
 ## Dizajn i pokret
 
+**Vizuelni pravac: „topla elegancija“** (tokeni u `src/styles/_tokens.scss`):
+slonovača `#FAF7F2` kao pozadina, bordo `#8C2F39` za akcije, žalfija `#5E6E4B` za „u okviru budžeta“ i potvrde,
+zlato samo za ocjene i „istaknuto“. Naslovi su u serifu **Fraunces** (optičko skaliranje, učitava se lokalno iz
+`@fontsource-variable/fraunces`), a sav ostali tekst u sistemskom fontu. Tamna tema ima vlastitu, usklađenu paletu.
+
+Pokret i ponašanje prate `.claude/skills/apple-design`:
+
 Rađeno po principima Apple dizajna prilagođenim za web:
 
 - **Odziv odmah:** dugmad i kartice reaguju na pritisak (`:active`), ne tek na klik.

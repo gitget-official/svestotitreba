@@ -17,20 +17,26 @@ import { BRAND } from '../../core/brand';
       letter-spacing: -0.015em;
     }
 
+    // Krug: prsten i kolo, bez punog kvadrata.
     .mark {
       display: grid;
       place-items: center;
       width: 1.875rem;
       height: 1.875rem;
-      border-radius: 9px;
-      background: var(--accent);
-      color: var(--text-on-accent);
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 2px var(--accent);
+      color: var(--accent);
       font-family: var(--font-display);
       font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1;
     }
 
     .name {
       font-family: var(--font-display);
+      font-optical-sizing: auto;
+      font-weight: 600;
+      letter-spacing: -0.02em;
     }
   `,
 })

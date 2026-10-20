@@ -14,7 +14,7 @@ const AUTH_STYLES = `
     padding: var(--space-6) var(--space-4);
     background:
       radial-gradient(50rem 26rem at 90% -10%, var(--accent-soft), transparent 70%),
-      radial-gradient(36rem 22rem at -10% 110%, var(--gold-soft), transparent 70%),
+      radial-gradient(36rem 22rem at -10% 110%, var(--sage-soft), transparent 70%),
       var(--bg);
   }
 
@@ -80,7 +80,7 @@ const AUTH_STYLES = `
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
-          <h1 class="t-title-2">Dobro došli nazad</h1>
+          <h1 class="t-title-2 serif">Dobro došli nazad</h1>
           <p class="t-callout muted">Prijavite se da nastavite planiranje.</p>
         </div>
 
@@ -159,7 +159,7 @@ export class Login {
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
-          <h1 class="t-title-2">Napravite profil</h1>
+          <h1 class="t-title-2 serif">Napravite profil</h1>
           <p class="t-callout muted">Za mladence. Saloni dobijaju nalog od nas.</p>
         </div>
 
@@ -260,7 +260,7 @@ export class Register {
       <span class="brand"><app-brand-mark /></span>
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
         <div class="heading">
-          <h1 class="t-title-2">Postavite svoju lozinku</h1>
+          <h1 class="t-title-2 serif">Postavite svoju lozinku</h1>
           <p class="t-callout muted">Vaš nalog je napravio administrator. Prije nastavka odaberite novu lozinku.</p>
         </div>
         <div class="field">

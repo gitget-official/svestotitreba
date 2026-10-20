@@ -321,7 +321,7 @@ const FAQ = [
       padding-block: clamp(2.5rem, 7vw, 5.5rem) clamp(2rem, 5vw, 4rem);
       background:
         radial-gradient(60rem 30rem at 85% -10%, var(--accent-soft), transparent 70%),
-        radial-gradient(40rem 24rem at 0% 0%, var(--gold-soft), transparent 70%);
+        radial-gradient(40rem 24rem at 0% 0%, var(--sage-soft), transparent 70%);
     }
 
     .hero-grid {
@@ -566,7 +566,7 @@ const FAQ = [
       border-radius: var(--radius-xl);
       background:
         radial-gradient(36rem 20rem at 100% 0%, var(--accent-soft), transparent 70%),
-        radial-gradient(28rem 18rem at 0% 100%, var(--gold-soft), transparent 70%),
+        radial-gradient(28rem 18rem at 0% 100%, var(--sage-soft), transparent 70%),
         var(--bg-elevated);
     }
 

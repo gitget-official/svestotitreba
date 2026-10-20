@@ -52,6 +52,7 @@
               }
             ],
             "styles": [
+              "@fontsource-variable/fraunces/opsz.css",
               "src/styles.scss"
             ]
           },

@@ -1,54 +1,59 @@
 // Dizajn tokeni. Svjetla i tamna tema, materijali, tipografija i pokret.
-// Pravila: sistemski font, tracking zavisi od veličine, prozirni "materijali" za plutajuće elemente,
+// Pravac "topla elegancija": slonovača, bordo, žalfija, zlato samo za ocjene.
+// Pravila: sistemski font (Fraunces samo za velike naslove), tracking zavisi od veličine, prozirni "materijali" za plutajuće elemente,
 // pokret samo preko transform/opacity, i pristojne zamjene za reduced-motion/transparency/contrast.
 
 :root {
   color-scheme: light;
 
-  // ---- Boje ----
-  --bg: #fbfaf8;
+  // ---- Boje: "topla elegancija" ----
+  // Slonovača i bordo nose identitet; žalfija smiruje (budžet, potvrde); zlato samo za ocjene i "istaknuto".
+  --bg: #faf7f2;              // slonovača, kao papir pozivnice
   --bg-elevated: #ffffff;
-  --bg-sunken: #f3f1ed;
-  --fill: rgba(60, 50, 40, 0.06);
-  --fill-strong: rgba(60, 50, 40, 0.1);
-  --separator: rgba(60, 50, 40, 0.12);
+  --bg-sunken: #f1ece4;
+  --fill: rgba(70, 50, 30, 0.055);
+  --fill-strong: rgba(70, 50, 30, 0.095);
+  --separator: rgba(70, 50, 30, 0.12);
 
-  --text: #1d1b19;
-  --text-secondary: #6b665f;
-  --text-tertiary: #9a948b;
+  --text: #1f1a17;
+  --text-secondary: #6e655c;
+  --text-tertiary: #978e84;
   --text-on-accent: #ffffff;
 
-  --accent: #a63f57;          // prigušena ruža
-  --accent-hover: #933449;
-  --accent-soft: rgba(166, 63, 87, 0.1);
-  --gold: #a7823c;            // šampanjac, za "istaknuto"
-  --gold-soft: rgba(167, 130, 60, 0.12);
+  --accent: #8c2f39;          // bordo (kontrast na bijelom ~8:1)
+  --accent-hover: #7a2731;
+  --accent-soft: rgba(140, 47, 57, 0.09);
+  --gold: #9a7642;            // šampanjac, samo za ocjene i "istaknuto"
+  --gold-soft: rgba(176, 141, 87, 0.15);
+  --sage: #5e6e4b;            // žalfija
+  --sage-soft: rgba(111, 125, 92, 0.15);
 
-  --success: #2f7d4f;
-  --success-soft: rgba(47, 125, 79, 0.12);
-  --warning: #a86412;
+  --success: var(--sage);
+  --success-soft: var(--sage-soft);
+  --warning: #a2600f;
   --warning-soft: rgba(168, 100, 18, 0.12);
-  --danger: #c0392b;
-  --danger-soft: rgba(192, 57, 43, 0.1);
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, 0.09);
 
   // ---- Materijali (prozirni slojevi) ----
-  --material-thin: rgba(251, 250, 248, 0.62);
-  --material-regular: rgba(251, 250, 248, 0.78);
-  --material-thick: rgba(251, 250, 248, 0.9);
+  --material-thin: rgba(250, 247, 242, 0.62);
+  --material-regular: rgba(250, 247, 242, 0.8);
+  --material-thick: rgba(250, 247, 242, 0.9);
   --material-edge: rgba(255, 255, 255, 0.55);
   --blur-thin: blur(16px) saturate(170%);
   --blur-regular: blur(24px) saturate(180%);
-  --scrim: rgba(20, 16, 12, 0.32);
+  --scrim: rgba(28, 18, 12, 0.34);
 
   // ---- Dubina: veće površine = "deblji" materijal i dublja sjena ----
-  --shadow-sm: 0 1px 2px rgba(30, 20, 10, 0.06), 0 1px 1px rgba(30, 20, 10, 0.04);
-  --shadow-md: 0 4px 16px rgba(30, 20, 10, 0.07), 0 1px 3px rgba(30, 20, 10, 0.05);
-  --shadow-lg: 0 18px 48px rgba(30, 20, 10, 0.14), 0 4px 12px rgba(30, 20, 10, 0.06);
+  // Tople (smeđe) sjene umjesto sivih.
+  --shadow-sm: 0 1px 2px rgba(60, 35, 15, 0.06), 0 1px 1px rgba(60, 35, 15, 0.04);
+  --shadow-md: 0 6px 20px rgba(60, 35, 15, 0.08), 0 1px 3px rgba(60, 35, 15, 0.05);
+  --shadow-lg: 0 20px 52px rgba(60, 35, 15, 0.15), 0 4px 12px rgba(60, 35, 15, 0.06);
 
   // ---- Oblik i razmak ----
   --radius-sm: 10px;
   --radius-md: 14px;
-  --radius-lg: 22px;
+  --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-full: 999px;
 
@@ -68,7 +73,8 @@
   // ---- Tipografija ----
   --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-display: ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  // Serif samo za velike emotivne naslove; Fraunces ima optičko skaliranje (oblik se prilagođava veličini).
+  --font-display: "Fraunces Variable", ui-serif, "New York", Georgia, serif;
 
   // ---- Pokret ----
   // Kritično prigušena kriva (bez odskoka) za obične prijelaze; pokreti koje vodi gest koriste spring u TS-u.
@@ -82,34 +88,36 @@
 @mixin dark-theme {
   color-scheme: dark;
 
-  --bg: #121110;
-  --bg-elevated: #1c1a18;
-  --bg-sunken: #0c0b0a;
-  --fill: rgba(240, 230, 220, 0.07);
-  --fill-strong: rgba(240, 230, 220, 0.12);
-  --separator: rgba(240, 230, 220, 0.12);
+  --bg: #141211;
+  --bg-elevated: #1e1b19;
+  --bg-sunken: #0e0c0b;
+  --fill: rgba(243, 230, 215, 0.07);
+  --fill-strong: rgba(243, 230, 215, 0.12);
+  --separator: rgba(243, 230, 215, 0.12);
 
-  --text: #f4f1ec;
-  --text-secondary: #ada69c;
-  --text-tertiary: #7b756c;
+  --text: #f3eee7;
+  --text-secondary: #aba298;
+  --text-tertiary: #7d756c;
 
-  --accent: #e2869a;
-  --accent-hover: #ec9aab;
-  --accent-soft: rgba(226, 134, 154, 0.14);
-  --text-on-accent: #24121a;
-  --gold: #d8b36a;
-  --gold-soft: rgba(216, 179, 106, 0.14);
+  --accent: #e38d97;
+  --accent-hover: #eca0a9;
+  --accent-soft: rgba(227, 141, 151, 0.14);
+  --text-on-accent: #2a1015;
+  --gold: #d8b97f;
+  --gold-soft: rgba(216, 185, 127, 0.14);
+  --sage: #a3b38e;
+  --sage-soft: rgba(163, 179, 142, 0.15);
 
-  --success: #5fc48a;
-  --success-soft: rgba(95, 196, 138, 0.14);
+  --success: var(--sage);
+  --success-soft: var(--sage-soft);
   --warning: #e6a352;
   --warning-soft: rgba(230, 163, 82, 0.14);
   --danger: #f0786b;
   --danger-soft: rgba(240, 120, 107, 0.14);
 
-  --material-thin: rgba(28, 26, 24, 0.6);
-  --material-regular: rgba(28, 26, 24, 0.76);
-  --material-thick: rgba(28, 26, 24, 0.9);
+  --material-thin: rgba(30, 27, 25, 0.6);
+  --material-regular: rgba(30, 27, 25, 0.76);
+  --material-thick: rgba(30, 27, 25, 0.9);
   --material-edge: rgba(255, 255, 255, 0.08);
   --scrim: rgba(0, 0, 0, 0.5);
 
