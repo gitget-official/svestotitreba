@@ -6,8 +6,13 @@ import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, VendorApi } from '../../core/api'
 import { BRAND } from '../../core/brand';
 import { LookupStore } from '../../core/lookups';
 import { Vendor } from '../../core/models';
+import { FadeInImage } from '../../shared/motion/fade-in-image';
+import { Reveal } from '../../shared/motion/reveal';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
+import { Ink } from '../../shared/ui/ink';
+import { LandingFaq } from './landing-faq';
+import { LandingSteps } from './landing-steps';
 import { VendorCard } from '../../shared/ui/vendor-card';
 
 const CATEGORIES = [
@@ -20,29 +25,6 @@ const CATEGORIES = [
   { slug: 'beauty-makeup', name: 'Beauty i make-up', icon: 'sparkles', text: 'Šminka i tretmani pred veliki dan.' },
 ];
 
-const FAQ = [
-  {
-    q: 'Da li je korištenje besplatno za mladence?',
-    a: 'Da. Pretraga, poređenje, planer i slanje upita salonima su besplatni.',
-  },
-  {
-    q: 'Kako planer zna šta mi odgovara?',
-    a: 'Odaberete usluge, budžet i grad, a planer raspodijeli budžet po kategorijama i predloži najbolje ocijenjene ponuđače čije cijene staju u taj okvir. Svaki prijedlog možete zamijeniti.',
-  },
-  {
-    q: 'Jesu li cijene konačne?',
-    a: 'Ne. Saloni navode okvirne cijene od–do; tačna cijena zavisi od datuma, broja gostiju i dogovora sa salonom.',
-  },
-  {
-    q: 'Mogu li odmah rezervisati termin?',
-    a: 'Kod salona koji imaju online zakazivanje, da. Neki termin potvrđuju odmah, a neki ručno. Ostale kontaktirate telefonom ili e-mailom sa njihove stranice.',
-  },
-  {
-    q: 'Imam salon. Kako da se pojavim na platformi?',
-    a: 'Pošaljite nam upit preko forme ispod. Otvorićemo vam nalog sa vlastitom stranicom, cjenovnikom, galerijom i (ako želite) online rezervacijama.',
-  },
-];
-
 /**
  * Javna početna. Prvo ono što gost traži (pretraga i stvarna ponuda), pa kako funkcioniše, planer,
  * ponuda za salone i česta pitanja. Dijelovi koji traže API (gradovi, istaknuti ponuđači) se tiho
@@ -50,7 +32,7 @@ const FAQ = [
  */
 @Component({
   selector: 'app-landing',
-  imports: [FormsModule, RouterLink, BrandMark, Icon, VendorCard],
+  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingSteps, Reveal, VendorCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
@@ -75,7 +57,9 @@ const FAQ = [
         <div class="container hero-grid">
           <div class="hero-copy">
             <p class="t-eyebrow">Za mladence u Bosni i Hercegovini</p>
-            <h1 class="t-display">Sve za vaše vjenčanje, na jednom mjestu.</h1>
+            <h1 class="t-display">
+              Sve za vaše <span class="nowrap"><app-ink [delay]="620">vjenčanje</app-ink>,</span> na jednom mjestu.
+            </h1>
             <p class="lead">
               Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili. Uporedite cijene, sačuvajte
               favorite i rezervišite termin, bez desetina poziva.
@@ -113,7 +97,7 @@ const FAQ = [
             @for (tile of collage(); track $index; let i = $index) {
               <div class="tile" [class]="'tile t' + i">
                 @if (tile.image) {
-                  <img [src]="tile.image" alt="" [attr.loading]="i === 0 ? 'eager' : 'lazy'" decoding="async" />
+                  <img appFadeIn [src]="tile.image" alt="" [attr.loading]="i === 0 ? 'eager' : 'lazy'" decoding="async" />
                 } @else {
                   <span class="tile-icon"><app-icon [name]="tile.icon" [strokeWidth]="1.4" /></span>
                 }
@@ -125,11 +109,11 @@ const FAQ = [
       </section>
 
       <section class="container section" aria-labelledby="kategorije">
-        <div class="section-head">
+        <div class="section-head" appReveal>
           <h2 id="kategorije" class="t-title-2">Šta sve možete pronaći</h2>
           <a class="btn btn-plain btn-sm" routerLink="/istrazi">Sve ponude <app-icon name="chevron-right" /></a>
         </div>
-        <div class="categories">
+        <div class="categories" appReveal="stagger" [revealDelay]="60">
           @for (c of categories; track c.slug) {
             <a class="category card" routerLink="/istrazi" [queryParams]="{ kategorija: c.slug }">
               <span class="cat-icon"><app-icon [name]="c.icon" /></span>
@@ -145,11 +129,11 @@ const FAQ = [
 
       @if (featured().length) {
         <section class="container section" aria-labelledby="istaknuti">
-          <div class="section-head">
+          <div class="section-head" appReveal>
             <h2 id="istaknuti" class="t-title-2">Izdvojeni ponuđači</h2>
             <a class="btn btn-plain btn-sm" routerLink="/istrazi">Pogledaj sve <app-icon name="chevron-right" /></a>
           </div>
-          <div class="rail">
+          <div class="rail" appReveal="stagger" [revealDelay]="60">
             @for (v of featured(); track v.id) {
               <app-vendor-card [vendor]="v" />
             }
@@ -158,7 +142,7 @@ const FAQ = [
       }
 
       <section class="container section">
-        <div class="planner card">
+        <div class="planner card" appReveal>
           <div class="planner-copy">
             <span class="badge badge-accent"><app-icon name="sparkles" /> Planer vjenčanja</span>
             <h2 class="t-title-1 serif">Recite nam budžet, mi složimo paket.</h2>
@@ -168,7 +152,7 @@ const FAQ = [
             </p>
             <a class="btn btn-magic btn-lg" routerLink="/planiranje"><app-icon name="sparkles" /> Složi mi paket</a>
           </div>
-          <ol class="planner-steps">
+          <ol class="planner-steps" appReveal="stagger" [revealDelay]="180">
             <li><span class="num">1</span><div><strong>Usluge</strong><p class="t-footnote muted">Sala, fotograf, vjenčanica…</p></div></li>
             <li><span class="num">2</span><div><strong>Budžet i grad</strong><p class="t-footnote muted">Okvirno, ne mora biti tačno.</p></div></li>
             <li><span class="num">3</span><div><strong>Vaš paket</strong><p class="t-footnote muted">Sa procjenom ukupne cijene.</p></div></li>
@@ -177,28 +161,11 @@ const FAQ = [
       </section>
 
       <section class="container section" aria-labelledby="kako">
-        <h2 id="kako" class="t-title-2">Kako funkcioniše</h2>
-        <ol class="steps">
-          <li>
-            <span class="step-icon"><app-icon name="search" /></span>
-            <h3 class="t-title-3">Pretražite i uporedite</h3>
-            <p class="muted">Filtrirajte po gradu, cijeni, ocjeni i slobodnom datumu. Sačuvajte favorite i uporedite ih jedno uz drugo.</p>
-          </li>
-          <li>
-            <span class="step-icon"><app-icon name="calendar" /></span>
-            <h3 class="t-title-3">Rezervišite ili pitajte</h3>
-            <p class="muted">Pošaljite zahtjev za termin salonu koji prima rezervacije, ili ga kontaktirajte direktno.</p>
-          </li>
-          <li>
-            <span class="step-icon"><app-icon name="star" /></span>
-            <h3 class="t-title-3">Podijelite iskustvo</h3>
-            <p class="muted">Recenzije mladenaca pomažu drugim parovima. Svaku pregleda naš tim prije objave.</p>
-          </li>
-        </ol>
+        <app-landing-steps />
       </section>
 
       <section class="container section" id="saloni" aria-labelledby="za-salone">
-        <div class="vendors card">
+        <div class="vendors card" appReveal>
           <div class="vendors-copy">
             <p class="t-eyebrow">Za salone i ponuđače</p>
             <h2 id="za-salone" class="t-title-1">Neka vas mladenci pronađu.</h2>
@@ -248,15 +215,7 @@ const FAQ = [
       </section>
 
       <section class="container section narrow" aria-labelledby="faq">
-        <h2 id="faq" class="t-title-2">Česta pitanja</h2>
-        <div class="faq list-group">
-          @for (item of faq; track item.q) {
-            <details class="list-row">
-              <summary>{{ item.q }} <app-icon name="chevron-down" class="chev" /></summary>
-              <p class="muted">{{ item.a }}</p>
-            </details>
-          }
-        </div>
+        <app-landing-faq />
       </section>
     </main>
 
@@ -361,6 +320,10 @@ const FAQ = [
         transform: translateY(14px);
       }
     }
+    // Zarez ostaje uz riječ sa potezom pera (inače na telefonu pređe u novi red).
+    .nowrap {
+      white-space: nowrap;
+    }
 
     .lead {
       font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
@@ -458,6 +421,17 @@ const FAQ = [
       object-fit: cover;
     }
 
+    // Fotografija se po učitavanju jednom "smjesti" u okvir (blago približena pa na mjesto), bez ponavljanja.
+    .tile img.is-loaded {
+      animation: settle 1400ms var(--ease-out) both;
+    }
+
+    @keyframes settle {
+      from {
+        transform: scale(1.08);
+      }
+    }
+
     .tile-icon {
       display: grid;
       place-items: center;
@@ -543,6 +517,17 @@ const FAQ = [
       border-radius: var(--radius-md);
       background: var(--accent-soft);
       color: var(--accent);
+      transition:
+        transform var(--dur-base) var(--ease-out),
+        background-color var(--dur-fast) ease;
+    }
+
+    // Ikona se pod mišem blago podigne i nagne prema kursoru: kategorija "odgovara" prije klika.
+    @media (hover: hover) and (pointer: fine) {
+      .category:hover .cat-icon {
+        transform: translateY(-2px) rotate(-6deg);
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+      }
     }
 
     .cat-text {
@@ -608,8 +593,7 @@ const FAQ = [
       height: 0.85rem;
     }
 
-    .planner-steps,
-    .steps {
+    .planner-steps {
       display: grid;
       gap: var(--space-4);
       margin: 0;
@@ -638,27 +622,6 @@ const FAQ = [
       color: var(--bg);
       font-weight: 700;
       font-size: 0.8125rem;
-    }
-
-    .steps {
-      gap: var(--space-5);
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-    }
-
-    .steps li {
-      display: grid;
-      gap: var(--space-2);
-      align-content: start;
-    }
-
-    .step-icon {
-      display: grid;
-      place-items: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: var(--radius-md);
-      background: var(--fill);
-      color: var(--text);
     }
 
     .vendors {
@@ -697,34 +660,6 @@ const FAQ = [
       padding: var(--space-5);
       border-radius: var(--radius-lg);
       background: var(--bg-sunken);
-    }
-
-    .faq details {
-      display: block;
-    }
-
-    .faq summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      min-height: 2.25rem;
-      font-weight: 600;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .faq summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .faq details[open] .chev {
-      transform: rotate(180deg);
-    }
-
-    .faq details p {
-      padding-bottom: var(--space-2);
-      max-width: 42rem;
     }
 
     .footer {
@@ -815,6 +750,17 @@ const FAQ = [
         animation-delay: 0ms !important;
       }
 
+      .tile img.is-loaded {
+        animation: none;
+      }
+      .cat-icon {
+        transition: none;
+      }
+
+      .category:hover .cat-icon {
+        transform: none;
+      }
+
       @keyframes tile-fade {
         from {
           opacity: 0;
@@ -834,7 +780,6 @@ export class Landing implements OnInit {
   protected readonly brand = BRAND;
   protected readonly year = new Date().getFullYear();
   protected readonly categories = CATEGORIES;
-  protected readonly faq = FAQ;
   protected readonly featured = signal<Vendor[]>([]);
   protected readonly scrolled = signal(false);
 
