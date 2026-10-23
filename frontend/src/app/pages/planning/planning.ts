@@ -10,6 +10,8 @@ import { LookupStore } from '../../core/lookups';
 import { ServiceCategory, Vendor } from '../../core/models';
 import { PlanItem, PlanStore } from '../../core/plan-store';
 import { Plan, PlanAnswers, PlanOption, buildPlan } from '../../core/planner';
+import { FadeInImage } from '../../shared/motion/fade-in-image';
+import { springNumber } from '../../shared/motion/spring-number';
 import { DateField } from '../../shared/ui/date-time-fields';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
@@ -24,7 +26,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
  */
 @Component({
   selector: 'app-planning',
-  imports: [FormsModule, RouterLink, Icon, DateField],
+  imports: [FormsModule, RouterLink, FadeInImage, Icon, DateField],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page planner">
@@ -150,7 +152,9 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                 <div class="summary-head">
                   <div>
                     <p class="t-caption muted">Procjena ukupno</p>
-                    <p class="t-title-1 total">{{ range(p.totalFrom, p.totalTo) }}</p>
+                    <p class="t-title-1 total" [attr.aria-label]="range(p.totalFrom, p.totalTo)">
+                      <span aria-hidden="true">{{ range(whole(shownFrom()), whole(shownTo())) }}</span>
+                    </p>
                   </div>
                   @switch (fit()) {
                     @case ('over') { <span class="badge badge-warning">Iznad budžeta za {{ price(overBy()) }}</span> }
@@ -182,7 +186,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                     @if (line.choice; as c) {
                       <a class="pick" [routerLink]="link(c.vendor)">
                         <span class="thumb">
-                          @if (cover(c.vendor); as url) { <img [src]="url" alt="" loading="lazy" decoding="async" /> }
+                          @if (cover(c.vendor); as url) { <img appFadeIn [src]="url" alt="" loading="lazy" decoding="async" /> }
                         </span>
                         <span class="pick-info">
                           <strong>{{ c.vendor.name }}</strong>
@@ -503,7 +507,8 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
       border-radius: inherit;
       background: var(--success);
       transform-origin: left;
-      transition: transform 500ms var(--ease-out), background-color var(--dur-fast) ease;
+      // Bez transform prijelaza: traku vodi isti spring kao i broj iznad nje.
+      transition: background-color var(--dur-fast) ease;
     }
 
     .fill.over {
@@ -740,6 +745,7 @@ export class Planning implements OnInit {
   protected readonly range = formatPriceRange;
   protected readonly link = vendorLink;
   protected readonly round = (n: number) => Math.round(n / 100) * 100;
+  protected readonly whole = (n: number) => Math.max(0, Math.round(n));
   protected readonly date = (value: string) => formatDate(value);
 
   protected readonly step = signal(0);
@@ -779,9 +785,14 @@ export class Planning implements OnInit {
     return p.totalTo > p.budget ? 'maybe' : 'ok';
   });
 
+  // Ukupno se "odbroji" do nove vrijednosti (pri slaganju od nule, pri zamjeni od starog iznosa),
+  // a traka budžeta raste zajedno sa brojem, pa se vidi koliko je zamjena promijenila.
+  protected readonly shownFrom = springNumber(() => this.plan()?.totalFrom ?? 0);
+  protected readonly shownTo = springNumber(() => this.plan()?.totalTo ?? 0);
+
   protected readonly meter = computed(() => {
     const p = this.plan();
-    return p && p.budget > 0 ? Math.min(1, p.totalFrom / p.budget) : 0;
+    return p && p.budget > 0 ? Math.min(1, Math.max(0, this.shownFrom()) / p.budget) : 0;
   });
 
   protected readonly budgetError = computed(() => {
