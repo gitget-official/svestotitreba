@@ -1,0 +1,68 @@
+// Angular Material (datepicker, timepicker) u našem vizuelnom jeziku:
+// Material 3 tema daje strukturu, a sistemske boje i fontovi se preslikavaju na naše tokene,
+// pa kalendar automatski prati svijetlu i tamnu temu.
+@use "@angular/material" as mat;
+
+html {
+  @include mat.theme((
+    color: (primary: mat.$rose-palette, theme-type: color-scheme),
+    typography: (plain-family: (system-ui, sans-serif), brand-family: ("Fraunces Variable", Georgia, serif)),
+    density: 0,
+  ));
+
+  --mat-sys-primary: var(--accent);
+  --mat-sys-on-primary: var(--text-on-accent);
+  --mat-sys-primary-container: var(--accent-soft);
+  --mat-sys-on-primary-container: var(--accent);
+  --mat-sys-secondary-container: var(--accent-soft);
+  --mat-sys-on-secondary-container: var(--accent);
+  --mat-sys-surface: var(--bg-elevated);
+  --mat-sys-surface-container: var(--bg-elevated);
+  --mat-sys-surface-container-high: var(--bg-elevated);
+  --mat-sys-surface-container-highest: var(--bg-elevated);
+  --mat-sys-on-surface: var(--text);
+  --mat-sys-on-surface-variant: var(--text-secondary);
+  --mat-sys-outline: var(--separator);
+  --mat-sys-outline-variant: var(--separator);
+  --mat-sys-body-large-font: var(--font);
+  --mat-sys-body-medium-font: var(--font);
+  --mat-sys-label-large-font: var(--font);
+  --mat-sys-title-small-font: var(--font);
+
+  @include mat.datepicker-overrides((
+    calendar-container-shape: var(--radius-lg),
+    calendar-container-touch-shape: var(--radius-xl),
+    calendar-container-elevation-shadow: var(--shadow-lg),
+    calendar-container-touch-elevation-shadow: var(--shadow-lg),
+    calendar-date-today-outline-color: var(--accent),
+    calendar-date-hover-state-background-color: var(--accent-soft),
+    calendar-date-focus-state-background-color: var(--accent-soft),
+  ));
+
+  @include mat.timepicker-overrides((
+    container-shape: var(--radius-md),
+    container-elevation-shadow: var(--shadow-lg),
+  ));
+}
+
+// Kalendar se "materijalizuje" iz polja (skala + prozirnost), kao i ostali plutajući slojevi.
+.mat-datepicker-content {
+  border: 1px solid var(--separator);
+}
+
+.mat-calendar-body-selected {
+  font-weight: 700;
+}
+
+// Ugodnije zatamnjenje iza kalendara na telefonu.
+.cdk-overlay-dark-backdrop {
+  background: var(--scrim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mat-datepicker-content,
+  .mat-timepicker-panel {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,22 +1,52 @@
-# .NET
+# ---------- .NET / Visual Studio / Rider ----------
 bin/
 obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+TestResults/
+publish/
+artifacts/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
+*.rsuser
 .vs/
-.vscode/
 .idea/
-*.swp
-TestResults/
-publish/
+*.DotSettings.user
+_ReSharper*/
 
-# Angular / Node (frontend)
+# Lokalne tajne i postavke koje ne idu u repo
+appsettings.*.local.json
+secrets.json
+.env
+.env.*
+
+# Lokalne baze
+*.mdf
+*.ldf
+*.db
+*.sqlite
+
+# Uploadovani fajlovi tokom razvoja
+uploads/
+
+# ---------- Angular / Node (frontend) ----------
 node_modules/
 dist/
 .angular/
+coverage/
+npm-debug.log*
+yarn-error.log*
 
-# OS
+# ---------- Editori i OS ----------
+.vscode/*
+!.vscode/extensions.json
+*.swp
 .DS_Store
 Thumbs.db
+desktop.ini
