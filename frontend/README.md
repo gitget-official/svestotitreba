@@ -83,6 +83,19 @@ Rađeno po principima Apple dizajna prilagođenim za web:
 - **Tipografija:** sistemski font, tracking i prored zavise od veličine.
 - **Pristupačnost:** `prefers-reduced-motion` (pretapanje umjesto pokreta), `prefers-reduced-transparency`, `prefers-contrast`, tamna tema, fokus prstenovi, ARIA uloge.
 
+Zajednički pokret (`shared/motion`, stilovi u `styles/_motion.scss`):
+
+| Alat | Šta radi | Gdje se koristi |
+|---|---|---|
+| `appReveal` / `appReveal="stagger"` | sadržaj blago uđe kad dođe u vidno polje, jednom; djeca redom | sekcije početne, usluge i recenzije ponuđača |
+| `img[appFadeIn]` | fotografija se pretopi kad se učita (iz keša odmah) | kartice, galerija, kolaž, Sačuvano, planer, Moj plan |
+| `springNumber()` | broj springom prati drugi broj (odbrojavanje) | ukupna procjena i traka budžeta u planeru |
+| `<app-ink>` | potez pera ispod riječi, iscrta se jednom | naslov početne („vjenčanje“) |
+
+Sitni odzivi: srce pri čuvanju pusti jedan prsten, trake ocjena se pune od pet zvjezdica naniže, odgovori u
+čestim pitanjima izlaze iz pitanja, ikone kategorija se pod mišem blago nagnu, a tri koraka „Kako funkcioniše“
+povezuje linija puta (desktop). Nema petlji ni odskoka bez gesta.
+
 ## Napomene
 
 - Slike se za sada dodaju preko URL-a; upload dolazi kasnije.
