@@ -1,0 +1,82 @@
+// Zajednički pokret: ulaz sadržaja pri skrolanju (appReveal) i pretapanje fotografija (appFadeIn).
+// Samo transform i opacity. `backwards` drži početno stanje samo tokom kašnjenja, pa nakon ulaza
+// element opet sam vodi svoje transform prijelaze (hover, pritisak).
+
+:root {
+  --reveal-distance: 18px;
+  --dur-reveal: 560ms;
+  --stagger-step: 55ms;
+}
+
+// Skriveno samo dok observer radi (klasu postavlja Reveal direktiva), pa bez JS-a sve ostaje vidljivo.
+.reveal-armed {
+  .reveal:not(.is-revealed),
+  .reveal-stagger:not(.is-revealed) > * {
+    opacity: 0;
+  }
+}
+
+.reveal.is-revealed {
+  animation: reveal-in var(--dur-reveal) var(--ease-out) backwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-stagger.is-revealed > * {
+  animation: reveal-in var(--dur-reveal) var(--ease-out) backwards;
+  animation-delay: calc(var(--reveal-delay, 0ms) + var(--n, 0) * var(--stagger-step));
+}
+
+// Redoslijed do osme stavke; dalje ulaze zajedno (dug red čekanja bi djelovao sporo).
+@for $i from 2 through 8 {
+  .reveal-stagger > :nth-child(#{$i}) {
+    --n: #{$i - 1};
+  }
+}
+
+.reveal-stagger > :nth-child(n + 9) {
+  --n: 8;
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--reveal-distance));
+  }
+}
+
+// ---- Fotografije ----
+.fade-img {
+  opacity: 0;
+  transition: opacity 420ms ease-out;
+
+  &.is-loaded {
+    opacity: 1;
+  }
+
+  &.no-fade {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal.is-revealed,
+  .reveal-stagger.is-revealed > * {
+    animation: reveal-fade var(--dur-fast) ease backwards;
+    animation-delay: 0ms;
+  }
+
+  @keyframes reveal-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+@media print {
+  .reveal-armed .reveal,
+  .reveal-armed .reveal-stagger > *,
+  .fade-img {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+}

@@ -3,18 +3,19 @@ import { RouterLink } from '@angular/router';
 import { formatPriceRange } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { Vendor } from '../../core/models';
+import { FadeInImage } from '../motion/fade-in-image';
 import { Icon } from './icon';
 import { SaveButton } from './save-button';
 
 @Component({
   selector: 'app-vendor-card',
-  imports: [RouterLink, Icon, SaveButton],
+  imports: [RouterLink, FadeInImage, Icon, SaveButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="card-link" [routerLink]="link()">
       <div class="media">
         @if (cover(); as url) {
-          <img [src]="url" [alt]="vendor().name" loading="lazy" decoding="async" />
+          <img appFadeIn [src]="url" [alt]="vendor().name" loading="lazy" decoding="async" />
         } @else {
           <div class="placeholder"><app-icon name="image" /></div>
         }

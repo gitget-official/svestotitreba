@@ -4,6 +4,7 @@ import { AuthService } from '../../core/auth';
 import { FavoritesService, SavedVendor } from '../../core/favorites';
 import { formatPrice, formatPriceRange, plural } from '../../core/format';
 import { vendorLink } from '../../core/links';
+import { FadeInImage } from '../../shared/motion/fade-in-image';
 import { Icon } from '../../shared/ui/icon';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
@@ -16,7 +17,7 @@ const MAX_COMPARE = 3;
  */
 @Component({
   selector: 'app-saved',
-  imports: [RouterLink, Icon, Sheet],
+  imports: [RouterLink, FadeInImage, Icon, Sheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -60,7 +61,7 @@ const MAX_COMPARE = 3;
               <article class="item card" [class.selected]="isSelected(item.id)">
                 <a class="thumb" [routerLink]="link(item)" [attr.aria-label]="item.name">
                   @if (item.cover) {
-                    <img [src]="item.cover" alt="" loading="lazy" decoding="async" />
+                    <img appFadeIn [src]="item.cover" alt="" loading="lazy" decoding="async" />
                   } @else {
                     <app-icon name="image" />
                   }

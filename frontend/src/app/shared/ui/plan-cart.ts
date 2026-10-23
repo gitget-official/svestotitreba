@@ -6,6 +6,7 @@ import { AuthService } from '../../core/auth';
 import { formatPrice, formatPriceRange, plural } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
 import { PlanItem, PlanStore } from '../../core/plan-store';
+import { FadeInImage } from '../motion/fade-in-image';
 import { Icon, categoryIcon } from './icon';
 import { Sheet } from './sheet';
 import { ToastService } from './toast';
@@ -16,7 +17,7 @@ import { ToastService } from './toast';
  */
 @Component({
   selector: 'app-plan-cart',
-  imports: [RouterLink, Icon, Sheet],
+  imports: [RouterLink, FadeInImage, Icon, Sheet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
@@ -62,7 +63,7 @@ import { ToastService } from './toast';
               @for (item of store.items(); track item.categoryId) {
                 <li class="item">
                   <a class="thumb" [routerLink]="['/ponudjaci', item.vendorId + '-' + item.vendorSlug]" (click)="close()" tabindex="-1">
-                    @if (item.cover) { <img [src]="item.cover" alt="" loading="lazy" /> } @else { <app-icon [name]="icon(item.categorySlug)" /> }
+                    @if (item.cover) { <img appFadeIn [src]="item.cover" alt="" loading="lazy" /> } @else { <app-icon [name]="icon(item.categorySlug)" /> }
                   </a>
                   <div class="info">
                     <span class="t-caption muted">{{ item.categoryName }}</span>

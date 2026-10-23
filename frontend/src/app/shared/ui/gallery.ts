@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { VendorImage } from '../../core/models';
 import { SPRING_DEFAULT, SPRING_DRAWER, Spring, VelocityTracker, project, rubberband } from '../motion/spring';
+import { FadeInImage } from '../motion/fade-in-image';
 import { Icon } from './icon';
 
 /**
@@ -20,7 +21,7 @@ import { Icon } from './icon';
  */
 @Component({
   selector: 'app-gallery',
-  imports: [Icon],
+  imports: [FadeInImage, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -40,7 +41,7 @@ import { Icon } from './icon';
       <div #track class="track">
         @for (image of images(); track image.id; let i = $index) {
           <figure class="slide">
-            <img [src]="image.url" [alt]="image.caption || 'Fotografija ' + (i + 1)" draggable="false"
+            <img appFadeIn [src]="image.url" [alt]="image.caption || 'Fotografija ' + (i + 1)" draggable="false"
               [attr.loading]="i === 0 ? 'eager' : 'lazy'" decoding="async" />
           </figure>
         }
