@@ -25,6 +25,7 @@ import { BRAND } from '../../core/brand';
 import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso } from '../../core/format';
 import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Offering, Review, Vendor } from '../../core/models';
+import { Reveal } from '../../shared/motion/reveal';
 import { Gallery } from '../../shared/ui/gallery';
 import { LookupStore } from '../../core/lookups';
 import { PlanItem, PlanStore } from '../../core/plan-store';
@@ -43,7 +44,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
  */
 @Component({
   selector: 'app-vendor-detail',
-  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, SaveButton, Sheet, DateField, TimeField, FieldError],
+  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, Reveal, SaveButton, Sheet, DateField, TimeField, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -96,7 +97,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
               </section>
             }
 
-            <section class="section">
+            <section class="section" appReveal>
               <h2 class="t-title-3">Usluge i cijene</h2>
               @for (group of offeringGroups(); track group.category) {
                 <div class="stack-sm">
@@ -119,7 +120,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
               <p class="t-caption subtle">Cijene su okvirne (od–do) i zavise od dogovora sa ponuđačem.</p>
             </section>
 
-            <section class="section" id="recenzije">
+            <section class="section" id="recenzije" appReveal>
               <div class="section-head">
                 <h2 class="t-title-3">Recenzije</h2>
                 @if (canReview()) {
@@ -140,7 +141,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
                 }
               }
               @if (breakdown(); as b) {
-                <div class="breakdown card">
+                <div class="breakdown card" appReveal [revealDelay]="80">
                   <div class="score">
                     <span class="big">{{ b.average.toFixed(1) }}</span>
                     <app-rating [value]="b.average" />
@@ -150,14 +151,14 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
                     @for (row of b.rows; track row.stars) {
                       <div class="bar-row">
                         <span class="t-footnote">{{ row.stars }}</span>
-                        <span class="bar" aria-hidden="true"><span [style.width.%]="row.percent"></span></span>
+                        <span class="bar" aria-hidden="true"><span [style.--p]="row.percent / 100"></span></span>
                         <span class="t-footnote muted count">{{ row.count }}</span>
                       </div>
                     }
                   </div>
                 </div>
               }
-              <div class="reviews">
+              <div class="reviews" appReveal="stagger" [revealDelay]="120">
                 @for (review of publishedReviews(); track review.id) {
                   <article class="review card">
                     <div class="row">
@@ -460,11 +461,31 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
       overflow: hidden;
     }
 
+    // Traka se puni kad kartica uđe u vidno polje, od pet zvjezdica naniže. Pomjera se (translateX) unutar
+    // zaobljenog okvira, pa zaobljenje ostaje čisto, bez rastezanja.
     .bar span {
       display: block;
       height: 100%;
       border-radius: inherit;
       background: var(--gold);
+      transform: translateX(calc((var(--p, 0) - 1) * 100%));
+      transition: transform 760ms var(--ease-out);
+    }
+
+    @for $i from 2 through 5 {
+      .bar-row:nth-child(#{$i}) .bar span {
+        transition-delay: #{($i - 1) * 70}ms;
+      }
+    }
+
+    :host-context(.reveal-armed) .breakdown:not(.is-revealed) .bar span {
+      transform: translateX(-100%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bar span {
+        transition: none;
+      }
     }
 
     .count {

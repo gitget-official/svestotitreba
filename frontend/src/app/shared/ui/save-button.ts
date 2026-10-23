@@ -22,7 +22,7 @@ import { ToastService } from './toast';
       [attr.aria-pressed]="saved()"
       [attr.aria-label]="saved() ? 'Ukloni iz sačuvanog' : 'Sačuvaj'"
       (click)="toggle($event)"
-      (animationend)="pop.set(false)"
+      (animationend)="onAnimationEnd($event)"
     >
       <app-icon name="heart" [filled]="saved()" [strokeWidth]="2" />
       @if (withLabel()) { <span>{{ saved() ? 'Sačuvano' : 'Sačuvaj' }}</span> }
@@ -94,9 +94,39 @@ import { ToastService } from './toast';
       }
     }
 
+    // Jedan prsten se raširi oko srca i nestane: potvrda da je sačuvano, bez konfeta.
+    .save {
+      position: relative;
+    }
+
+    .pop::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 2px solid var(--accent);
+      pointer-events: none;
+      animation: ring 520ms var(--ease-out) forwards;
+    }
+
+    @keyframes ring {
+      from {
+        opacity: 0.55;
+        transform: scale(0.7);
+      }
+      to {
+        opacity: 0;
+        transform: scale(1.55);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .pop app-icon {
         animation: none;
+      }
+
+      .pop::after {
+        display: none;
       }
     }
   `,
@@ -113,6 +143,11 @@ export class SaveButton {
 
   protected readonly saved = computed(() => this.favorites.has(this.vendor().id));
   protected readonly pop = signal(false);
+
+  /** Prsten traje duže od "iskakanja" srca; klasa se skida tek kad on završi (Angular dodaje prefiks imenu). */
+  protected onAnimationEnd(event: AnimationEvent): void {
+    if (event.animationName.endsWith('ring')) this.pop.set(false);
+  }
 
   protected toggle(event: Event): void {
     // Srce je često unutar linka (kartica): ne otvaraj ponuđača.
