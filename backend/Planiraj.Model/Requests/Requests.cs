@@ -22,6 +22,7 @@ public class RegisterRequest
     [MaxLength(30)] public string? PhoneNumber { get; set; }
     public int? CityId { get; set; }
     [Required, MinLength(8), MaxLength(100)] public string Password { get; set; } = string.Empty;
+    [Avatar] public string? AvatarUrl { get; set; }
 }
 
 public class ProfileUpdateRequest
@@ -30,6 +31,30 @@ public class ProfileUpdateRequest
     [Required, MaxLength(100)] public string LastName { get; set; } = string.Empty;
     [MaxLength(30)] public string? PhoneNumber { get; set; }
     public int? CityId { get; set; }
+    [Avatar] public string? AvatarUrl { get; set; }
+}
+
+/// <summary>
+/// Profilna slika: ilustrovani avatar ("avatar:ruza") ili fotografija koju frontend umanji na 256 px
+/// i pošalje kao data URL (JPEG/PNG/WebP). Dok ne postoji upload fajlova, slika se čuva uz korisnika.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class AvatarAttribute : ValidationAttribute
+{
+    /// <summary>~150 KB slike u base64; umanjena fotografija od 256 px je obično 15–40 KB.</summary>
+    public const int MaxLength = 200_000;
+
+    private static readonly System.Text.RegularExpressions.Regex Preset = new("^avatar:[a-z0-9-]{1,40}$");
+    private static readonly System.Text.RegularExpressions.Regex Photo = new("^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$");
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext context)
+    {
+        if (value is not string s || s.Length == 0) return ValidationResult.Success;
+        if (s.Length > MaxLength) return new ValidationResult("Fotografija je prevelika.");
+        return Preset.IsMatch(s) || Photo.IsMatch(s)
+            ? ValidationResult.Success
+            : new ValidationResult("Neispravna profilna slika.");
+    }
 }
 
 public class ChangePasswordRequest

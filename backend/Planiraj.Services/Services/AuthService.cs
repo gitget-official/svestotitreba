@@ -56,6 +56,7 @@ public class AuthService : IAuthService
             Email = email,
             Username = username,
             PhoneNumber = request.PhoneNumber,
+            AvatarUrl = NullIfEmpty(request.AvatarUrl),
             CityId = request.CityId,
             Role = UserRole.Couple,
             IsActive = true,
@@ -79,6 +80,7 @@ public class AuthService : IAuthService
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
         user.PhoneNumber = request.PhoneNumber;
+        user.AvatarUrl = NullIfEmpty(request.AvatarUrl);
         user.CityId = request.CityId;
 
         await _context.SaveChangesAsync();
@@ -99,6 +101,8 @@ public class AuthService : IAuthService
         user.MustChangePassword = false;
         await _context.SaveChangesAsync();
     }
+
+    private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private async Task<User> FindCurrentAsync()
     {

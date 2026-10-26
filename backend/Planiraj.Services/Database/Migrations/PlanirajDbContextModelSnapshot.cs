@@ -231,6 +231,9 @@ namespace Planiraj.Services.Database.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AvatarUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("CityId")
                         .HasColumnType("int");
 

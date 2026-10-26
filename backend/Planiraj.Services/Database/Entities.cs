@@ -14,6 +14,8 @@ public class User : BaseEntity
     public string Email { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
+    /// <summary>Profilna slika: ilustrovani avatar ("avatar:ključ") ili mala fotografija kao data URL (vidi AvatarAttribute).</summary>
+    public string? AvatarUrl { get; set; }
 
     public string PasswordHash { get; set; } = string.Empty;
     public string PasswordSalt { get; set; } = string.Empty;
