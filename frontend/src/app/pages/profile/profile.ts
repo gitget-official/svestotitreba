@@ -3,20 +3,22 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
 import { AuthService } from '../../core/auth';
-import { ROLE_LABEL, initials } from '../../core/format';
+import { ROLE_LABEL } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
 import { ThemePreference, ThemeService } from '../../core/theme';
 import { ToastService } from '../../shared/ui/toast';
+import { Avatar } from '../../shared/ui/avatar';
+import { AvatarPicker } from '../../shared/ui/avatar-picker';
 
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule, FieldError],
+  imports: [ReactiveFormsModule, FieldError, Avatar, AvatarPicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page enter narrow">
       @if (auth.user(); as user) {
         <header class="hero">
-          <span class="avatar">{{ initials(user.firstName, user.lastName) }}</span>
+          <app-avatar class="avatar" [src]="user.avatarUrl" [firstName]="user.firstName" [lastName]="user.lastName" />
           <div>
             <h1 class="t-title-1">{{ user.firstName }} {{ user.lastName }}</h1>
             <p class="muted">{{ roleLabel[user.role] }} · {{ user.email }}</p>
@@ -27,6 +29,8 @@ import { ToastService } from '../../shared/ui/toast';
       <section class="stack">
         <h2 class="t-title-3">Lični podaci</h2>
         <form class="card card-pad stack" [formGroup]="profile" (ngSubmit)="saveProfile()">
+          <app-avatar-picker class="picker" [value]="profile.controls.avatarUrl.value" (valueChange)="setAvatar($event)"
+            [firstName]="profile.controls.firstName.value" [lastName]="profile.controls.lastName.value" />
           <div class="form-grid">
             <div class="field">
               <label for="firstName">Ime</label>
@@ -114,16 +118,14 @@ import { ToastService } from '../../shared/ui/toast';
     }
 
     .avatar {
-      display: grid;
-      place-items: center;
-      flex: none;
       width: 4rem;
       height: 4rem;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 1.375rem;
-      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .picker {
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--separator);
     }
 
     .between {
@@ -143,7 +145,6 @@ export class Profile implements OnInit {
   private readonly toasts = inject(ToastService);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly initials = initials;
   protected readonly roleLabel = ROLE_LABEL;
   protected readonly themes: { value: ThemePreference; label: string }[] = [
     { value: 'system', label: 'Sistemska' },
@@ -156,6 +157,7 @@ export class Profile implements OnInit {
     lastName: this.fb.nonNullable.control('', [Validators.required, ...V.personName]),
     phoneNumber: this.fb.control<string | null>(null, V.phone),
     cityId: this.fb.control<number | null>(null),
+    avatarUrl: this.fb.control<string | null>(null),
   });
 
   protected readonly password = this.fb.nonNullable.group({
@@ -175,8 +177,14 @@ export class Profile implements OnInit {
         lastName: user.lastName,
         phoneNumber: user.phoneNumber,
         cityId: user.cityId,
+        avatarUrl: user.avatarUrl ?? null,
       });
     }
+  }
+
+  protected setAvatar(value: string | null): void {
+    this.profile.controls.avatarUrl.setValue(value);
+    this.profile.markAsDirty();
   }
 
   protected saveProfile(): void {

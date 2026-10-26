@@ -11,6 +11,8 @@ import { Reveal } from '../../shared/motion/reveal';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
 import { Ink } from '../../shared/ui/ink';
+import { LoveLine } from '../../shared/motion/love-line';
+import { Petals } from '../../shared/motion/petals';
 import { LandingFaq } from './landing-faq';
 import { LandingSteps } from './landing-steps';
 import { VendorCard } from '../../shared/ui/vendor-card';
@@ -32,10 +34,11 @@ const CATEGORIES = [
  */
 @Component({
   selector: 'app-landing',
-  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingSteps, Reveal, VendorCard],
+  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingSteps, LoveLine, Petals, Reveal, VendorCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
+    <app-petals />
 
     <header class="nav material" [class.scrolled]="scrolled()">
       <div class="container bar">
@@ -53,6 +56,7 @@ const CATEGORIES = [
     </header>
 
     <main id="sadrzaj">
+      <app-love-line />
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-copy">
@@ -236,6 +240,16 @@ const CATEGORIES = [
     </footer>
   `,
   styles: `
+    // isolation: latice i linija (z-index −1) ostaju iza sadržaja, a iznad pozadine stranice.
+    :host {
+      display: block;
+      isolation: isolate;
+    }
+
+    main {
+      position: relative;
+    }
+
     .nav {
       position: sticky;
       top: 0;

@@ -7,9 +7,16 @@ import { AuthService } from '../../core/auth';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
+import { AvatarPicker } from '../../shared/ui/avatar-picker';
+import { LoveLine } from '../../shared/motion/love-line';
+import { Petals } from '../../shared/motion/petals';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 const AUTH_STYLES = `
+  // isolation: latice i linija (z-index −1) ostaju iznad pozadine stranice, a ispod kartice.
   :host {
+    position: relative;
+    isolation: isolate;
     display: grid;
     place-items: center;
     min-height: 100dvh;
@@ -26,6 +33,10 @@ const AUTH_STYLES = `
     gap: var(--space-5);
   }
 
+  .panel.wide {
+    width: min(100%, 34rem);
+  }
+
   .brand {
     justify-self: center;
     color: var(--text);
@@ -37,6 +48,49 @@ const AUTH_STYLES = `
     padding: var(--space-6) var(--space-5);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
+  }
+
+  // Dijelovi kartice ulaze redom (naslov, slika, polja), blago podignuti, kao na ostatku stranice.
+  .card > * {
+    animation: rise 560ms var(--ease-out) both;
+    animation-delay: calc(80ms + var(--n, 0) * 45ms);
+  }
+
+  .card > :nth-child(2) { --n: 1; }
+  .card > :nth-child(3) { --n: 2; }
+  .card > :nth-child(4) { --n: 3; }
+  .card > :nth-child(5) { --n: 4; }
+  .card > :nth-child(6) { --n: 5; }
+  .card > :nth-child(7) { --n: 6; }
+  .card > :nth-child(n + 8) { --n: 7; }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+  }
+
+  .section-label::before,
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--separator);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card > * {
+      animation: fade var(--dur-fast) ease both;
+      animation-delay: 0ms;
+    }
   }
 
   .heading {
@@ -74,9 +128,12 @@ const AUTH_STYLES = `
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, Icon, BrandMark],
+  imports: [ReactiveFormsModule, RouterLink, Icon, BrandMark, Petals, LoveLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <app-petals [count]="8" />
+    <app-love-line mode="draw" [contentWidth]="520" />
+
     <div class="panel enter">
       <a class="brand" routerLink="/"><app-brand-mark /></a>
 
@@ -153,10 +210,13 @@ export class Login {
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, BrandMark, FieldError],
+  imports: [ReactiveFormsModule, RouterLink, BrandMark, FieldError, AvatarPicker, Petals, LoveLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="panel enter">
+    <app-petals [count]="10" [seed]="11" />
+    <app-love-line mode="draw" [contentWidth]="640" />
+
+    <div class="panel wide enter">
       <a class="brand" routerLink="/"><app-brand-mark /></a>
 
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">
@@ -164,6 +224,10 @@ export class Login {
           <h1 class="t-title-2 serif">Napravite profil</h1>
           <p class="t-callout muted">Za mladence. Saloni dobijaju nalog od nas.</p>
         </div>
+
+        <app-avatar-picker [(value)]="avatar" [firstName]="firstName()" [lastName]="lastName()" />
+
+        <p class="section-label t-caption muted">Vaši podaci</p>
 
         <div class="form-grid">
           <div class="field">
@@ -198,7 +262,13 @@ export class Login {
 
         <div class="field">
           <label for="password">Lozinka</label>
-          <input id="password" class="input" type="password" formControlName="password" autocomplete="new-password" />
+          <div class="password">
+            <input id="password" class="input" [type]="showPassword() ? 'text' : 'password'" formControlName="password"
+              autocomplete="new-password" />
+            <button type="button" class="reveal" (click)="showPassword.set(!showPassword())">
+              {{ showPassword() ? 'Sakrij' : 'Prikaži' }}
+            </button>
+          </div>
 <app-field-error [control]="form.controls.password" />
           <span class="hint">Najmanje 8 znakova, barem jedno slovo i jedan broj.</span>
         </div>
@@ -230,6 +300,11 @@ export class Register {
     password: ['', [Validators.required, ...V.password]],
   });
   protected readonly busy = signal(false);
+  protected readonly showPassword = signal(false);
+  /** Profilna slika iz pregleda: lik, fotografija ili null (inicijali). */
+  protected readonly avatar = signal<string | null>(null);
+  protected readonly firstName = toSignal(this.form.controls.firstName.valueChanges, { initialValue: '' });
+  protected readonly lastName = toSignal(this.form.controls.lastName.valueChanges, { initialValue: '' });
 
   protected submit(): void {
     if (this.form.invalid) {
@@ -238,7 +313,7 @@ export class Register {
     }
     this.busy.set(true);
     const value = this.form.getRawValue();
-    this.auth.register({ ...value, phoneNumber: value.phoneNumber || null }).subscribe({
+    this.auth.register({ ...value, phoneNumber: value.phoneNumber || null, avatarUrl: this.avatar() }).subscribe({
       next: (r) => {
         this.toasts.success(`Dobro došli, ${r.user.firstName}!`);
         void this.router.navigateByUrl(this.povratak() || '/istrazi');
@@ -251,9 +326,11 @@ export class Register {
 /** FR-3: obavezna promjena lozinke nakon prve prijave (nalog kreirao administrator). */
 @Component({
   selector: 'app-change-password',
-  imports: [ReactiveFormsModule, BrandMark, FieldError],
+  imports: [ReactiveFormsModule, BrandMark, FieldError, Petals],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <app-petals [count]="6" />
+
     <div class="panel enter">
       <span class="brand"><app-brand-mark /></span>
       <form class="card" [formGroup]="form" (ngSubmit)="submit()">

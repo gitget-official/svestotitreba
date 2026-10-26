@@ -28,6 +28,13 @@
   --sage: #5e6e4b;            // žalfija
   --sage-soft: rgba(111, 125, 92, 0.15);
 
+  // Ukrasi (latice, ljubavna linija): prigušeno rumenilo, šampanjac i topli taupe. Nikad za tekst.
+  --blush: #ebbcbf;
+  --blush-deep: #d99aa1;
+  --champagne: #e6d4b5;
+  --taupe: #b9a594;
+  --decor-opacity: 0.8;
+
   --success: var(--sage);
   --success-soft: var(--sage-soft);
   --warning: #a2600f;
@@ -107,6 +114,12 @@
   --gold-soft: rgba(216, 185, 127, 0.14);
   --sage: #a3b38e;
   --sage-soft: rgba(163, 179, 142, 0.15);
+
+  --blush: #b97a80;
+  --blush-deep: #a3646b;
+  --champagne: #8c7a5c;
+  --taupe: #7d6d60;
+  --decor-opacity: 0.42;
 
   --success: var(--sage);
   --success-soft: var(--sage-soft);

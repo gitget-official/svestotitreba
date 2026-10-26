@@ -27,6 +27,8 @@ export interface User {
   email: string;
   username: string;
   phoneNumber: string | null;
+  /** `avatar:<ključ>` (ilustrovani lik) ili data URL fotografije; null = inicijali. */
+  avatarUrl: string | null;
   role: UserRole;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -55,6 +57,7 @@ export interface RegisterRequest {
   phoneNumber?: string | null;
   cityId?: number | null;
   password: string;
+  avatarUrl?: string | null;
 }
 
 export interface ProfileUpdateRequest {
@@ -62,6 +65,7 @@ export interface ProfileUpdateRequest {
   lastName: string;
   phoneNumber: string | null;
   cityId: number | null;
+  avatarUrl: string | null;
 }
 
 export interface ChangePasswordRequest {

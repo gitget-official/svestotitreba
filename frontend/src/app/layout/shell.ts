@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, inject, sig
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth';
 import { FavoritesService } from '../core/favorites';
-import { initials } from '../core/format';
 import { ThemeService } from '../core/theme';
 import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
 import { PlanCart } from '../shared/ui/plan-cart';
+import { Avatar } from '../shared/ui/avatar';
 
 interface NavItem {
   label: string;
@@ -25,7 +25,7 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark, PlanCart],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark, PlanCart, Avatar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
@@ -47,7 +47,7 @@ interface NavItem {
           @if (auth.isLoggedIn()) {
             <button type="button" class="avatar" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()"
               aria-haspopup="menu" aria-label="Moj nalog">
-              {{ userInitials() }}
+              <app-avatar [src]="auth.user()?.avatarUrl" [firstName]="auth.user()?.firstName" [lastName]="auth.user()?.lastName" />
             </button>
 
             @if (menuOpen()) {
@@ -240,6 +240,11 @@ interface NavItem {
       transition: transform var(--dur-press) ease-out;
     }
 
+    .avatar app-avatar {
+      width: 100%;
+      height: 100%;
+    }
+
     .avatar:active {
       transform: scale(0.93);
     }
@@ -376,7 +381,6 @@ export class Shell {
   protected readonly scrolled = signal(false);
   protected readonly menuOpen = signal(false);
 
-  protected readonly userInitials = computed(() => initials(this.auth.user()?.firstName, this.auth.user()?.lastName));
 
   /** Za "Prijava" iz okvira: vrati gosta tačno tamo gdje je bio. */
   protected currentUrl(): string {
