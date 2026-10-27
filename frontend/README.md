@@ -82,6 +82,14 @@ Rađeno po principima Apple dizajna prilagođenim za web:
 - **Materijali:** prozirne trake (`backdrop-filter`) iznad sadržaja, ivica ispod gornje trake tek kad sadržaj ode ispod nje.
 - **Tipografija:** sistemski font, tracking i prored zavise od veličine.
 - **Pristupačnost:** `prefers-reduced-motion` (pretapanje umjesto pokreta), `prefers-reduced-transparency`, `prefers-contrast`, tamna tema, fokus prstenovi, ARIA uloge.
+  Sve stranice, za sve uloge i u obje teme, prolaze axe provjeru bez grešaka: tekst ima kontrast najmanje 4.5:1
+  (WCAG AA), dugmad čitaču ekrana kažu isto što piše na njima, a stranice prijave imaju glavni orijentir.
+- **Uski ekrani:** raspored radi od 320 px naviše bez vodoravnog skrola (duži natpisi se na uskim telefonima skrate,
+  npr. „Napravite profil“ u „Registracija“). Na stranici ponuđača telefon prikazuje samo traku „Rezerviši“,
+  bez plutajućeg dugmeta „Moj plan“.
+- **Datumi i cijene:** `core/format.ts` piše ih bez `Intl` podataka preglednika („7. oktobar 2026.“, „6.000 KM“,
+  ocjena „4,5“), jer neki preglednici (npr. Chrome na Androidu) nemaju bosanski i pisali bi „2026 M10 7“ i „6,000“.
+- **Prelaz na ponuđača:** fotografija sa kartice se „otvori“ u galeriju na stranici ponuđača (View Transitions).
 
 Zajednički pokret (`shared/motion`, stilovi u `styles/_motion.scss`):
 

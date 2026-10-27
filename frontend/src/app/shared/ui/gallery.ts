@@ -64,6 +64,10 @@ import { Icon } from './icon';
     </div>
   `,
   styles: `
+    :host {
+      display: block;
+    }
+
     .viewport {
       position: relative;
       overflow: hidden;

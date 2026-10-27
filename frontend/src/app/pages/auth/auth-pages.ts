@@ -128,6 +128,8 @@ const AUTH_STYLES = `
 
 @Component({
   selector: 'app-login',
+  // stranice prijave nisu u okviru aplikacije (shell), pa same nose glavni orijentir
+  host: { role: 'main' },
   imports: [ReactiveFormsModule, RouterLink, Icon, BrandMark, Petals, LoveLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -210,6 +212,7 @@ export class Login {
 
 @Component({
   selector: 'app-register',
+  host: { role: 'main' },
   imports: [ReactiveFormsModule, RouterLink, BrandMark, FieldError, AvatarPicker, Petals, LoveLine],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -326,6 +329,7 @@ export class Register {
 /** FR-3: obavezna promjena lozinke nakon prve prijave (nalog kreirao administrator). */
 @Component({
   selector: 'app-change-password',
+  host: { role: 'main' },
   imports: [ReactiveFormsModule, BrandMark, FieldError, Petals],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

@@ -58,7 +58,7 @@ import { ToastService } from '../../shared/ui/toast';
                 <td class="t-footnote muted">{{ v.categories.join(', ') || '—' }}</td>
                 <td>{{ v.ownerFullName || '—' }}</td>
                 <td>
-                  <div class="row-wrap">
+                  <div class="row-wrap status">
                     <span class="badge" [class.badge-success]="v.isActive">{{ v.isActive ? 'Aktivan' : 'Neaktivan' }}</span>
                     @if (v.isFeatured) { <span class="badge badge-gold">{{ v.subscriptionPlanName }}</span> }
                   </div>
@@ -151,6 +151,12 @@ import { ToastService } from '../../shared/ui/toast';
     }
   `,
   styles: `
+    // Status i paket u jednom redu, da svi redovi tabele budu iste visine.
+    .status {
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
     .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
     .toolbar .input { flex: 1 1 16rem; }
     .toolbar .select { flex: 0 1 14rem; }

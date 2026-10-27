@@ -14,7 +14,7 @@ type Slot = { kind: 'page'; page: number } | { kind: 'gap'; key: string };
   template: `
     @if (pages() > 1) {
       <nav class="pager" aria-label="Stranice rezultata">
-        <button type="button" class="step" (click)="go(page() - 1)" [disabled]="page() === 1" aria-label="Prethodna stranica">
+        <button type="button" class="step" (click)="go(page() - 1)" [disabled]="page() === 1" aria-label="Nazad na prethodnu stranicu">
           <app-icon name="chevron-left" />
           <span class="step-label">Nazad</span>
         </button>
@@ -33,7 +33,7 @@ type Slot = { kind: 'page'; page: number } | { kind: 'gap'; key: string };
           }
         </ol>
 
-        <button type="button" class="step" (click)="go(page() + 1)" [disabled]="page() === pages()" aria-label="Sljedeća stranica">
+        <button type="button" class="step" (click)="go(page() + 1)" [disabled]="page() === pages()" aria-label="Dalje na sljedeću stranicu">
           <span class="step-label">Dalje</span>
           <app-icon name="chevron-right" />
         </button>

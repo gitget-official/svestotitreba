@@ -21,9 +21,8 @@ import { ToastService } from './toast';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
-      <button type="button" class="fab plan-fab" [class.has-items]="store.count()" [class.bump]="bump()" (animationend)="bump.set(false)"
-        (click)="open.set(true)" [attr.aria-label]="'Moj plan, ' + store.count() + ' ' + plural(store.count(), 'stavka', 'stavke', 'stavki')"
-        aria-haspopup="dialog">
+      <button type="button" class="fab plan-fab" [class.on-vendor]="onVendor()" [class.has-items]="store.count()" [class.bump]="bump()" (animationend)="bump.set(false)"
+        (click)="open.set(true)" aria-haspopup="dialog">
         <span class="fab-icon">
           <app-icon name="rings" [strokeWidth]="1.8" />
           @if (store.count()) { <span class="count">{{ store.count() }}</span> }
@@ -31,6 +30,7 @@ import { ToastService } from './toast';
         <span class="fab-text">
           <span class="fab-title">Moj plan</span>
           <span class="fab-sub">{{ store.count() ? 'od ' + price(store.totalFrom()) : 'Počnite planirati' }}</span>
+          <span class="sr-only">, {{ store.count() }} {{ plural(store.count(), 'stavka', 'stavke', 'stavki') }}</span>
         </span>
       </button>
     }
@@ -177,8 +177,14 @@ import { ToastService } from './toast';
       box-shadow: 0 0 0 2px var(--bg-elevated);
     }
 
+    // Na telefonu se tekst ne vidi (samo ikona), ali ga čitač ekrana i dalje čita kao natpis dugmeta.
     .fab-text {
-      display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
       padding-right: var(--space-3);
       text-align: left;
     }
@@ -204,6 +210,13 @@ import { ToastService } from './toast';
       }
     }
 
+    // Na telefonu i tabletu stranica ponuđača ima plutajuću traku "Rezerviši" (vidi vendor-detail).
+    @media (max-width: 59.99rem) {
+      .fab.on-vendor {
+        display: none;
+      }
+    }
+
     @keyframes bump {
       35% {
         transform: scale(1.18);
@@ -217,6 +230,11 @@ import { ToastService } from './toast';
       }
 
       .fab-text {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip-path: none;
         display: block;
       }
     }
@@ -403,6 +421,9 @@ export class PlanCart {
     const role = this.auth.role();
     return (role === null || role === 'Couple') && !this.url().startsWith('/planiranje');
   });
+
+  /** Stranica ponuđača ima svoju traku "Rezerviši" i dugme "Dodaj u plan", pa se dugme ne slaže preko njih. */
+  protected readonly onVendor = computed(() => this.url().startsWith('/ponudjaci/'));
 
   protected readonly meter = computed(() => {
     const budget = this.store.budget();

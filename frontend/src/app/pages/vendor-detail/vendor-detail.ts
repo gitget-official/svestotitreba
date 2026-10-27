@@ -22,7 +22,7 @@ import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } 
 import { BookingApi, ReviewApi, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
 import { BRAND } from '../../core/brand';
-import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso } from '../../core/format';
+import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso, formatRating } from '../../core/format';
 import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Offering, Review, Vendor } from '../../core/models';
 import { Reveal } from '../../shared/motion/reveal';
@@ -49,14 +49,15 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
   template: `
     <div class="container page">
       <div class="top-actions">
-        <button type="button" class="back btn btn-plain" (click)="back()"><app-icon name="chevron-left" /> Nazad</button>
+        <button type="button" class="back btn btn-plain" (click)="back()" aria-label="Nazad"><app-icon name="chevron-left" /> <span class="hide-xs">Nazad</span></button>
         @if (vendor(); as v) {
           <div class="row">
             <button type="button" class="icon-btn" (click)="share(v)" aria-label="Podijeli"><app-icon name="share" /></button>
             <app-save-button [vendor]="v" [withLabel]="true" />
             @if (canPlan()) {
               <button type="button" class="btn plan-btn" [class.in]="inPlan()" [class.pop]="planPop()" (animationend)="planPop.set(false)"
-                (click)="togglePlan(v)" [attr.aria-pressed]="inPlan()">
+                (click)="togglePlan(v)" [attr.aria-pressed]="inPlan()"
+                [attr.aria-label]="inPlan() ? 'U planu' : 'Dodaj u plan'">
                 <app-icon [name]="inPlan() ? 'check' : 'rings'" />
                 <span>{{ inPlan() ? 'U planu' : 'Dodaj u plan' }}</span>
               </button>
@@ -69,7 +70,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
         <div class="layout enter">
           <div class="main">
             @if (v.images.length) {
-              <app-gallery [images]="v.images" />
+              <app-gallery [images]="v.images" [style.view-transition-name]="'vendor-' + v.id" />
             }
 
             <header class="title">
@@ -82,7 +83,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
                 <span class="row"><app-icon name="map-pin" /> {{ v.cityName }}</span>
                 @if (v.averageRating; as rating) {
                   <a class="row rating-link" href="#recenzije" (click)="scrollTo($event, 'recenzije')">
-                    <app-rating [value]="rating" /> {{ rating.toFixed(1) }} · {{ v.reviewCount }} {{ plural(v.reviewCount, 'recenzija', 'recenzije', 'recenzija') }}
+                    <app-rating [value]="rating" /> {{ rate(rating) }} · {{ v.reviewCount }} {{ plural(v.reviewCount, 'recenzija', 'recenzije', 'recenzija') }}
                   </a>
                 } @else {
                   <span>Još nema recenzija</span>
@@ -143,7 +144,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
               @if (breakdown(); as b) {
                 <div class="breakdown card" appReveal [revealDelay]="80">
                   <div class="score">
-                    <span class="big">{{ b.average.toFixed(1) }}</span>
+                    <span class="big">{{ rate(b.average) }}</span>
                     <app-rating [value]="b.average" />
                     <span class="t-footnote muted">{{ b.count }} {{ plural(b.count, 'recenzija', 'recenzije', 'recenzija') }}</span>
                   </div>
@@ -741,6 +742,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
   `,
 })
 export class VendorDetail {
+  protected readonly rate = formatRating;
   /** Parametar rute: "17-foto-trenutak" ili "17". */
   readonly id = input.required<string>();
 

@@ -17,15 +17,16 @@
 
   --text: #1f1a17;
   --text-secondary: #6e655c;
-  --text-tertiary: #978e84;
+  --text-tertiary: #736a60;   // najmanje 4.5:1 i na slonovači (WCAG AA za sitni tekst)
   --text-on-accent: #ffffff;
 
   --accent: #8c2f39;          // bordo (kontrast na bijelom ~8:1)
   --accent-hover: #7a2731;
   --accent-soft: rgba(140, 47, 57, 0.09);
-  --gold: #9a7642;            // šampanjac, samo za ocjene i "istaknuto"
+  --accent-ink: var(--accent);   // tekst na --accent-soft
+  --gold: #7f6034;            // šampanjac, samo za ocjene i "istaknuto" (4.5:1 na --gold-soft)
   --gold-soft: rgba(176, 141, 87, 0.15);
-  --sage: #5e6e4b;            // žalfija
+  --sage: #556343;            // žalfija (4.5:1 i na --sage-soft)
   --sage-soft: rgba(111, 125, 92, 0.15);
 
   // Ukrasi (latice, ljubavna linija): prigušeno rumenilo, šampanjac i topli taupe. Nikad za tekst.
@@ -37,7 +38,7 @@
 
   --success: var(--sage);
   --success-soft: var(--sage-soft);
-  --warning: #a2600f;
+  --warning: #93560c;
   --warning-soft: rgba(168, 100, 18, 0.12);
   --danger: #b3261e;
   --danger-soft: rgba(179, 38, 30, 0.09);
@@ -104,11 +105,12 @@
 
   --text: #f3eee7;
   --text-secondary: #aba298;
-  --text-tertiary: #7d756c;
+  --text-tertiary: #8f877e;
 
   --accent: #e38d97;
   --accent-hover: #eca0a9;
   --accent-soft: rgba(227, 141, 151, 0.14);
+  --accent-ink: #f2b8be;
   --text-on-accent: #2a1015;
   --gold: #d8b97f;
   --gold-soft: rgba(216, 185, 127, 0.14);

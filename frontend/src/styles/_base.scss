@@ -269,6 +269,16 @@ h1, h2, h3, h4, p {
   animation-timing-function: ease;
 }
 
+// Fotografija sa kartice ponuđača se "otvori" u galeriju na njegovoj stranici (i nazad).
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+::view-transition-group(root) {
+  animation-duration: 180ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
@@ -277,13 +287,8 @@ h1, h2, h3, h4, p {
   }
 }
 
-// "Moj plan" dugme se pomjera iznad drugih plutajućih traka (stranica ponuđača, poređenje) da se ne preklapaju.
-@media (max-width: 59.99rem) {
-  body:has(.mobile-cta) .plan-fab {
-    bottom: calc(9.5rem + var(--safe-bottom));
-  }
-}
-
+// "Moj plan" dugme se pomjera iznad trake za poređenje da se ne preklapaju.
+// (Na stranici ponuđača se na telefonu i tabletu skriva, vidi plan-cart.)
 body:has(.compare-bar) .plan-fab {
   bottom: calc(9.5rem + var(--safe-bottom));
 }

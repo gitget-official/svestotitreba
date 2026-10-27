@@ -77,7 +77,7 @@ interface NavItem {
             <div class="guest">
               <a class="btn btn-plain btn-sm" routerLink="/prijava" [queryParams]="{ povratak: currentUrl() }">Prijava</a>
               <a class="btn btn-primary btn-sm" routerLink="/registracija" [queryParams]="{ povratak: currentUrl() }">
-                Napravite profil
+                <span class="label-long">Napravite profil</span><span class="label-short">Registracija</span>
               </a>
             </div>
           }
@@ -303,7 +303,15 @@ interface NavItem {
     }
 
     main {
-      padding-bottom: calc(4.5rem + var(--safe-bottom));
+      // donja traka + plutajuće dugme "Moj plan", da ništa na dnu stranice ne ostane ispod njih
+      padding-bottom: calc(8.5rem + var(--safe-bottom));
+    }
+
+    .tabbar a > span:last-child {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .tabbar {
@@ -320,7 +328,10 @@ interface NavItem {
       display: grid;
       justify-items: center;
       gap: 0.125rem;
-      min-width: 3.5rem;
+      // kartice dijele širinu ravnopravno, pa stanu i na ekran od 320 px
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 5.5rem;
       padding: 0.25rem;
       color: var(--text-tertiary);
       font-size: 0.6875rem;

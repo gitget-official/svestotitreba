@@ -50,7 +50,7 @@ const CATEGORIES = [
         </nav>
         <div class="row actions">
           <a class="btn btn-plain btn-sm" routerLink="/prijava">Prijava</a>
-          <a class="btn btn-primary btn-sm" routerLink="/registracija">Napravite profil</a>
+          <a class="btn btn-primary btn-sm" routerLink="/registracija"><span class="label-long">Napravite profil</span><span class="label-short">Registracija</span></a>
         </div>
       </div>
     </header>
@@ -99,7 +99,7 @@ const CATEGORIES = [
 
           <div class="collage" aria-hidden="true">
             @for (tile of collage(); track $index; let i = $index) {
-              <div class="tile" [class]="'tile t' + i">
+              <div class="tile" [class]="'tile t' + i + (tile.image ? '' : ' cat')">
                 @if (tile.image) {
                   <img appFadeIn [src]="tile.image" alt="" [attr.loading]="i === 0 ? 'eager' : 'lazy'" decoding="async" />
                 } @else {
@@ -418,6 +418,7 @@ const CATEGORIES = [
     .tile {
       position: relative;
       overflow: hidden;
+      container-type: size;
       border-radius: var(--radius-lg);
       background: linear-gradient(160deg, var(--bg-elevated), var(--bg-sunken));
       box-shadow: var(--shadow-md);
@@ -450,13 +451,6 @@ const CATEGORIES = [
       display: grid;
       place-items: center;
       height: 100%;
-      color: var(--accent);
-      opacity: 0.55;
-    }
-
-    .tile-icon app-icon {
-      width: 2.75rem;
-      height: 2.75rem;
     }
 
     .tile-label {

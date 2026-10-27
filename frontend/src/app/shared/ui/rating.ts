@@ -23,7 +23,7 @@ import { Icon } from './icon';
         }
       </div>
     } @else {
-      <span class="stars" [attr.aria-label]="'Ocjena ' + value() + ' od 5'">
+      <span class="stars" role="img" [attr.aria-label]="'Ocjena ' + value() + ' od 5'">
         @for (star of stars; track star) {
           <app-icon name="star" [filled]="star <= rounded()" [class.on]="star <= rounded()" />
         }

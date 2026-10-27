@@ -19,7 +19,7 @@ import { ToastService } from '../../shared/ui/toast';
   imports: [RouterLink, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="container page narrow">
+    <div class="container page bookings-page">
       <header class="page-header">
         <div>
           <h1 class="t-title-1">Moje rezervacije</h1>
@@ -37,6 +37,8 @@ import { ToastService } from '../../shared/ui/toast';
           <a class="btn btn-tinted" routerLink="/istrazi" [queryParams]="{ rezervacija: 1 }">Pronađi salon</a>
         </div>
       } @else {
+        <div class="layout">
+        <div class="lists">
         @for (group of groups(); track group.title) {
           @if (group.items.length) {
             <section class="stack-sm group">
@@ -71,11 +73,54 @@ import { ToastService } from '../../shared/ui/toast';
             </section>
           }
         }
+        </div>
+
+        <!-- Pregled sa strane (desktop); na telefonu ide iznad liste. -->
+        <aside class="summary card" aria-label="Pregled rezervacija">
+          @if (next(); as n) {
+            <p class="t-eyebrow">Sljedeći termin</p>
+            <p class="next-name">{{ n.booking.vendorName }}</p>
+            <p class="t-footnote muted">{{ date(n.booking.eventDate) }}@if (n.booking.startTime) {, {{ time(n.booking.startTime) }}}</p>
+            <p class="countdown">
+              @if (n.days === 0) { Danas } @else if (n.days === 1) { Sutra } @else { Za <strong>{{ n.days }}</strong> dana }
+            </p>
+          } @else {
+            <p class="t-eyebrow">Sljedeći termin</p>
+            <p class="t-footnote muted">Nemate nadolazećih termina.</p>
+          }
+          <dl class="counts">
+            <div><dt>Čeka potvrdu</dt><dd>{{ count('Pending') }}</dd></div>
+            <div><dt>Potvrđeno</dt><dd>{{ count('Confirmed') }}</dd></div>
+          </dl>
+          <a class="btn btn-tinted btn-block" routerLink="/istrazi" [queryParams]="{ rezervacija: 1 }">
+            <app-icon name="search" /> Pronađi još salona
+          </a>
+        </aside>
+        </div>
       }
     </div>
   `,
   styles: `
-    .narrow { max-width: 48rem; }
+    .bookings-page .page-header,
+    .layout { max-width: 48rem; margin-inline: auto; }
+    .layout { display: grid; gap: var(--space-5); }
+    .summary { display: grid; gap: var(--space-2); padding: var(--space-5); align-content: start; }
+    .next-name { font-weight: 600; font-size: 1.0625rem; }
+    .countdown { font-family: var(--font-display); font-size: 1.5rem; color: var(--accent); }
+    .counts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: var(--space-2) 0; }
+    .counts div { padding: var(--space-3); border-radius: var(--radius-md); background: var(--bg-sunken); }
+    .counts dt { font-size: 0.75rem; color: var(--text-secondary); }
+    .counts dd { margin: 0; font-size: 1.375rem; font-weight: 700; }
+    @media (max-width: 63.99rem) {
+      .summary { order: -1; }
+    }
+    // Desktop: lista lijevo, pregled desno, sve u širini ostatka aplikacije.
+    @media (min-width: 64rem) {
+      .bookings-page .page-header,
+      .layout { max-width: none; }
+      .layout { grid-template-columns: minmax(0, 1fr) 20rem; align-items: start; }
+      .summary { position: sticky; top: calc(var(--nav-height) + var(--space-4)); }
+    }
     .group { margin-bottom: var(--space-5); }
     .booking { align-items: flex-start; }
     .date-tile {
@@ -102,6 +147,19 @@ export class MyBookings implements OnInit {
   protected readonly time = formatTime;
   protected readonly day = (v: string) => v.slice(8, 10);
   protected readonly month = (v: string) => formatDate(v, { day: undefined, year: undefined, month: 'short' });
+
+  /** Najbliži nadolazeći termin i koliko je dana do njega. */
+  protected readonly next = computed(() => {
+    const upcoming = this.groups()[0].items.slice().sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    const booking = upcoming[0];
+    if (!booking) return null;
+    const ms = new Date(`${booking.eventDate}T00:00:00`).getTime() - new Date(`${todayIso()}T00:00:00`).getTime();
+    return { booking, days: Math.round(ms / 86400000) };
+  });
+
+  protected count(status: Booking['status']): number {
+    return this.bookings().filter((b) => b.status === status).length;
+  }
 
   protected readonly groups = computed(() => {
     const today = todayIso();
@@ -163,7 +221,7 @@ export class MyBookings implements OnInit {
         </div>
       }
 
-      <div class="stack">
+      <div class="stack reviews-grid">
         @for (r of reviews(); track r.id) {
           <article class="card card-pad stack-sm">
             <div class="row">
@@ -199,7 +257,11 @@ export class MyBookings implements OnInit {
     }
   `,
   styles: `
-    .narrow { max-width: 44rem; }
+    .narrow { max-width: 64rem; }
+    // Desktop: recenzije u dvije kolone, da stranica ne bude uska traka na širokom ekranu.
+    @media (min-width: 48rem) {
+      .reviews-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    }
     .vendor { color: var(--text); font-weight: 600; }
     .danger { --btn-fg: var(--danger); }
   `,

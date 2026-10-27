@@ -41,7 +41,7 @@ import { ToastService } from '../../shared/ui/toast';
       <div class="table-wrap">
         <table class="table">
           <thead>
-            <tr><th>Ime</th><th>Korisničko ime</th><th>E-mail</th><th>Uloga</th><th>Status</th><th>Kreiran</th><th class="actions"></th></tr>
+            <tr><th>Ime</th><th>Korisničko ime</th><th>E-mail</th><th>Uloga</th><th>Status</th><th>Kreiran</th><th class="actions"><span class="sr-only">Akcije</span></th></tr>
           </thead>
           <tbody>
             @for (u of users(); track u.id) {

@@ -20,7 +20,7 @@ import { ToastService } from './toast';
       [class.pop]="pop()"
       [class.floating]="floating()"
       [attr.aria-pressed]="saved()"
-      [attr.aria-label]="saved() ? 'Ukloni iz sačuvanog' : 'Sačuvaj'"
+      [attr.aria-label]="withLabel() ? null : 'Sačuvaj'"
       (click)="toggle($event)"
       (animationend)="onAnimationEnd($event)"
     >

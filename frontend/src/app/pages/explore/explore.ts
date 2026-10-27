@@ -100,6 +100,7 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
         </div>
       }
 
+      <h2 class="sr-only">Rezultati</h2>
       <p class="t-footnote muted result-count" aria-live="polite">
         @if (!loading() || vendors().length) {
           {{ total() }} {{ plural(total(), 'ponuđač', 'ponuđača', 'ponuđača') }}

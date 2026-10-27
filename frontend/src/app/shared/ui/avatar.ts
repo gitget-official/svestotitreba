@@ -353,7 +353,7 @@ export class AvatarArt {
     } @else if (preset(); as p) {
       <app-avatar-art [preset]="p" />
     } @else if (letters()) {
-      <span class="initials" aria-hidden="true">{{ letters() }}</span>
+      <span class="initials" aria-hidden="true" [attr.data-letters]="letters()"></span>
     } @else {
       <svg class="silhouette" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
         <circle cx="32" cy="26" r="10" />
@@ -369,7 +369,7 @@ export class AvatarArt {
       flex: none;
       border-radius: 50%;
       background: var(--accent-soft);
-      color: var(--accent);
+      color: var(--accent-ink);
       font-weight: 700;
       // Inicijali rastu sa krugom.
       container-type: inline-size;
@@ -383,6 +383,11 @@ export class AvatarArt {
 
     img {
       object-fit: cover;
+    }
+
+    // Slova idu kroz ::before: avatar je ukras, a dugme oko njega (npr. "Moj nalog") nosi svoj natpis.
+    .initials::before {
+      content: attr(data-letters);
     }
 
     .initials {

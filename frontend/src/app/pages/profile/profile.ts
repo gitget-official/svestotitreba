@@ -26,6 +26,7 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
         </header>
       }
 
+      <div class="cols">
       <section class="stack">
         <h2 class="t-title-3">Lični podaci</h2>
         <form class="card card-pad stack" [formGroup]="profile" (ngSubmit)="saveProfile()">
@@ -65,6 +66,7 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
         </form>
       </section>
 
+      <div class="side">
       <section class="stack">
         <h2 class="t-title-3">Lozinka</h2>
         <form class="card card-pad stack" [formGroup]="password" (ngSubmit)="savePassword()">
@@ -102,13 +104,40 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
       </section>
 
       <button class="btn btn-danger btn-block logout" type="button" (click)="auth.logout()">Odjava</button>
+      </div>
+      </div>
     </div>
   `,
   styles: `
     .narrow {
       max-width: 44rem;
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-6);
+    }
+
+    .cols,
+    .side {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
+      align-content: start;
+    }
+
+    // Desktop: lični podaci lijevo, lozinka, tema i odjava desno.
+    @media (min-width: 64rem) {
+      .narrow {
+        max-width: 72rem;
+      }
+
+      .cols {
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+        align-items: start;
+      }
+
+      .side .form-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .hero {
