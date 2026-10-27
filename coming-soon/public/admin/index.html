@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="bs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lista čekanja · Planiraj</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="/js/admin.js" defer></script>
+</head>
+<body>
+  <main class="sec adm">
+    <h1 class="h2">Lista čekanja</h1>
+    <form class="adm-key" id="kljuc">
+      <label class="fld"><span>Admin ključ</span><input type="password" id="token" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Otvori</button>
+    </form>
+    <p class="err" id="adm-err" role="alert"></p>
+
+    <section id="podaci" hidden>
+      <ul class="adm-st">
+        <li><b id="s-uk">0</b><span>ukupno</span></li>
+        <li><b id="s-par">0</b><span>mladenci</span></li>
+        <li><b id="s-pon">0</b><span>ponuđači</span></li>
+        <li><b id="s-dan">0</b><span>danas</span></li>
+      </ul>
+      <p class="adm-bar">
+        <button class="sh" type="button" id="csv">Preuzmi za Excel (CSV)</button>
+        <button class="sh" type="button" id="osvjezi">Osvježi</button>
+      </p>
+      <div class="adm-t">
+        <table>
+          <thead><tr><th>#</th><th>Email</th><th>Ko</th><th>Kategorija</th><th>Grad</th><th>Pozvali</th><th>Vrijeme</th><th><span class="sr">Brisanje</span></th></tr></thead>
+          <tbody id="redovi"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="bs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Planiraj · Uskoro: sve za vaše vjenčanje na jednom mjestu</title>
+  <meta name="description" content="Planiraj uskoro stiže u Bosnu i Hercegovinu. Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili na jednom mjestu. Ostavite email i javit ćemo vam prvima.">
+  <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141211" media="(prefers-color-scheme: dark)">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Planiraj stiže uskoro">
+  <meta property="og:description" content="Sve za vaše vjenčanje, na jednom mjestu. Prijavite se i saznajte prvi kad otvorimo.">
+  <meta property="og:image" content="/img/og.jpg">
+  <meta property="og:locale" content="bs_BA">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/fraunces-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <script>document.documentElement.classList.add('js')</script>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#prijava">Preskoči na prijavu</a>
+
+  <div class="petals" aria-hidden="true"></div>
+
+  <header class="top">
+    <a class="logo" href="/">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><text x="32" y="43">P</text></svg>
+      <span>Planiraj</span>
+    </a>
+    <span class="soon"><i aria-hidden="true"></i>Uskoro</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="naslov">
+      <div class="hero-txt">
+        <p class="kick">Uskoro u Bosni i Hercegovini</p>
+        <h1 id="naslov" class="h1">
+          <span class="w" data-i="0">Vjenčanje</span>
+          <em class="w dream" data-i="1">iz snova,<svg class="stroke" viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M4 16 C 60 4, 120 22, 180 12 S 270 6, 296 14"/></svg></em>
+          <span class="w" data-i="2">isplanirano</span>
+          <span class="w" data-i="3">na</span>
+          <span class="w" data-i="4">jednom</span>
+          <span class="w" data-i="5">mjestu.</span>
+        </h1>
+        <p class="lead">Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili. Uporedite cijene, sačuvajte favorite i rezervišite termin, bez desetina poziva.</p>
+
+        <div class="card" id="prijava">
+          <form class="form" id="forma" novalidate>
+            <fieldset class="seg">
+              <legend class="sr">Ko ste vi?</legend>
+              <input type="radio" name="uloga" id="u-par" value="par" checked>
+              <label for="u-par">Planiram vjenčanje</label>
+              <input type="radio" name="uloga" id="u-pon" value="ponudjac">
+              <label for="u-pon">Nudim usluge</label>
+              <i class="seg-bg" aria-hidden="true"></i>
+            </fieldset>
+
+            <div class="more" id="more" inert>
+              <div class="more-in">
+                <label class="fld">
+                  <span>Šta nudite</span>
+                  <select name="kategorija" id="kategorija">
+                    <option value="">Izaberite kategoriju</option>
+                    <option>Sale i prostori za vjenčanje</option>
+                    <option>Vjenčanice i odijela</option>
+                    <option>Dekoracije</option>
+                    <option>Fotografi</option>
+                    <option>Rent svečanih automobila</option>
+                    <option>Frizeri</option>
+                    <option>Beauty i make-up</option>
+                    <option>Nešto drugo</option>
+                  </select>
+                </label>
+                <label class="fld">
+                  <span>Grad</span>
+                  <input name="grad" id="grad" list="gradovi" maxlength="60" autocomplete="address-level2" placeholder="npr. Sarajevo">
+                  <datalist id="gradovi"><option>Sarajevo</option><option>Banja Luka</option><option>Tuzla</option><option>Zenica</option><option>Mostar</option><option>Bihać</option><option>Travnik</option><option>Brčko</option><option>Bijeljina</option><option>Doboj</option><option>Cazin</option><option>Goražde</option><option>Konjic</option><option>Livno</option><option>Visoko</option></datalist>
+                </label>
+              </div>
+            </div>
+
+            <div class="row">
+              <label class="fld fld-mail">
+                <span class="sr">Email adresa</span>
+                <input type="email" name="email" id="email" inputmode="email" autocomplete="email" placeholder="vas@email.com" required maxlength="254" aria-describedby="greska">
+              </label>
+              <button class="btn" type="submit" id="posalji"><span class="btn-t">Javite mi prvi</span><span class="btn-l" aria-hidden="true"></span></button>
+            </div>
+
+            <label class="ok-box">
+              <input type="checkbox" name="saglasnost" id="saglasnost" required>
+              <span>Slažem se da mi pošaljete email kad Planiraj otvori. <a href="/privatnost">Privatnost</a></span>
+            </label>
+            <div class="hp" aria-hidden="true"><label>Web stranica <input name="web" tabindex="-1" autocomplete="off"></label></div>
+            <div class="ts" id="ts"></div>
+            <p class="err" id="greska" role="alert"></p>
+          </form>
+
+          <div class="done" id="gotovo" hidden tabindex="-1">
+            <p class="done-k">Na listi ste</p>
+            <p class="done-n"><span id="mjesto">1</span><small>. na listi čekanja</small></p>
+            <p class="done-p" id="gotovo-p">Javit ćemo vam se prvima čim otvorimo. Pozovite i drugi par ili salon koji poznajete.</p>
+            <div class="share">
+              <a class="sh sh-wa" id="sh-wa" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z"/><path d="M8.8 8.3c.2-.4.5-.4.7-.4h.5c.2 0 .4 0 .5.4l.7 1.6c.1.2 0 .4-.1.6l-.5.6c-.1.1-.2.3 0 .5.5.9 1.4 1.8 2.4 2.3.2.1.4.1.5 0l.6-.7c.2-.2.4-.2.6-.1l1.6.8c.2.1.3.2.3.4 0 .5-.2 1.1-.7 1.4-.6.4-1.4.5-2.2.2-2.2-.8-3.9-2.4-4.8-4.6-.3-.8-.3-1.7.2-2.3Z"/></svg>WhatsApp</a>
+              <a class="sh sh-vb" id="sh-vb" href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-4.8 0-8 1.7-8 7.5 0 3.3 1 5.2 2.8 6.3V21l3.1-2.6c.7.1 1.4.1 2.1.1 4.8 0 8-1.7 8-8S16.8 3 12 3Z"/><path d="M9.5 8.2c.6 2.6 2.3 4.6 4.8 5.6M12.6 7.6a3 3 0 0 1 2.6 2.6M12.4 5.6a5 5 0 0 1 4.6 4.6"/></svg>Viber</a>
+              <button class="sh" type="button" id="sh-kopiraj"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span>Kopiraj link</span></button>
+            </div>
+            <p class="done-ref" id="pozvani" hidden></p>
+            <button class="link" type="button" id="druga">Prijavi drugu email adresu</button>
+          </div>
+        </div>
+
+        <p class="count" id="broj" hidden></p>
+      </div>
+
+      <div class="stage" aria-hidden="true">
+        <div class="glow"></div>
+        <svg class="line" viewBox="0 0 520 620" fill="none"><path pathLength="1" d="M40 560 C 120 420, 40 300, 180 250 S 420 260, 380 120 S 250 20, 470 40"/></svg>
+        <div class="phone">
+          <div class="screen">
+            <img src="/img/ekran-pocetna.webp" alt="" width="540" height="1169" fetchpriority="high">
+            <img src="/img/ekran-planer.webp" alt="" width="540" height="1169" loading="lazy">
+            <img src="/img/ekran-budzet.webp" alt="" width="540" height="1169" loading="lazy">
+            <img src="/img/ekran-paket.webp" alt="" width="540" height="1169" loading="lazy">
+          </div>
+        </div>
+        <p class="chip chip-1"><b>Planer po budžetu</b><small>u tri kratka koraka</small></p>
+        <p class="chip chip-2"><b>Okvirne cijene</b><small>prije prvog poziva</small></p>
+        <p class="chip chip-3"><b>Rezervacija termina</b><small>direktno kod salona</small></p>
+      </div>
+    </section>
+
+    <section class="sec feat" aria-labelledby="sta">
+      <p class="kick rv">Šta vas čeka</p>
+      <h2 id="sta" class="h2 rv">Manje poziva, više <em>radosti</em>.</h2>
+      <ul class="cards">
+        <li class="fc rv" data-d="0">
+          <svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><circle pathLength="1" cx="21" cy="21" r="12"/><path pathLength="1" d="m30 30 10 10"/><path pathLength="1" d="M16 21h10M21 16v10"/></svg>
+          <h3>Pretražite i uporedite</h3>
+          <p>Sale, vjenčanice, fotografi i ostalo na jednom mjestu, filtrirano po gradu, cijeni i ocjeni.</p>
+        </li>
+        <li class="fc rv" data-d="1">
+          <svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path pathLength="1" d="M24 6l3.5 9.5L37 19l-9.5 3.5L24 32l-3.5-9.5L11 19l9.5-3.5z"/><path pathLength="1" d="M37 31l1.6 4.4L43 37l-4.4 1.6L37 43l-1.6-4.4L31 37l4.4-1.6z"/></svg>
+          <h3>Planer po budžetu</h3>
+          <p>Recite koje usluge trebate i koliko imate, a planer predloži paket koji se uklapa.</p>
+        </li>
+        <li class="fc rv" data-d="2">
+          <svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><rect pathLength="1" x="8" y="11" width="32" height="29" rx="5"/><path pathLength="1" d="M8 20h32M17 6v9M31 6v9"/><path pathLength="1" d="m18 30 4 4 8-8"/></svg>
+          <h3>Rezervišite termin</h3>
+          <p>Provjerite slobodne datume i pošaljite zahtjev salonu, bez čekanja da se neko javi.</p>
+        </li>
+        <li class="fc rv" data-d="3">
+          <svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path pathLength="1" d="M24 40S8 30.5 8 19a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 11.5-16 21-16 21Z"/></svg>
+          <h3>Sačuvajte favorite</h3>
+          <p>Označite ono što vam se sviđa i vratite se kad god želite, zajedno sa partnerom.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="band" aria-labelledby="ponudjaci">
+      <div class="band-in">
+        <p class="kick kick-l rv">Za salone i ponuđače</p>
+        <h2 id="ponudjaci" class="h2 rv">Neka vas mladenci <em>pronađu</em>.</h2>
+        <p class="band-p rv">Vlastita stranica sa opisom, galerijom, cjenovnikom i lokacijom, upiti i rezervacije na jednom mjestu. Prijavite interes i javit ćemo vam se prije otvaranja.</p>
+        <button class="btn btn-light" type="button" id="za-salone">Prijavite svoj salon</button>
+      </div>
+      <div class="marq" aria-hidden="true">
+        <ul><li>Sale i prostori</li><li>Vjenčanice i odijela</li><li>Dekoracije</li><li>Fotografi</li><li>Svečani automobili</li><li>Frizeri</li><li>Beauty i make-up</li></ul>
+        <ul><li>Sale i prostori</li><li>Vjenčanice i odijela</li><li>Dekoracije</li><li>Fotografi</li><li>Svečani automobili</li><li>Frizeri</li><li>Beauty i make-up</li></ul>
+      </div>
+    </section>
+
+    <section class="sec faq" aria-labelledby="pitanja">
+      <h2 id="pitanja" class="h2 rv">Česta pitanja</h2>
+      <div class="qa rv">
+        <details>
+          <summary>Kada Planiraj otvara?</summary>
+          <p>Radimo na završnim detaljima. Svi koji se prijave na listu dobiju email prvi, čim otvorimo.</p>
+        </details>
+        <details>
+          <summary>Šta ću dobiti na email?</summary>
+          <p>Samo obavijest kad otvorimo. Vašu adresu koristimo samo za to i ne šaljemo reklame.</p>
+        </details>
+        <details>
+          <summary>Za koje gradove je Planiraj?</summary>
+          <p>Za cijelu Bosnu i Hercegovinu. Ponuđače možete filtrirati po gradu.</p>
+        </details>
+        <details>
+          <summary>Imam salon. Kako da se pridružim?</summary>
+          <p>Izaberite „Nudim usluge“ u formi iznad, upišite email, kategoriju i grad. Javit ćemo vam se prije otvaranja.</p>
+        </details>
+        <details>
+          <summary>Kako da se odjavim sa liste?</summary>
+          <p>Pišite nam na email sa kojeg ste se prijavili i obrisat ćemo vašu adresu. Više u <a href="/privatnost">izjavi o privatnosti</a>.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p><span class="logo-s">Planiraj</span> · Sve za vaše vjenčanje, na jednom mjestu</p>
+    <p><a href="/privatnost">Privatnost</a> · © 2026</p>
+  </footer>
+
+  <div class="burst" id="burst" aria-hidden="true"></div>
+</body>
+</html>

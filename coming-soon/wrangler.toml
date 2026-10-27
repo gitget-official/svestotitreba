@@ -1,0 +1,29 @@
+# Planiraj coming soon: Cloudflare Worker sa statičnim fajlovima i D1 bazom za listu čekanja.
+name = "planiraj-uskoro"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "drop-trailing-slash"
+not_found_handling = "404-page"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "planiraj-uskoro"
+database_id = "00000000-0000-0000-0000-000000000000" # zamijeniti ID-om iz: npx wrangler d1 create planiraj-uskoro
+migrations_dir = "migrations"
+
+[vars]
+# broj prijava tek od kojeg se brojač prikazuje na stranici
+PRIKAZI_OD = "30"
+# TURNSTILE_SITE_KEY = "0x..."   (javni ključ, ako se uključi Turnstile)
+
+# Tajne (ne pišu se ovdje, nego: npx wrangler secret put IME):
+#   ADMIN_TOKEN          ključ za /admin (spisak i izvoz)
+#   IP_SOL               bilo koji nasumičan tekst (za hash IP adrese)
+#   TELEGRAM_BOT_TOKEN   opciono, obavijest za svaku prijavu
+#   TELEGRAM_CHAT_ID     opciono, ID grupe za obavijesti
+#   TURNSTILE_SECRET     opciono, tajni ključ za Turnstile
