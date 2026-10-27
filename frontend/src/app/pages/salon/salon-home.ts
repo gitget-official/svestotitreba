@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { BookingApi, VendorApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
-import { BOOKING_STATUS, formatTime, plural, todayIso } from '../../core/format';
+import { BOOKING_STATUS, formatTime, plural, todayIso, formatRating } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { Booking, Vendor } from '../../core/models';
 import { Icon } from '../../shared/ui/icon';
@@ -73,7 +73,7 @@ interface CheckItem {
           </div>
           <div class="stat card">
             <span class="stat-icon"><app-icon name="star" /></span>
-            <span class="value">{{ v.averageRating ? v.averageRating.toFixed(1) : '—' }}</span>
+            <span class="value">{{ v.averageRating ? rate(v.averageRating) : '—' }}</span>
             <span class="t-footnote muted">{{ v.reviewCount }} {{ plural(v.reviewCount, 'recenzija', 'recenzije', 'recenzija') }}</span>
           </div>
           <div class="stat card">
@@ -214,6 +214,7 @@ interface CheckItem {
 
     .columns {
       display: grid;
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-4);
     }
 
@@ -324,7 +325,7 @@ interface CheckItem {
 
     @media (min-width: 60rem) {
       .columns {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         align-items: start;
       }
     }
@@ -337,6 +338,7 @@ interface CheckItem {
   `,
 })
 export class SalonHome implements OnInit {
+  protected readonly rate = formatRating;
   protected readonly auth = inject(AuthService);
   private readonly vendorApi = inject(VendorApi);
   private readonly bookingApi = inject(BookingApi);

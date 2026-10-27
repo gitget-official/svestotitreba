@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth';
 import { FavoritesService, SavedVendor } from '../../core/favorites';
-import { formatPrice, formatPriceRange, plural } from '../../core/format';
+import { formatPrice, formatPriceRange, plural, formatRating } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { FadeInImage } from '../../shared/motion/fade-in-image';
 import { Icon } from '../../shared/ui/icon';
@@ -70,7 +70,7 @@ const MAX_COMPARE = 3;
                   <a class="name" [routerLink]="link(item)">{{ item.name }}</a>
                   <p class="t-footnote muted">
                     {{ item.cityName }}
-                    @if (item.averageRating) { · <app-icon name="star" [filled]="true" class="star" /> {{ item.averageRating.toFixed(1) }} }
+                    @if (item.averageRating) { · <app-icon name="star" [filled]="true" class="star" /> {{ rate(item.averageRating) }} }
                   </p>
                   <p class="t-callout strong">{{ categoryPrice(item, group.category) }}</p>
                 </div>
@@ -92,7 +92,7 @@ const MAX_COMPARE = 3;
       } @empty {
         <div class="empty-state">
           <app-icon name="heart" />
-          <h3 class="t-title-3">Još ništa niste sačuvali</h3>
+          <h2 class="t-title-3">Još ništa niste sačuvali</h2>
           <p>Dodirnite srce na ponuđaču koji vam se sviđa i ovdje ćete ih moći uporediti.</p>
           <div class="row-wrap center">
             <a class="btn btn-primary" routerLink="/istrazi">Istražite ponudu</a>
@@ -143,7 +143,7 @@ const MAX_COMPARE = 3;
                 <th scope="row">Ocjena</th>
                 @for (item of compared(); track item.id) {
                   <td [class.best]="item.averageRating !== null && item.averageRating === bestRating()">
-                    @if (item.averageRating) { {{ item.averageRating.toFixed(1) }} ({{ item.reviewCount }}) } @else { — }
+                    @if (item.averageRating) { {{ rate(item.averageRating) }} ({{ item.reviewCount }}) } @else { — }
                   </td>
                 }
               </tr>
@@ -380,6 +380,7 @@ const MAX_COMPARE = 3;
   `,
 })
 export class Saved {
+  protected readonly rate = formatRating;
   protected readonly favorites = inject(FavoritesService);
   protected readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastService);

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { formatPriceRange } from '../../core/format';
+import { formatPriceRange, formatRating } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { Vendor } from '../../core/models';
 import { FadeInImage } from '../motion/fade-in-image';
@@ -13,7 +13,7 @@ import { SaveButton } from './save-button';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="card-link" [routerLink]="link()">
-      <div class="media">
+      <div class="media" [style.view-transition-name]="'vendor-' + vendor().id">
         @if (cover(); as url) {
           <img appFadeIn [src]="url" [alt]="vendor().name" loading="lazy" decoding="async" />
         } @else {
@@ -27,7 +27,7 @@ import { SaveButton } from './save-button';
         <div class="title-row">
           <h3 class="t-title-3">{{ vendor().name }}</h3>
           @if (vendor().averageRating; as rating) {
-            <span class="rating"><app-icon name="star" [filled]="true" /> {{ rating.toFixed(1) }}</span>
+            <span class="rating"><app-icon name="star" [filled]="true" /> {{ rate(rating) }}</span>
           }
         </div>
         <p class="t-footnote muted meta">
@@ -240,6 +240,7 @@ import { SaveButton } from './save-button';
   `,
 })
 export class VendorCard {
+  protected readonly rate = formatRating;
   readonly vendor = input.required<Vendor>();
   /** Srce za "Sačuvano" (isključeno npr. u pregledu salona). */
   readonly saveable = input(true);

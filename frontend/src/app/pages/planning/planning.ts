@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, map } from 'rxjs';
 import { VendorApi } from '../../core/api';
 import { FavoritesService } from '../../core/favorites';
-import { formatDate, formatPrice, formatPriceRange, plural, todayIso } from '../../core/format';
+import { formatDate, formatPrice, formatPriceRange, plural, todayIso, formatRating } from '../../core/format';
 import { vendorLink } from '../../core/links';
 import { LookupStore } from '../../core/lookups';
 import { ServiceCategory, Vendor } from '../../core/models';
@@ -192,7 +192,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                           <strong>{{ c.vendor.name }}</strong>
                           <span class="t-footnote muted">
                             {{ c.vendor.cityName }}
-                            @if (c.vendor.averageRating) { · ★ {{ c.vendor.averageRating.toFixed(1) }} }
+                            @if (c.vendor.averageRating) { · ★ {{ rate(c.vendor.averageRating) }} }
                             · {{ c.offeringTitle }}
                           </span>
                         </span>
@@ -217,7 +217,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                                     <strong>{{ alt.vendor.name }}</strong>
                                     <span class="t-footnote muted">
                                       {{ alt.vendor.cityName }}
-                                      @if (alt.vendor.averageRating) { · ★ {{ alt.vendor.averageRating.toFixed(1) }} }
+                                      @if (alt.vendor.averageRating) { · ★ {{ rate(alt.vendor.averageRating) }} }
                                     </span>
                                   </span>
                                   <span class="pick-price">
@@ -731,6 +731,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
   `,
 })
 export class Planning implements OnInit {
+  protected readonly rate = formatRating;
   protected readonly lookups = inject(LookupStore);
   private readonly vendorApi = inject(VendorApi);
   private readonly favorites = inject(FavoritesService);
