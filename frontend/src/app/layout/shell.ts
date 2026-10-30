@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, inject, sig
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth';
 import { FavoritesService } from '../core/favorites';
+import { BookingsStore } from '../core/my-bookings';
 import { ThemeService } from '../core/theme';
 import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
@@ -388,6 +389,7 @@ export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly favorites = inject(FavoritesService);
+  private readonly bookings = inject(BookingsStore);
   private readonly router = inject(Router);
   protected readonly scrolled = signal(false);
   protected readonly menuOpen = signal(false);
@@ -419,7 +421,7 @@ export class Shell {
           { label: 'Istraži', icon: 'grid', link: '/istrazi' },
           { label: 'Planer', icon: 'sparkles', link: '/planiranje' },
           { label: 'Sačuvano', icon: 'heart', link: '/sacuvano', badge: saved },
-          { label: 'Rezervacije', icon: 'calendar', link: '/moje-rezervacije' },
+          { label: 'Rezervacije', icon: 'calendar', link: '/moje-rezervacije', badge: this.bookings.upcomingCount() || undefined },
           { label: 'Recenzije', icon: 'star', link: '/moje-recenzije', desktopOnly: true },
         ];
       default:

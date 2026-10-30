@@ -18,13 +18,14 @@ import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
 import { DomSanitizer, Meta, Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
-import { BookingApi, ReviewApi, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
+import { EMPTY, Subject, Subscription, debounceTime, switchMap } from 'rxjs';
+import { ReviewApi, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
 import { BRAND } from '../../core/brand';
-import { DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso, formatRating } from '../../core/format';
+import { BOOKING_STATUS, DAYS, formatDate, formatPriceRange, formatTime, plural, toTimeOnly, todayIso, formatRating } from '../../core/format';
 import { vendorIdFromParam, vendorLink } from '../../core/links';
-import { Offering, Review, Vendor } from '../../core/models';
+import { Booking, Offering, Review, Vendor } from '../../core/models';
+import { BookingsStore, isOpen } from '../../core/my-bookings';
 import { Reveal } from '../../shared/motion/reveal';
 import { Gallery } from '../../shared/ui/gallery';
 import { LookupStore } from '../../core/lookups';
@@ -34,9 +35,10 @@ import { Icon } from '../../shared/ui/icon';
 import { Rating } from '../../shared/ui/rating';
 import { SaveButton } from '../../shared/ui/save-button';
 import { Sheet } from '../../shared/ui/sheet';
+import { ConfirmService } from '../../shared/ui/confirm';
 import { ToastService } from '../../shared/ui/toast';
 
-type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
+type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
 
 /**
  * Stranica ponuđača (FR-7): sve iz sekcije 4.3 zahtjeva, rezervacija (ako je uključena) i recenzije.
@@ -183,12 +185,34 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
               <p class="t-title-2">{{ priceRange(v.priceFrom, v.priceTo) }}</p>
 
               @if (v.bookingEnabled && auth.hasRole('Couple')) {
-                <button type="button" class="btn btn-primary btn-lg btn-block" (click)="bookingOpen.set(true)">
-                  <app-icon name="calendar" /> Rezerviši termin
-                </button>
-                <p class="t-caption subtle center">
-                  {{ v.autoConfirmBookings ? 'Termin se potvrđuje odmah.' : 'Salon potvrđuje zahtjev.' }}
-                </p>
+                @if (myBooking(); as b) {
+                  <!-- Postojeći zahtjev je glavna informacija: mladenci odmah vide gdje su stali. -->
+                  <div [class]="'my-booking ' + b.status" role="status">
+                    <span class="badge" [class]="status[b.status].badge">{{ status[b.status].label }}</span>
+                    <p class="my-booking-title">{{ headline(b) }}</p>
+                    <p class="t-footnote muted">
+                      {{ longDate(b.eventDate) }}@if (b.startTime) {, {{ time(b.startTime) }}}
+                      @if (b.offeringTitle) { · {{ b.offeringTitle }} }
+                    </p>
+                    @if (b.statusNote) { <p class="t-footnote subtle">„{{ b.statusNote }}“</p> }
+                    <div class="row-wrap">
+                      <a class="btn btn-tinted btn-sm" routerLink="/moje-rezervacije">Moje rezervacije</a>
+                      @if (open(b)) {
+                        <button type="button" class="btn btn-plain btn-sm" (click)="cancelBooking(b)">Otkaži zahtjev</button>
+                      }
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-block" (click)="openBooking(v)">
+                    <app-icon name="calendar" /> {{ open(b) ? 'Rezerviši drugi termin' : 'Pošalji novi zahtjev' }}
+                  </button>
+                } @else {
+                  <button type="button" class="btn btn-primary btn-lg btn-block" (click)="openBooking(v)">
+                    <app-icon name="calendar" /> Rezerviši termin
+                  </button>
+                  <p class="t-caption subtle center">
+                    {{ v.autoConfirmBookings ? 'Termin se potvrđuje odmah.' : 'Salon potvrđuje zahtjev.' }}
+                  </p>
+                }
               } @else if (v.bookingEnabled && !auth.isLoggedIn()) {
                 <a class="btn btn-primary btn-lg btn-block" routerLink="/prijava" [queryParams]="{ povratak: here() }">
                   <app-icon name="calendar" /> Prijavite se za rezervaciju
@@ -256,11 +280,20 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
         <!-- Telefon: glavna akcija je uvijek pri ruci, iznad donje trake. -->
         <div class="mobile-cta material">
           <div>
-            <p class="t-caption muted">Okvirna cijena</p>
-            <strong>{{ priceRange(v.priceFrom, v.priceTo) }}</strong>
+            @if (myBooking(); as b) {
+              <p class="t-caption muted">Vaš zahtjev · {{ shortDate(b.eventDate) }}</p>
+              <span class="badge" [class]="status[b.status].badge">{{ status[b.status].label }}</span>
+            } @else {
+              <p class="t-caption muted">Okvirna cijena</p>
+              <strong>{{ priceRange(v.priceFrom, v.priceTo) }}</strong>
+            }
           </div>
           @if (v.bookingEnabled && auth.hasRole('Couple')) {
-            <button type="button" class="btn btn-primary" (click)="bookingOpen.set(true)">Rezerviši</button>
+            @if (myBooking()) {
+              <a class="btn" routerLink="/moje-rezervacije">Pogledaj</a>
+            } @else {
+              <button type="button" class="btn btn-primary" (click)="openBooking(v)">Rezerviši</button>
+            }
           } @else if (v.bookingEnabled && !auth.isLoggedIn()) {
             <a class="btn btn-primary" routerLink="/prijava" [queryParams]="{ povratak: here() }">Rezerviši</a>
           } @else if (v.phoneNumber) {
@@ -281,9 +314,45 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
     </div>
 
     @if (bookingOpen() && vendor(); as v) {
-      <app-sheet #bookingSheet title="Rezervacija termina" (closed)="bookingOpen.set(false)">
+      <app-sheet #bookingSheet title="Rezervacija termina" (closed)="bookingOpen.set(false); sent.set(null)">
+        @if (sent(); as b) {
+          <!-- Potvrda ostaje na ekranu dok je korisnik sam ne zatvori (toast nestane prebrzo). -->
+          <div class="sent stack" role="status">
+            <span class="sent-icon" [class.ok]="b.status === 'Confirmed'">
+              <app-icon [name]="b.status === 'Confirmed' ? 'check' : 'clock'" [strokeWidth]="2.2" />
+            </span>
+            <h3 class="t-title-2">{{ b.status === 'Confirmed' ? 'Termin je potvrđen' : 'Zahtjev je poslan' }}</h3>
+            <p class="muted">
+              @if (b.status === 'Confirmed') {
+                {{ v.name }} vas očekuje. Termin je rezervisan za vas.
+              } @else {
+                {{ v.name }} sada pregleda vaš zahtjev. Termin je vaš kad ga salon potvrdi.
+              }
+            </p>
+            <dl class="sent-summary">
+              <div><dt>Datum</dt><dd>{{ longDate(b.eventDate) }}</dd></div>
+              @if (b.startTime) { <div><dt>Vrijeme</dt><dd>{{ time(b.startTime) }}</dd></div> }
+              @if (b.offeringTitle) { <div><dt>Usluga</dt><dd>{{ b.offeringTitle }}</dd></div> }
+              <div><dt>Status</dt><dd><span class="badge" [class]="status[b.status].badge">{{ status[b.status].label }}</span></dd></div>
+            </dl>
+            @if (v.requiresDeposit && v.depositNote) {
+              <p class="alert alert-info"><strong>Sljedeći korak:</strong> {{ v.depositNote }}</p>
+            }
+            @if (addedToPlan(); as note) {
+              <p class="t-footnote muted"><app-icon name="rings" class="inline-icon" /> {{ note }}</p>
+            }
+            <p class="t-footnote muted">Status pratite ovdje, u svom planu i pod Rezervacije.</p>
+            <div class="sent-actions">
+              <button type="button" class="btn" (click)="bookingSheet.close()">Zatvori</button>
+              <a class="btn btn-primary" routerLink="/moje-rezervacije">Moje rezervacije</a>
+            </div>
+          </div>
+        } @else {
         <form class="stack" [formGroup]="bookingForm" (ngSubmit)="book()">
           <p class="muted">{{ v.name }}</p>
+          @if (prefilled()) {
+            <p class="t-footnote prefilled"><app-icon name="sparkles" class="inline-icon" /> Popunjeno iz vašeg plana. Provjerite i pošaljite.</p>
+          }
           <div class="field">
             <label for="b-offer">Usluga</label>
             <select id="b-offer" class="select" formControlName="offeringId">
@@ -302,6 +371,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
                   @case ('checking') { <span class="spinner"></span> Provjeravamo datum… }
                   @case ('free') { <app-icon name="check" /> Datum je slobodan }
                   @case ('taken') { <app-icon name="alert" /> Datum je već zauzet. Probajte drugi ili pošaljite upit. }
+                  @case ('mine') { <app-icon name="info" /> Već imate zahtjev kod ovog salona za taj datum. }
                   @case ('unknown') { Dostupnost potvrđuje salon. }
                 }
               </span>
@@ -321,11 +391,12 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
             <p class="alert alert-info">{{ v.depositNote }}</p>
           }
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary btn-block" [disabled]="bookingForm.invalid || busy()">
-              @if (busy()) { <span class="spinner"></span> } @else { Pošalji zahtjev }
+            <button type="submit" class="btn btn-primary btn-block" [disabled]="bookingForm.invalid || busy() || availability() === 'mine'">
+              @if (busy()) { <span class="spinner"></span> } @else { {{ v.autoConfirmBookings ? 'Rezerviši termin' : 'Pošalji zahtjev' }} }
             </button>
           </div>
         </form>
+        }
       </app-sheet>
     }
 
@@ -529,6 +600,147 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'unknown';
 
     .availability.taken {
       color: var(--danger);
+    }
+
+    .availability.mine {
+      color: var(--warning);
+    }
+
+    .prefilled {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0;
+      color: var(--accent-ink);
+    }
+
+    .inline-icon {
+      width: 1rem;
+      height: 1rem;
+      flex: none;
+      vertical-align: -0.15em;
+    }
+
+    // Postojeći zahtjev na stranici salona: boja ivice prati status.
+    .my-booking {
+      display: grid;
+      gap: var(--space-2);
+      justify-items: start;
+      padding: var(--space-4);
+      border: 1px solid var(--separator);
+      border-left: 3px solid var(--warning);
+      border-radius: var(--radius-md);
+      background: var(--warning-soft);
+    }
+
+    .my-booking.Confirmed {
+      border-left-color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .my-booking.Rejected {
+      border-left-color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .my-booking p {
+      margin: 0;
+    }
+
+    .my-booking-title {
+      font-weight: 600;
+    }
+
+    .sent {
+      justify-items: center;
+      text-align: center;
+      padding-top: var(--space-2);
+    }
+
+    .sent h3,
+    .sent p {
+      margin: 0;
+    }
+
+    .sent-icon {
+      display: grid;
+      place-items: center;
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 50%;
+      background: var(--warning-soft);
+      color: var(--warning);
+      animation: sent-pop 520ms var(--ease-out) both;
+    }
+
+    .sent-icon.ok {
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .sent-icon app-icon {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    @keyframes sent-pop {
+      from {
+        opacity: 0;
+        transform: scale(0.6);
+      }
+      60% {
+        transform: scale(1.08);
+      }
+    }
+
+    .sent-summary {
+      display: grid;
+      width: 100%;
+      margin: 0;
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      text-align: left;
+    }
+
+    .sent-summary div {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+    }
+
+    .sent-summary div + div {
+      border-top: 1px solid var(--separator);
+    }
+
+    .sent-summary dt {
+      color: var(--text-secondary);
+    }
+
+    .sent-summary dd {
+      margin: 0;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .sent .alert {
+      width: 100%;
+      margin: 0;
+      text-align: left;
+    }
+
+    .sent-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+      width: 100%;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sent-icon {
+        animation: none;
+      }
     }
 
     .layout {
@@ -745,11 +957,14 @@ export class VendorDetail {
   protected readonly rate = formatRating;
   /** Parametar rute: "17-foto-trenutak" ili "17". */
   readonly id = input.required<string>();
+  /** `?rezervacija=1` (iz plana): otvori rezervaciju čim se ponuđač učita. */
+  readonly rezervacija = input<string>();
 
   protected readonly auth = inject(AuthService);
   private readonly vendorApi = inject(VendorApi);
   private readonly reviewApi = inject(ReviewApi);
-  private readonly bookingApi = inject(BookingApi);
+  private readonly myBookings = inject(BookingsStore);
+  private readonly confirm = inject(ConfirmService);
   private readonly toasts = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
@@ -769,6 +984,10 @@ export class VendorDetail {
   protected readonly reviewOpen = signal(false);
   protected readonly availability = signal<Availability>('idle');
   protected readonly planPop = signal(false);
+  /** Upravo poslan zahtjev: list prikazuje potvrdu umjesto forme. */
+  protected readonly sent = signal<Booking | null>(null);
+  protected readonly prefilled = signal(false);
+  protected readonly addedToPlan = signal<string | null>(null);
 
   private readonly bookingSheet = viewChild<Sheet>('bookingSheet');
   private readonly reviewSheet = viewChild<Sheet>('reviewSheet');
@@ -779,6 +998,17 @@ export class VendorDetail {
   protected readonly priceRange = formatPriceRange;
   protected readonly plural = plural;
   protected readonly date = (value: string) => formatDate(value);
+  protected readonly longDate = (value: string) => capitalize(formatDate(value, { weekday: 'long' }));
+  protected readonly shortDate = (value: string) => formatDate(value, { year: undefined, month: 'short' });
+  protected readonly time = formatTime;
+  protected readonly status = BOOKING_STATUS;
+  protected readonly open = isOpen;
+
+  /** Zahtjev mladenaca kod ovog ponuđača (otvoren ili odbijen za budući datum), da se ne rezerviše "naslijepo". */
+  protected readonly myBooking = computed(() => {
+    const v = this.vendor();
+    return v && this.auth.hasRole('Couple') ? this.myBookings.latestFor(v.id) : null;
+  });
 
   protected readonly bookingForm = this.fb.group({
     offeringId: this.fb.control<number | null>(null),
@@ -878,9 +1108,12 @@ export class VendorDetail {
     this.dateCheck$
       .pipe(
         debounceTime(250),
-        distinctUntilChanged(),
         switchMap((date) => {
           const v = this.vendor()!;
+          if (this.myBookings.openOn(v.id, date)) {
+            this.availability.set('mine');
+            return EMPTY;
+          }
           this.availability.set('checking');
           const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
           return this.vendorApi.list({ availableOn: date, fts: v.name, pageSize: 50 }, context);
@@ -964,6 +1197,65 @@ export class VendorDetail {
     }
   }
 
+  /** Otvori rezervaciju popunjenu iz plana: datum vjenčanja, usluga iz plana i broj gostiju u napomeni. */
+  protected openBooking(v: Vendor): void {
+    const answers = this.plan.answers();
+    const item = this.plan.items().find((i) => i.vendorId === v.id);
+    const offers = this.activeOfferings();
+    const offering =
+      offers.find((o) => item && o.serviceCategoryId === item.categoryId && o.title === item.offeringTitle) ??
+      (offers.length === 1 ? offers[0] : null);
+    const date = answers.date && answers.date >= this.today ? answers.date : '';
+    const note = item && answers.guests ? `Broj gostiju: ${answers.guests}.` : null;
+
+    this.sent.set(null);
+    this.addedToPlan.set(null);
+    this.availability.set('idle');
+    this.prefilled.set(!!date || (!!item && !!offering));
+    this.bookingForm.reset({ offeringId: offering?.id ?? null, eventDate: date, startTime: null, note });
+    this.bookingOpen.set(true);
+  }
+
+  protected headline(b: Booking): string {
+    switch (b.status) {
+      case 'Confirmed':
+        return 'Vaš termin je potvrđen.';
+      case 'Rejected':
+        return 'Salon nije mogao prihvatiti vaš zahtjev.';
+      default:
+        return 'Vaš zahtjev čeka potvrdu salona.';
+    }
+  }
+
+  protected async cancelBooking(b: Booking): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Otkazati zahtjev?',
+      message: `Zahtjev kod „${b.vendorName}“ za ${formatDate(b.eventDate)} biće otkazan.`,
+      confirmText: 'Otkaži zahtjev',
+    });
+    if (!ok) return;
+    this.myBookings.cancel(b.id).subscribe(() => this.toasts.success('Zahtjev je otkazan.'));
+  }
+
+  /**
+   * Rezervisan ponuđač pripada planu: ako ga tamo nema, dodaj ga u kategoriju rezervisane usluge.
+   * Vraća rečenicu za potvrdu (ili null kad je već bio u planu).
+   */
+  private keepInPlan(v: Vendor, booking: Booking): string | null {
+    if (this.inPlan()) return null;
+    const offering = this.activeOfferings().find((o) => o.id === booking.offeringId) ?? this.activeOfferings()[0];
+    if (!offering) return null;
+    const known = this.lookups.categories().find((c) => c.id === offering.serviceCategoryId);
+    const item = PlanStore.itemFrom(v, {
+      id: offering.serviceCategoryId,
+      name: known?.name ?? offering.serviceCategoryName ?? '',
+      slug: known?.slug ?? '',
+    });
+    if (!item) return null;
+    const replaced = this.plan.put(item);
+    return replaced ? `${v.name} je u vašem planu umjesto ${replaced.vendorName}.` : `${v.name} je dodan u vaš plan.`;
+  }
+
   protected openReview(): void {
     const mine = this.myReview();
     this.reviewForm.reset({ rating: mine?.rating ?? 0, comment: mine?.comment ?? null });
@@ -975,7 +1267,7 @@ export class VendorDetail {
     if (!v || this.bookingForm.invalid) return;
     const value = this.bookingForm.getRawValue();
     this.busy.set(true);
-    this.bookingApi
+    this.myBookings
       .create({
         vendorId: v.id,
         offeringId: value.offeringId,
@@ -986,12 +1278,10 @@ export class VendorDetail {
       .subscribe({
         next: (booking) => {
           this.busy.set(false);
-          this.toasts.success(
-            booking.status === 'Confirmed' ? 'Termin je potvrđen.' : 'Zahtjev je poslan. Salon će ga potvrditi.',
-          );
+          this.addedToPlan.set(this.keepInPlan(v, booking));
+          this.sent.set(booking);
           this.bookingForm.reset();
           this.availability.set('idle');
-          this.bookingSheet()?.close();
         },
         error: () => this.busy.set(false),
       });
@@ -1031,6 +1321,7 @@ export class VendorDetail {
         this.vendor.set(v);
         this.loading.set(false);
         this.applySeo(v);
+        if (this.rezervacija() && v.bookingEnabled && this.auth.hasRole('Couple') && !this.myBooking()) this.openBooking(v);
       },
       error: () => this.loading.set(false),
     });
@@ -1049,4 +1340,8 @@ export class VendorDetail {
   private loadReviews(vendorId: number): void {
     this.reviewApi.list({ vendorId, pageSize: 50 }).subscribe((r) => this.reviews.set(r.items));
   }
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

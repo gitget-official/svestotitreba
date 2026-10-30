@@ -15,6 +15,9 @@ import { springNumber } from '../../shared/motion/spring-number';
 import { DateField } from '../../shared/ui/date-time-fields';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
+import { BookingStatus } from '../../shared/ui/booking-status';
+import { AuthService } from '../../core/auth';
+import { BookingsStore, isOpen } from '../../core/my-bookings';
 
 
 const DEFAULT_SLUGS = ['saloni-za-vjencanje', 'vjencanice-i-odijela', 'fotografi', 'dekoracije'];
@@ -26,7 +29,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
  */
 @Component({
   selector: 'app-planning',
-  imports: [FormsModule, RouterLink, FadeInImage, Icon, DateField],
+  imports: [FormsModule, RouterLink, FadeInImage, Icon, DateField, BookingStatus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page planner">
@@ -166,6 +169,12 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                   aria-label="Iskorišteno od budžeta">
                   <span class="fill" [class.over]="overBy() > 0" [style.transform]="'scaleX(' + meter() + ')'"></span>
                 </div>
+                @if (tally(); as t) {
+                  <p class="t-footnote tally">
+                    <strong>Potvrđeno {{ t.confirmed }} od {{ t.total }}</strong>
+                    @if (t.pending) { · {{ t.pending }} {{ t.pending === 1 ? 'zahtjev čeka' : 'zahtjeva čekaju' }} potvrdu }
+                  </p>
+                }
                 <p class="t-footnote muted">
                   Budžet {{ price(p.budget) }}
                   @if (cityName()) { · {{ cityName() }} }
@@ -202,13 +211,17 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                         </span>
                       </a>
 
-                      @if (line.alternatives.length) {
-                        <button type="button" class="btn btn-plain btn-sm swap" [attr.aria-expanded]="isOpen(line.category.id)"
-                          (click)="toggleOpen(line.category.id)">
-                          {{ isOpen(line.category.id) ? 'Sakrij' : 'Zamijeni' }} ({{ line.alternatives.length }})
-                          <app-icon name="chevron-down" class="chev" [class.up]="isOpen(line.category.id)" />
-                        </button>
-                        @if (isOpen(line.category.id)) {
+                      <div class="line-foot">
+                        <app-booking-status [vendorId]="c.vendor.id" [link]="link(c.vendor)" [bookingEnabled]="c.vendor.bookingEnabled" />
+                        @if (line.alternatives.length) {
+                          <button type="button" class="btn btn-plain btn-sm swap" [attr.aria-expanded]="isOpen(line.category.id)"
+                            (click)="toggleOpen(line.category.id)">
+                            {{ isOpen(line.category.id) ? 'Sakrij' : 'Zamijeni' }} ({{ line.alternatives.length }})
+                            <app-icon name="chevron-down" class="chev" [class.up]="isOpen(line.category.id)" />
+                          </button>
+                        }
+                      </div>
+                      @if (line.alternatives.length && isOpen(line.category.id)) {
                           <ul class="alternatives">
                             @for (alt of line.alternatives; track alt.vendor.id) {
                               <li>
@@ -230,7 +243,6 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                               </li>
                             }
                           </ul>
-                        }
                       }
                     } @else {
                       <div class="none">
@@ -618,7 +630,24 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
     }
 
     .swap {
-      justify-self: start;
+      margin-left: auto;
+    }
+
+    // Status rezervacije (ili "Rezerviši") lijevo, "Zamijeni" desno.
+    .line-foot {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 2rem;
+    }
+
+    .line-foot:empty {
+      display: none;
+    }
+
+    .tally {
+      margin: 0;
     }
 
     .chev {
@@ -736,6 +765,8 @@ export class Planning implements OnInit {
   private readonly vendorApi = inject(VendorApi);
   private readonly favorites = inject(FavoritesService);
   private readonly toasts = inject(ToastService);
+  private readonly auth = inject(AuthService);
+  private readonly bookings = inject(BookingsStore);
   protected readonly store = inject(PlanStore);
 
   protected readonly stepLabels = ['Usluge', 'Budžet i grad', 'Vaš paket'];
@@ -818,6 +849,19 @@ export class Planning implements OnInit {
   protected readonly chosenVendors = computed(
     () => this.plan()?.lines.map((l) => l.choice?.vendor).filter((v): v is Vendor => !!v) ?? [],
   );
+
+  /** Koliko je izabranih ponuđača stvarno rezervisano (samo za prijavljene mladence koji imaju neki zahtjev). */
+  protected readonly tally = computed(() => {
+    if (!this.auth.hasRole('Couple')) return null;
+    const chosen = this.chosenVendors();
+    const open = chosen.map((v) => this.bookings.latestFor(v.id)).filter((b) => !!b && isOpen(b));
+    if (!open.length) return null;
+    return {
+      total: chosen.length,
+      confirmed: open.filter((b) => b!.status === 'Confirmed').length,
+      pending: open.filter((b) => b!.status === 'Pending').length,
+    };
+  });
 
   protected readonly skeletonLines = computed(() => this.answers().categoryIds.map((_, i) => i));
 
@@ -906,7 +950,12 @@ export class Planning implements OnInit {
   protected choose(categoryId: number, option: PlanOption): void {
     const category = this.lookups.categories().find((c) => c.id === categoryId);
     const item = category ? PlanStore.itemFrom(option.vendor, category) : null;
-    if (item) this.store.put(item);
+    const previous = item ? this.store.put(item) : undefined;
+    // Zamjena u planu ne otkazuje zahtjev kod salona; to se mora reći, inače salon čuva datum uzalud.
+    const booking = previous ? this.bookings.latestFor(previous.vendorId) : null;
+    if (previous && booking && isOpen(booking)) {
+      this.toasts.info(`Zahtjev kod ${previous.vendorName} je i dalje aktivan. Otkažite ga u Rezervacijama ako vam ne treba.`);
+    }
     this.open.update((list) => list.filter((x) => x !== categoryId));
   }
 

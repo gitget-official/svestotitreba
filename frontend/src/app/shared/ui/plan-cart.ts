@@ -10,6 +10,7 @@ import { FadeInImage } from '../motion/fade-in-image';
 import { Icon, categoryIcon } from './icon';
 import { Sheet } from './sheet';
 import { ToastService } from './toast';
+import { BookingStatus } from './booking-status';
 
 /**
  * "Moj plan": dugme koje prati korisnika u donjem desnom uglu i otvara pregled svega isplaniranog.
@@ -17,7 +18,7 @@ import { ToastService } from './toast';
  */
 @Component({
   selector: 'app-plan-cart',
-  imports: [RouterLink, FadeInImage, Icon, Sheet],
+  imports: [RouterLink, FadeInImage, Icon, Sheet, BookingStatus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
@@ -69,6 +70,8 @@ import { ToastService } from './toast';
                     <span class="t-caption muted">{{ item.categoryName }}</span>
                     <a class="name" [routerLink]="['/ponudjaci', item.vendorId + '-' + item.vendorSlug]" (click)="close()">{{ item.vendorName }}</a>
                     <span class="t-footnote muted">{{ range(item.priceFrom, item.priceTo) }}</span>
+                    <app-booking-status class="item-status" [vendorId]="item.vendorId" [bookingEnabled]="item.bookingEnabled"
+                      [link]="['/ponudjaci', item.vendorId + '-' + item.vendorSlug]" (navigated)="close()" />
                   </div>
                   <button type="button" class="icon-btn remove" (click)="remove(item)" [attr.aria-label]="'Ukloni ' + item.vendorName">
                     <app-icon name="close" />
@@ -339,6 +342,11 @@ import { ToastService } from './toast';
       font-weight: 600;
       white-space: nowrap;
       text-overflow: ellipsis;
+    }
+
+    .item-status {
+      justify-self: start;
+      margin-top: var(--space-1);
     }
 
     .remove {

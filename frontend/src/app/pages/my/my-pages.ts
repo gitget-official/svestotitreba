@@ -3,10 +3,11 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
 import { RouterLink } from '@angular/router';
-import { BookingApi, ReviewApi } from '../../core/api';
+import { ReviewApi } from '../../core/api';
 import { AuthService } from '../../core/auth';
 import { BOOKING_STATUS, REVIEW_STATUS, formatDate, formatTime, todayIso } from '../../core/format';
 import { Booking, Review } from '../../core/models';
+import { BookingsStore } from '../../core/my-bookings';
 import { ConfirmService } from '../../shared/ui/confirm';
 import { Icon } from '../../shared/ui/icon';
 import { Rating } from '../../shared/ui/rating';
@@ -136,12 +137,13 @@ import { ToastService } from '../../shared/ui/toast';
   `,
 })
 export class MyBookings implements OnInit {
-  private readonly api = inject(BookingApi);
+  /** Zajednička lista sa stranicom ponuđača, planom i navigacijom: otkazivanje se vidi svuda odmah. */
+  private readonly store = inject(BookingsStore);
   private readonly confirm = inject(ConfirmService);
   private readonly toasts = inject(ToastService);
 
-  protected readonly bookings = signal<Booking[]>([]);
-  protected readonly loading = signal(true);
+  protected readonly bookings = this.store.bookings;
+  protected readonly loading = computed(() => !this.store.loaded());
   protected readonly status = BOOKING_STATUS;
   protected readonly date = (v: string) => formatDate(v, { weekday: 'long', year: undefined });
   protected readonly time = formatTime;
@@ -182,20 +184,12 @@ export class MyBookings implements OnInit {
       confirmText: 'Otkaži rezervaciju',
     });
     if (!ok) return;
-    this.api.cancel(booking.id, { note: null }).subscribe(() => {
-      this.toasts.success('Rezervacija je otkazana.');
-      this.load();
-    });
+    this.store.cancel(booking.id).subscribe(() => this.toasts.success('Rezervacija je otkazana.'));
   }
 
+  /** Svjež pregled pri svakom otvaranju (salon je možda u međuvremenu potvrdio ili odbio). */
   private load(): void {
-    this.api.list({ pageSize: 100 }).subscribe({
-      next: (r) => {
-        this.bookings.set(r.items);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.store.refresh();
   }
 }
 

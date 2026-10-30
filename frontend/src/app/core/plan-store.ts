@@ -19,6 +19,8 @@ export interface PlanItem {
   offeringTitle: string;
   priceFrom: number;
   priceTo: number;
+  /** Prima li ponuđač online rezervacije (stariji sačuvani planovi ovo nemaju). */
+  bookingEnabled?: boolean;
 }
 
 export interface PlanState {
@@ -156,6 +158,7 @@ export class PlanStore {
       offeringTitle: cheapest.title,
       priceFrom: cheapest.priceFrom,
       priceTo: cheapest.priceTo,
+      bookingEnabled: vendor.bookingEnabled,
     };
   }
 
