@@ -25,6 +25,50 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+// ---- Okvir: stranica + podnožje (sticky footer) ----
+// Stranica (sve što router prikaže) zauzima ostatak visine ekrana, pa je podnožje na dnu i kad je sadržaj kratak.
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+
+  > :not(router-outlet) {
+    flex: 1 0 auto;
+  }
+}
+
+// Plutajući elementi na dnu (dugme "Moj plan", donja traka na telefonu, traka "Rezerviši" kod ponuđača)
+// ne smiju prekriti podnožje: ono ostavlja toliko mjesta ispod sebe.
+app-root:has(.plan-fab) {
+  --footer-extra: 4.5rem;
+}
+
+@media (max-width: 59.99rem) {
+  app-root:has(.mobile-cta) {
+    --footer-extra: 5rem;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  app-root:has(app-shell) {
+    --footer-extra: 4.5rem;
+  }
+
+  app-root:has(app-shell .plan-fab) {
+    --footer-extra: 8.5rem;
+  }
+
+  app-root:has(app-shell .mobile-cta) {
+    --footer-extra: 9rem;
+  }
+}
+
 img {
   display: block;
   max-width: 100%;

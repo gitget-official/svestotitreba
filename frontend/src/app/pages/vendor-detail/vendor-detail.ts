@@ -37,6 +37,7 @@ import { SaveButton } from '../../shared/ui/save-button';
 import { Sheet } from '../../shared/ui/sheet';
 import { ConfirmService } from '../../shared/ui/confirm';
 import { ToastService } from '../../shared/ui/toast';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
 
@@ -46,7 +47,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
  */
 @Component({
   selector: 'app-vendor-detail',
-  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, Reveal, SaveButton, Sheet, DateField, TimeField, FieldError],
+  imports: [RouterLink, ReactiveFormsModule, Gallery, Icon, Rating, Reveal, SaveButton, Sheet, DateField, TimeField, FieldError, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -355,12 +356,12 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
           }
           <div class="field">
             <label for="b-offer">Usluga</label>
-            <select id="b-offer" class="select" formControlName="offeringId">
-              <option [ngValue]="null">Nije odabrano</option>
+            <app-select inputId="b-offer" formControlName="offeringId">
+              <app-option [value]="null">Nije odabrano</app-option>
               @for (offer of activeOfferings(); track offer.id) {
-                <option [ngValue]="offer.id">{{ offer.title }} · {{ priceRange(offer.priceFrom, offer.priceTo) }}</option>
+                <app-option [value]="offer.id">{{ offer.title }} · {{ priceRange(offer.priceFrom, offer.priceTo) }}</app-option>
               }
-            </select>
+            </app-select>
           </div>
           <div class="form-grid">
             <div class="field">

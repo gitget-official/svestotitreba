@@ -14,6 +14,7 @@ import { Icon } from '../../shared/ui/icon';
 import { TimeField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 type Tab = 'stranica' | 'usluge' | 'galerija' | 'radno-vrijeme';
 
@@ -31,7 +32,7 @@ interface HourRow {
  */
 @Component({
   selector: 'app-vendor-manage',
-  imports: [RouterLink, ReactiveFormsModule, FormsModule, Icon, Sheet, TimeField, FieldError],
+  imports: [RouterLink, ReactiveFormsModule, FormsModule, Icon, Sheet, TimeField, FieldError, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -86,9 +87,9 @@ interface HourRow {
                 <div class="form-grid">
                   <div class="field">
                     <label for="city">Grad</label>
-                    <select id="city" class="select" formControlName="cityId">
-                      @for (c of lookups.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-                    </select>
+                    <app-select inputId="city" formControlName="cityId">
+                      @for (c of lookups.cities(); track c.id) { <app-option [value]="c.id">{{ c.name }}</app-option> }
+                    </app-select>
                   </div>
                   <div class="field">
                     <label for="address">Adresa</label>
@@ -251,9 +252,9 @@ interface HourRow {
         <form class="stack" [formGroup]="offeringForm" (ngSubmit)="saveOffering()">
           <div class="field">
             <label for="o-cat">Kategorija</label>
-            <select id="o-cat" class="select" formControlName="serviceCategoryId">
-              @for (c of lookups.categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-            </select>
+            <app-select inputId="o-cat" formControlName="serviceCategoryId">
+              @for (c of lookups.categories(); track c.id) { <app-option [value]="c.id">{{ c.name }}</app-option> }
+            </app-select>
           </div>
           <div class="field">
             <label for="o-title">Naziv usluge</label>

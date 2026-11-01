@@ -13,11 +13,12 @@ import { Icon } from '../../shared/ui/icon';
 import { DateField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 /** Administrator: dodavanje ponuđača i dodjela naloga (FR-29), aktivnost i pretplata (FR-33). */
 @Component({
   selector: 'app-admin-vendors',
-  imports: [RouterLink, FormsModule, ReactiveFormsModule, Icon, Sheet, DateField, FieldError],
+  imports: [RouterLink, FormsModule, ReactiveFormsModule, Icon, Sheet, DateField, FieldError, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -32,10 +33,10 @@ import { ToastService } from '../../shared/ui/toast';
       <div class="toolbar">
         <input class="input" type="search" placeholder="Pretraga po nazivu" [ngModel]="fts"
           (ngModelChange)="search$.next($event)" aria-label="Pretraga" />
-        <select class="select" [ngModel]="cityId" (ngModelChange)="cityId = $event; load()" aria-label="Grad">
-          <option [ngValue]="null">Svi gradovi</option>
-          @for (c of lookups.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-        </select>
+        <app-select [ngModel]="cityId" (ngModelChange)="cityId = $event; load()" ariaLabel="Grad">
+          <app-option [value]="null">Svi gradovi</app-option>
+          @for (c of lookups.cities(); track c.id) { <app-option [value]="c.id">{{ c.name }}</app-option> }
+        </app-select>
       </div>
 
       <div class="table-wrap">
@@ -88,9 +89,9 @@ import { ToastService } from '../../shared/ui/toast';
 <app-field-error [control]="createForm.controls.name" /></div>
           <div class="field">
             <label for="c-city">Grad</label>
-            <select id="c-city" class="select" formControlName="cityId">
-              @for (c of lookups.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-            </select>
+            <app-select inputId="c-city" formControlName="cityId">
+              @for (c of lookups.cities(); track c.id) { <app-option [value]="c.id">{{ c.name }}</app-option> }
+            </app-select>
           </div>
           <div class="field"><label for="c-desc">Opis</label><textarea id="c-desc" class="textarea" formControlName="description"></textarea>
 <app-field-error [control]="createForm.controls.description" /></div>
@@ -102,10 +103,10 @@ import { ToastService } from '../../shared/ui/toast';
           </div>
           <div class="field">
             <label for="c-owner">Vlasnik naloga</label>
-            <select id="c-owner" class="select" formControlName="ownerUserId">
-              <option [ngValue]="null">Dodijeliti kasnije</option>
-              @for (u of vendorUsers(); track u.id) { <option [ngValue]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</option> }
-            </select>
+            <app-select inputId="c-owner" formControlName="ownerUserId">
+              <app-option [value]="null">Dodijeliti kasnije</app-option>
+              @for (u of vendorUsers(); track u.id) { <app-option [value]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</app-option> }
+            </app-select>
             <span class="hint">Nalog sa ulogom „Salon“ pravite u Korisnicima.</span>
           </div>
           <div class="form-actions">
@@ -124,18 +125,18 @@ import { ToastService } from '../../shared/ui/toast';
           </label>
           <div class="field">
             <label for="s-owner">Vlasnik naloga</label>
-            <select id="s-owner" class="select" formControlName="ownerUserId">
-              <option [ngValue]="null">Bez vlasnika</option>
-              @for (u of vendorUsers(); track u.id) { <option [ngValue]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</option> }
-            </select>
+            <app-select inputId="s-owner" formControlName="ownerUserId">
+              <app-option [value]="null">Bez vlasnika</app-option>
+              @for (u of vendorUsers(); track u.id) { <app-option [value]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.username }})</app-option> }
+            </app-select>
           </div>
           <div class="form-grid">
             <div class="field">
               <label for="s-plan">Pretplata</label>
-              <select id="s-plan" class="select" formControlName="subscriptionPlanId">
-                <option [ngValue]="null">Bez pretplate</option>
-                @for (p of plans(); track p.id) { <option [ngValue]="p.id">{{ p.name }} · {{ p.price }} KM</option> }
-              </select>
+              <app-select inputId="s-plan" formControlName="subscriptionPlanId">
+                <app-option [value]="null">Bez pretplate</app-option>
+                @for (p of plans(); track p.id) { <app-option [value]="p.id">{{ p.name }} · {{ p.price }} KM</app-option> }
+              </app-select>
             </div>
             <div class="field">
               <label for="s-exp">Ističe</label>

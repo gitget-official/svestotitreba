@@ -92,7 +92,7 @@ import { BookingStatus } from './booking-status';
 
             <div class="actions">
               <a class="btn" routerLink="/planiranje" (click)="close()"><app-icon name="edit" /> Uredi u planeru</a>
-              <button type="button" class="btn btn-primary" (click)="save()" [disabled]="store.sync() === 'saving'">
+              <button type="button" class="btn btn-primary" (click)="save()" [disabled]="store.sync() === 'saving' || !store.dirty()">
                 @if (store.sync() === 'saving') { <span class="spinner"></span> } @else { <app-icon name="check" /> Sačuvaj plan }
               </button>
             </div>
@@ -479,6 +479,7 @@ export class PlanCart {
 
   protected async save(): Promise<void> {
     const result = await this.store.save();
+    if (result === null) return; // nema izmjena od zadnjeg čuvanja
     if (result === 'server') this.toasts.success('Plan je sačuvan u vašem profilu.');
     else if (result === 'offline') this.toasts.info('Plan je sačuvan na ovom uređaju.');
     else this.toasts.info('Plan je sačuvan u ovom pregledniku. Napravite profil da ga ne izgubite.');

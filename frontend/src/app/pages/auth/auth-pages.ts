@@ -19,7 +19,6 @@ const AUTH_STYLES = `
     isolation: isolate;
     display: grid;
     place-items: center;
-    min-height: 100dvh;
     padding: var(--space-6) var(--space-4);
     background:
       radial-gradient(50rem 26rem at 90% -10%, var(--accent-soft), transparent 70%),

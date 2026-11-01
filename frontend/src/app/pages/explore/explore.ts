@@ -15,6 +15,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime } from 'rxjs';
 import { VendorApi } from '../../core/api';
 import { formatDate, plural, todayIso } from '../../core/format';
+import { NumberRule, futureDateError, numberError, rangeError } from '../../core/filter-validation';
 import { LookupStore } from '../../core/lookups';
 import { Vendor, VendorSearch } from '../../core/models';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
@@ -22,6 +23,9 @@ import { DateField } from '../../shared/ui/date-time-fields';
 import { Sheet } from '../../shared/ui/sheet';
 import { Pagination } from '../../shared/ui/pagination';
 import { VendorCard } from '../../shared/ui/vendor-card';
+import { Select, SelectOption } from '../../shared/ui/select';
+
+const PRICE_RULE: NumberRule = { label: 'Cijena', feminine: true, max: 1_000_000 };
 
 interface Filters {
   fts: string;
@@ -53,7 +57,7 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
 /** Samostalna pretraga ponude (FR-5, FR-6). Filteri se čuvaju u URL-u, pa "nazad" vraća isti prikaz. */
 @Component({
   selector: 'app-explore',
-  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard, DateField, Pagination],
+  imports: [FormsModule, RouterLink, Icon, Sheet, VendorCard, DateField, Pagination, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -133,7 +137,7 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
             }
           </div>
         }
-        <app-pagination class="paging" [page]="page()" [pageSize]="pageSize()" [total]="total()" (pageChange)="goToPage($event)" />
+        <app-pagination class="paging" floating [page]="page()" [pageSize]="pageSize()" [total]="total()" (pageChange)="goToPage($event)" />
       }
     </div>
 
@@ -142,25 +146,27 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
         <form class="stack" (ngSubmit)="applyDraft()">
           <div class="field">
             <label for="f-city">Grad</label>
-            <select id="f-city" class="select" name="cityId" [(ngModel)]="draft.cityId">
-              <option [ngValue]="null">Svi gradovi</option>
+            <app-select inputId="f-city" name="cityId" [(ngModel)]="draft.cityId">
+              <app-option [value]="null">Svi gradovi</app-option>
               @for (city of lookups.cities(); track city.id) {
-                <option [ngValue]="city.id">{{ city.name }}</option>
+                <app-option [value]="city.id">{{ city.name }}</app-option>
               }
-            </select>
+            </app-select>
           </div>
 
           <div class="field">
             <span class="label">Cijena (KM)</span>
             <div class="form-grid">
               <input class="input" type="number" min="0" inputmode="numeric" placeholder="Od" name="priceMin"
-                [(ngModel)]="draft.priceMin" aria-label="Cijena od" />
+                [(ngModel)]="draft.priceMin" aria-label="Cijena od" (input)="markBadInput('priceMin', $event)"
+                [attr.aria-invalid]="!!priceError() || null" aria-describedby="f-price-error" />
               <input class="input" type="number" min="0" inputmode="numeric" placeholder="Do" name="priceMax"
-                [(ngModel)]="draft.priceMax" aria-label="Cijena do" />
+                [(ngModel)]="draft.priceMax" aria-label="Cijena do" (input)="markBadInput('priceMax', $event)"
+                [attr.aria-invalid]="!!priceError() || null" aria-describedby="f-price-error" />
             </div>
           </div>
 
-          @if (priceError()) { <p class="error t-footnote" role="alert">{{ priceError() }}</p> }
+          @if (priceError()) { <p id="f-price-error" class="error t-footnote" role="alert">{{ priceError() }}</p> }
 
           <div class="field">
             <span class="label">Ocjena</span>
@@ -176,7 +182,9 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
 
           <div class="field">
             <label for="f-date">Slobodan datum</label>
-            <app-date-field inputId="f-date" name="availableOn" [min]="today" [(ngModel)]="draft.availableOn" />
+            <app-date-field inputId="f-date" name="availableOn" [min]="today" [(ngModel)]="draft.availableOn"
+              [invalid]="!!dateError()" describedBy="f-date-error" />
+            @if (dateError()) { <p id="f-date-error" class="error t-footnote" role="alert">{{ dateError() }}</p> }
             <span class="hint">Saloni bez online rezervacija se uvijek prikazuju; dostupnost provjerite kod njih.</span>
           </div>
 
@@ -187,7 +195,7 @@ const phoneQuery = typeof matchMedia !== 'undefined' ? matchMedia('(max-width: 3
 
           <div class="form-actions">
             <button type="button" class="btn" (click)="clearDraft()">Očisti</button>
-            <button type="submit" class="btn btn-primary" [disabled]="!!priceError()">Prikaži rezultate</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!!formError()">Prikaži rezultate</button>
           </div>
         </form>
       </app-sheet>
@@ -405,6 +413,8 @@ export class Explore implements OnInit {
   protected readonly loading = signal(false);
   protected readonly filtersOpen = signal(false);
   protected draft: Filters = { ...EMPTY };
+  /** Polja cijene u koja je upisano nešto što nije broj (vidi markBadInput). */
+  private badInput = { priceMin: false, priceMax: false };
 
   protected readonly today = todayIso();
   protected readonly plural = plural;
@@ -515,16 +525,33 @@ export class Explore implements OnInit {
     document.querySelector('.result-count')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
   }
 
-  /** Filter cijene: nenegativni brojevi i "od" ne veće od "do". */
+  /** Filter cijene: broj, nije negativan, razuman gornji iznos i "od" ne veće od "do". */
   protected priceError(): string | null {
     const { priceMin, priceMax } = this.draft;
-    if ((priceMin ?? 0) < 0 || (priceMax ?? 0) < 0) return 'Cijena ne može biti negativna.';
-    if (priceMin !== null && priceMax !== null && priceMin > priceMax) return 'Cijena "od" ne može biti veća od cijene "do".';
-    return null;
+    return (
+      numberError(priceMin, PRICE_RULE, this.badInput.priceMin) ??
+      numberError(priceMax, PRICE_RULE, this.badInput.priceMax) ??
+      rangeError(priceMin, priceMax)
+    );
+  }
+
+  /** Slobodan datum: ispravan i ne u prošlosti (kalendar to ne dozvoljava, ali ručni unos može). */
+  protected dateError(): string | null {
+    return futureDateError(this.draft.availableOn);
+  }
+
+  /** Prva greška u filterima; dok je ima, filteri se ne primjenjuju. */
+  protected formError(): string | null {
+    return this.priceError() ?? this.dateError();
+  }
+
+  /** Preglednik u model polja type="number" šalje prazno kad unos nije broj; to treba prijaviti, ne progutati. */
+  protected markBadInput(key: 'priceMin' | 'priceMax', event: Event): void {
+    this.badInput[key] = (event.target as HTMLInputElement).validity.badInput;
   }
 
   protected applyDraft(): void {
-    if (this.priceError()) return;
+    if (this.formError()) return;
     const { fts, categoryId } = this.filters();
     this.filters.set({ ...this.draft, fts, categoryId });
     this.page.set(1);
@@ -535,11 +562,13 @@ export class Explore implements OnInit {
 
   protected clearDraft(): void {
     this.draft = { ...EMPTY, fts: this.filters().fts, categoryId: this.filters().categoryId };
+    this.badInput = { priceMin: false, priceMax: false };
   }
 
   // Kad se sheet otvori, radi se nad kopijom filtera; promjene se primjenjuju tek na "Prikaži rezultate".
   protected openFilters(): void {
     this.draft = { ...this.filters() };
+    this.badInput = { priceMin: false, priceMax: false };
     this.filtersOpen.set(true);
   }
 
@@ -593,19 +622,30 @@ export class Explore implements OnInit {
   }
 }
 
+/**
+ * Filteri iz adrese (dijeljen ili ručno izmijenjen link) prolaze ista pravila kao forma:
+ * nevalidna vrijednost se ignoriše umjesto da ode na server (npr. "?od=-50" ili "?ocjena=9").
+ */
 function fromQuery(params: import('@angular/router').ParamMap): Filters {
-  const num = (key: string) => {
+  const num = (key: string, rule: NumberRule) => {
     const value = params.get(key);
-    return value === null || value === '' || isNaN(Number(value)) ? null : Number(value);
+    if (value === null || value.trim() === '') return null;
+    const n = Number(value);
+    return numberError(n, rule) ? null : n;
   };
+  const id = { integer: true, min: 1 };
+  let priceMin = num('od', PRICE_RULE);
+  let priceMax = num('do', PRICE_RULE);
+  if (rangeError(priceMin, priceMax)) priceMin = priceMax = null;
+  const date = params.get('datum');
   return {
     fts: params.get('q') ?? '',
-    categoryId: num('kategorija'),
-    cityId: num('grad'),
-    priceMin: num('od'),
-    priceMax: num('do'),
-    minRating: num('ocjena'),
-    availableOn: params.get('datum'),
+    categoryId: num('kategorija', id),
+    cityId: num('grad', id),
+    priceMin,
+    priceMax,
+    minRating: num('ocjena', { min: 1, max: 5 }),
+    availableOn: futureDateError(date) ? null : date,
     bookingEnabled: params.get('rezervacija') === '1',
   };
 }

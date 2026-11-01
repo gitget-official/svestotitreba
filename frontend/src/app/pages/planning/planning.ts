@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin, map } from 'rxjs';
 import { VendorApi } from '../../core/api';
 import { FavoritesService } from '../../core/favorites';
@@ -9,7 +9,9 @@ import { vendorLink } from '../../core/links';
 import { LookupStore } from '../../core/lookups';
 import { ServiceCategory, Vendor } from '../../core/models';
 import { PlanItem, PlanStore } from '../../core/plan-store';
-import { Plan, PlanAnswers, PlanOption, buildPlan } from '../../core/planner';
+import { Plan, PlanAnswers, PlanOption, PriceRange, allocate, buildPlan } from '../../core/planner';
+import { NumberRule, numberError, rangeError } from '../../core/filter-validation';
+import { ConfirmService } from '../../shared/ui/confirm';
 import { FadeInImage } from '../../shared/motion/fade-in-image';
 import { springNumber } from '../../shared/motion/spring-number';
 import { DateField } from '../../shared/ui/date-time-fields';
@@ -18,10 +20,13 @@ import { ToastService } from '../../shared/ui/toast';
 import { BookingStatus } from '../../shared/ui/booking-status';
 import { AuthService } from '../../core/auth';
 import { BookingsStore, isOpen } from '../../core/my-bookings';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 
 const DEFAULT_SLUGS = ['saloni-za-vjencanje', 'vjencanice-i-odijela', 'fotografi', 'dekoracije'];
 const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
+const PRICE_RULE: NumberRule = { label: 'Cijena', feminine: true, max: 1_000_000 };
+const NO_RANGE: PriceRange = { min: null, max: null };
 
 /**
  * Planiranje vjenčanja (FR-24 – FR-28): vođeni upitnik u tri koraka i prijedlog cijelog paketa.
@@ -29,7 +34,7 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
  */
 @Component({
   selector: 'app-planning',
-  imports: [FormsModule, RouterLink, FadeInImage, Icon, DateField, BookingStatus],
+  imports: [FormsModule, RouterLink, FadeInImage, Icon, DateField, BookingStatus, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page planner">
@@ -112,10 +117,10 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
               <div class="form-grid">
                 <div class="field">
                   <label for="p-city">Grad</label>
-                  <select id="p-city" class="select" [ngModel]="answers().cityId" (ngModelChange)="patch({ cityId: $event })">
-                    <option [ngValue]="null">Cijela BiH</option>
-                    @for (city of lookups.cities(); track city.id) { <option [ngValue]="city.id">{{ city.name }}</option> }
-                  </select>
+                  <app-select inputId="p-city" [ngModel]="answers().cityId" (ngModelChange)="patch({ cityId: $event })">
+                    <app-option [value]="null">Cijela BiH</app-option>
+                    @for (city of lookups.cities(); track city.id) { <app-option [value]="city.id">{{ city.name }}</app-option> }
+                  </app-select>
                 </div>
                 <div class="field">
                   <label for="p-date">Datum vjenčanja <span class="subtle">(opciono)</span></label>
@@ -133,11 +138,41 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
                   }
                 </div>
               </div>
+
+              <!-- Cijena po usluzi: planer bira samo ponude u tom rasponu (isti filter kao u pretrazi). -->
+              @if (chosenCategories().length) {
+                <fieldset class="field prices">
+                  <legend class="label">Cijena po usluzi <span class="subtle">(opciono)</span></legend>
+                  <span class="hint">Prazno znači "prema budžetu". Gornja granica postaje vaš dio budžeta za tu uslugu.</span>
+                  @for (c of chosenCategories(); track c.id) {
+                    <div class="price-row">
+                      <span class="price-name">
+                        <app-icon [name]="icon(c.slug)" />
+                        <span>{{ c.name }}</span>
+                        <span class="t-caption muted">prijedlog do ~{{ price(round(suggested().get(c.id) ?? 0)) }}</span>
+                      </span>
+                      <div class="price-inputs">
+                        <input class="input" type="number" min="0" inputmode="numeric" placeholder="Od"
+                          [attr.aria-label]="c.name + ': cijena od (KM)'" [ngModel]="rangeOf(c.id).min"
+                          (ngModelChange)="setRange(c.id, 'min', $event)" (input)="markBadInput(c.id, 'min', $event)"
+                          [attr.aria-invalid]="!!priceError(c.id) || null" [attr.aria-describedby]="'p-price-' + c.id" />
+                        <input class="input" type="number" min="0" inputmode="numeric" placeholder="Do"
+                          [attr.aria-label]="c.name + ': cijena do (KM)'" [ngModel]="rangeOf(c.id).max"
+                          (ngModelChange)="setRange(c.id, 'max', $event)" (input)="markBadInput(c.id, 'max', $event)"
+                          [attr.aria-invalid]="!!priceError(c.id) || null" [attr.aria-describedby]="'p-price-' + c.id" />
+                      </div>
+                      @if (priceError(c.id); as e) {
+                        <p [id]="'p-price-' + c.id" class="error t-footnote" role="alert">{{ e }}</p>
+                      }
+                    </div>
+                  }
+                </fieldset>
+              }
             </div>
 
             <div class="step-actions">
               <button type="button" class="btn btn-plain" (click)="goTo(0)"><app-icon name="arrow-left" /> Nazad</button>
-              <button type="button" class="btn btn-magic btn-lg" [disabled]="!!budgetError() || !!guestsError()" (click)="compose()">
+              <button type="button" class="btn btn-magic btn-lg" [disabled]="!!answersError()" (click)="compose()">
                 <app-icon name="sparkles" /> Složi paket
               </button>
             </div>
@@ -255,12 +290,12 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
               </div>
 
               <div class="plan-actions">
-                <button type="button" class="btn" (click)="goTo(1)"><app-icon name="edit" /> Uredi odgovore</button>
+                <button type="button" class="btn btn-plain" (click)="goTo(1)"><app-icon name="arrow-left" /> Nazad</button>
                 <span class="spacer"></span>
-                <button type="button" class="btn btn-tinted" (click)="saveAll()" [disabled]="!chosenVendors().length">
+                <button type="button" class="btn btn-tinted" (click)="saveAll()" [disabled]="!unsavedVendors().length">
                   <app-icon name="heart" /> Dodaj sve u Sačuvano
                 </button>
-                <button type="button" class="btn btn-primary" (click)="savePlan()">
+                <button type="button" class="btn btn-primary" (click)="savePlan()" [disabled]="!store.dirty() || store.sync() === 'saving'">
                   <app-icon name="check" /> {{ savedAt() ? 'Sačuvaj izmjene' : 'Sačuvaj plan' }}
                 </button>
               </div>
@@ -689,6 +724,62 @@ const BUDGET_PRESETS = [10000, 20000, 30000, 50000];
       gap: var(--space-3);
     }
 
+    .prices {
+      display: grid;
+      gap: var(--space-3);
+      margin: 0;
+      padding: var(--space-4) 0 0;
+      border: 0;
+      border-top: 1px solid var(--separator);
+      min-width: 0;
+    }
+
+    .prices legend {
+      padding: 0;
+      float: left; // legend unutar grida inače ignoriše razmak
+      width: 100%;
+    }
+
+    .price-row {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .price-name {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-1) var(--space-2);
+      font-weight: 600;
+    }
+
+    .price-name app-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      color: var(--accent);
+    }
+
+    .price-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+    }
+
+    .price-row .error {
+      margin: 0;
+    }
+
+    @media (min-width: 40rem) {
+      .price-row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 16rem);
+        align-items: center;
+      }
+
+      .price-row .error {
+        grid-column: 1 / -1;
+      }
+    }
+
     .plan-actions {
       display: flex;
       flex-wrap: wrap;
@@ -767,6 +858,8 @@ export class Planning implements OnInit {
   private readonly toasts = inject(ToastService);
   private readonly auth = inject(AuthService);
   private readonly bookings = inject(BookingsStore);
+  private readonly confirm = inject(ConfirmService);
+  private readonly router = inject(Router);
   protected readonly store = inject(PlanStore);
 
   protected readonly stepLabels = ['Usluge', 'Budžet i grad', 'Vaš paket'];
@@ -794,15 +887,27 @@ export class Planning implements OnInit {
   private readonly open = signal<number[]>([]);
   private defaultsApplied = false;
 
-  private readonly chosenCategories = computed<ServiceCategory[]>(() => {
+  /** Polja cijene u koja je upisano nešto što nije broj ("categoryId-min"), vidi markBadInput. */
+  private readonly badInput = signal<Record<string, boolean>>({});
+
+  protected readonly chosenCategories = computed<ServiceCategory[]>(() => {
     const ids = this.answers().categoryIds;
     return this.lookups.categories().filter((c) => ids.includes(c.id));
   });
 
   protected readonly plan = computed<Plan | null>(() => {
     if (this.step() !== 2 || this.loading()) return null;
-    return buildPlan(this.chosenCategories(), this.answers().budget, this.candidates(), this.picks());
+    return buildPlan(this.chosenCategories(), this.answers().budget, this.candidates(), this.picks(), this.ranges());
   });
+
+  /** Rasponi cijene samo za izabrane usluge (stari rasponi ostaju sačuvani ako se usluga vrati). */
+  private readonly ranges = computed<Record<number, PriceRange>>(() => {
+    const all = this.answers().priceRanges ?? {};
+    return Object.fromEntries(this.chosenCategories().map((c) => [c.id, all[c.id] ?? NO_RANGE]));
+  });
+
+  /** Prijedlog po usluzi iz udjela u budžetu (bez korisnikovih granica), kao orijentir pored polja. */
+  protected readonly suggested = computed(() => allocate(this.chosenCategories(), this.answers().budget));
 
   protected readonly overBy = computed(() => {
     const p = this.plan();
@@ -834,6 +939,17 @@ export class Planning implements OnInit {
     return null;
   });
 
+  /** Prva greška u odgovorima; dok je ima, paket se ne slaže. */
+  protected readonly answersError = computed(
+    () =>
+      this.budgetError() ??
+      this.guestsError() ??
+      this.chosenCategories()
+        .map((c) => this.priceError(c.id))
+        .find((e) => e !== null) ??
+      null,
+  );
+
   protected readonly guestsError = computed(() => {
     const g = this.answers().guests;
     if (g === null) return null;
@@ -849,6 +965,12 @@ export class Planning implements OnInit {
   protected readonly chosenVendors = computed(
     () => this.plan()?.lines.map((l) => l.choice?.vendor).filter((v): v is Vendor => !!v) ?? [],
   );
+
+  /**
+   * Izabrani ponuđači kojih još nema u Sačuvanom. "Dodaj sve" je aktivno samo dok ih ima: nakon dodavanja se
+   * gasi i pali se tek kad se paket promijeni (zamjena, nova usluga) ili kad se nešto ukloni iz Sačuvanog.
+   */
+  protected readonly unsavedVendors = computed(() => this.chosenVendors().filter((v) => !this.favorites.has(v.id)));
 
   /** Koliko je izabranih ponuđača stvarno rezervisano (samo za prijavljene mladence koji imaju neki zahtjev). */
   protected readonly tally = computed(() => {
@@ -910,14 +1032,27 @@ export class Planning implements OnInit {
 
   /** Učitaj kandidate po kategoriji (grad i slobodan datum filtrira backend), pa složi plan. */
   protected compose(): void {
+    // Nevalidan odgovor (npr. raspon cijene iz starijeg plana): vrati na korak sa porukom umjesto slanja.
+    if (this.answersError()) {
+      this.goTo(1);
+      return;
+    }
     const { categoryIds, cityId, date } = this.answers();
+    const ranges = this.ranges();
     this.goTo(2);
     this.loading.set(true);
     this.open.set([]);
     forkJoin(
       categoryIds.map((categoryId) =>
         this.vendorApi
-          .list({ categoryId, cityId, availableOn: date, pageSize: 50 })
+          .list({
+            categoryId,
+            cityId,
+            availableOn: date,
+            priceMin: ranges[categoryId]?.min ?? null,
+            priceMax: ranges[categoryId]?.max ?? null,
+            pageSize: 50,
+          })
           .pipe(map((r) => [categoryId, r.items] as const)),
       ),
     ).subscribe({
@@ -925,7 +1060,7 @@ export class Planning implements OnInit {
         this.candidates.set(new Map(entries));
         this.loading.set(false);
         // Prijedlog odmah postaje "Moj plan" (ručni izbori ostaju), da korisnik ništa ne izgubi.
-        const plan = buildPlan(this.chosenCategories(), this.answers().budget, this.candidates(), this.picks());
+        const plan = buildPlan(this.chosenCategories(), this.answers().budget, this.candidates(), this.picks(), ranges);
         this.store.replaceItems(
           plan.lines
             .map((l) => (l.choice ? PlanStore.itemFrom(l.choice.vendor, l.category) : null))
@@ -947,9 +1082,28 @@ export class Planning implements OnInit {
     this.open.update((list) => (list.includes(categoryId) ? list.filter((x) => x !== categoryId) : [...list, categoryId]));
   }
 
-  protected choose(categoryId: number, option: PlanOption): void {
+  /**
+   * Klik na drugog ponuđača u kategoriji gdje je već neko izabran (svaka kategorija ima jednog):
+   * pitaj da li zamijeniti, otvoriti stranicu tog ponuđača ili odustati.
+   */
+  protected async choose(categoryId: number, option: PlanOption): Promise<void> {
     const category = this.lookups.categories().find((c) => c.id === categoryId);
-    const item = category ? PlanStore.itemFrom(option.vendor, category) : null;
+    const current = this.store.itemFor(categoryId);
+    if (!category) return;
+    if (current && current.vendorId !== option.vendor.id) {
+      const answer = await this.confirm.choose({
+        title: `Zamijeniti izbor: ${category.name}?`,
+        message: `U planu je već ${current.vendorName}. Želite li ga zamijeniti sa ${option.vendor.name}?`,
+        confirmText: 'Zamijeni',
+        alternativeText: 'Otvori ' + (category.slug === 'saloni-za-vjencanje' ? 'taj salon' : 'tog ponuđača'),
+      });
+      if (answer === 'alternative') {
+        void this.router.navigate(this.link(option.vendor));
+        return;
+      }
+      if (answer !== 'confirm') return;
+    }
+    const item = PlanStore.itemFrom(option.vendor, category);
     const previous = item ? this.store.put(item) : undefined;
     // Zamjena u planu ne otkazuje zahtjev kod salona; to se mora reći, inače salon čuva datum uzalud.
     const booking = previous ? this.bookings.latestFor(previous.vendorId) : null;
@@ -957,6 +1111,34 @@ export class Planning implements OnInit {
       this.toasts.info(`Zahtjev kod ${previous.vendorName} je i dalje aktivan. Otkažite ga u Rezervacijama ako vam ne treba.`);
     }
     this.open.update((list) => list.filter((x) => x !== categoryId));
+  }
+
+  protected rangeOf(categoryId: number): PriceRange {
+    return this.ranges()[categoryId] ?? NO_RANGE;
+  }
+
+  protected setRange(categoryId: number, side: 'min' | 'max', value: number | string | null): void {
+    const n = value === null || value === '' ? null : Number(value);
+    const all = this.answers().priceRanges ?? {};
+    const next = { ...(all[categoryId] ?? NO_RANGE), [side]: n };
+    this.patch({ priceRanges: { ...all, [categoryId]: next } });
+  }
+
+  /** Preglednik u model polja type="number" šalje prazno kad unos nije broj; to treba prijaviti, ne progutati. */
+  protected markBadInput(categoryId: number, side: 'min' | 'max', event: Event): void {
+    const bad = (event.target as HTMLInputElement).validity.badInput;
+    this.badInput.update((b) => ({ ...b, [`${categoryId}-${side}`]: bad }));
+  }
+
+  /** Ista pravila kao filter cijene u pretrazi: broj, nije negativan, "od" ne veće od "do". */
+  protected priceError(categoryId: number): string | null {
+    const { min, max } = this.rangeOf(categoryId);
+    const bad = this.badInput();
+    return (
+      numberError(min, PRICE_RULE, bad[`${categoryId}-min`]) ??
+      numberError(max, PRICE_RULE, bad[`${categoryId}-max`]) ??
+      rangeError(min, max)
+    );
   }
 
   protected diff(value: number): string {
@@ -970,13 +1152,16 @@ export class Planning implements OnInit {
 
   protected async savePlan(): Promise<void> {
     const result = await this.store.save();
+    if (result === null) return; // nema izmjena od zadnjeg čuvanja
     if (result === 'server') this.toasts.success('Plan je sačuvan u vašem profilu.');
     else if (result === 'offline') this.toasts.info('Plan je sačuvan na ovom uređaju. Na server će otići kad bude dostupan.');
     else this.toasts.info('Plan je sačuvan u ovom pregledniku. Napravite profil da ga ne izgubite.');
   }
 
   protected saveAll(): void {
-    const vendors = this.chosenVendors();
+    // I dvostruki klik: drugi poziv nađe sve već sačuvano (lista se ažurira odmah) i ne radi ništa.
+    const vendors = this.unsavedVendors();
+    if (!vendors.length) return;
     vendors.forEach((v) => this.favorites.add(v));
     this.toasts.success(`${vendors.length} ${plural(vendors.length, 'ponuđač je dodan', 'ponuđača su dodana', 'ponuđača je dodano')} u Sačuvano.`);
   }
