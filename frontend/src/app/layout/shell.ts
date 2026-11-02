@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, computed, inject, sig
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth';
 import { FavoritesService } from '../core/favorites';
+import { BookingsStore } from '../core/my-bookings';
 import { ThemeService } from '../core/theme';
 import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
@@ -30,7 +31,7 @@ interface NavItem {
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
 
-    <header class="topbar material" [class.scrolled]="scrolled()">
+    <header class="topbar glass glass-bar" [class.scrolled]="scrolled()">
       <div class="container bar">
         <a class="brand" [routerLink]="auth.homeUrl()"><app-brand-mark /></a>
 
@@ -51,7 +52,7 @@ interface NavItem {
             </button>
 
             @if (menuOpen()) {
-              <div class="menu material" role="menu">
+              <div class="menu dropdown-panel" role="menu">
                 <div class="menu-head">
                   <strong>{{ auth.user()?.firstName }} {{ auth.user()?.lastName }}</strong>
                   <span class="t-footnote muted">{{ auth.user()?.email }}</span>
@@ -91,7 +92,7 @@ interface NavItem {
 
     <app-plan-cart />
 
-    <nav class="tabbar material" aria-label="Kartice">
+    <nav class="tabbar glass glass-bar" aria-label="Kartice">
       @for (item of tabItems(); track item.link) {
         <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!item.exact }">
           <span class="tab-icon">
@@ -117,7 +118,6 @@ interface NavItem {
   styles: `
     :host {
       display: block;
-      min-height: 100dvh;
     }
 
     .topbar {
@@ -125,12 +125,6 @@ interface NavItem {
       top: 0;
       z-index: 50;
       height: var(--nav-height);
-      box-shadow: none;
-      transition: box-shadow var(--dur-base) ease;
-    }
-
-    .topbar.scrolled {
-      box-shadow: 0 1px 0 var(--separator);
     }
 
     .bar {
@@ -256,12 +250,9 @@ interface NavItem {
       right: 0;
       display: grid;
       min-width: 15rem;
+      max-height: none;
       padding: var(--space-2);
-      border-radius: var(--radius-lg);
-      background: var(--material-thick);
-      box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
       transform-origin: top right;
-      animation: pop 220ms var(--ease-out) both;
     }
 
     .menu-head {
@@ -295,16 +286,9 @@ interface NavItem {
       color: var(--danger);
     }
 
-    @keyframes pop {
-      from {
-        opacity: 0;
-        transform: scale(0.94);
-      }
-    }
-
+    // Mjesto za donju traku i dugme "Moj plan" ostavlja podnožje (--footer-extra u _base.scss).
     main {
-      // donja traka + plutajuće dugme "Moj plan", da ništa na dnu stranice ne ostane ispod njih
-      padding-bottom: calc(8.5rem + var(--safe-bottom));
+      padding-bottom: var(--space-6);
     }
 
     .tabbar a > span:last-child {
@@ -321,7 +305,7 @@ interface NavItem {
       display: flex;
       justify-content: space-around;
       padding: 0.375rem 0.5rem calc(0.375rem + var(--safe-bottom));
-      box-shadow: 0 -1px 0 var(--separator);
+      box-shadow: inset 0 1px 0 var(--glass-highlight), 0 -1px 0 var(--separator);
     }
 
     .tabbar a {
@@ -388,6 +372,7 @@ export class Shell {
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly favorites = inject(FavoritesService);
+  private readonly bookings = inject(BookingsStore);
   private readonly router = inject(Router);
   protected readonly scrolled = signal(false);
   protected readonly menuOpen = signal(false);
@@ -419,7 +404,7 @@ export class Shell {
           { label: 'Istraži', icon: 'grid', link: '/istrazi' },
           { label: 'Planer', icon: 'sparkles', link: '/planiranje' },
           { label: 'Sačuvano', icon: 'heart', link: '/sacuvano', badge: saved },
-          { label: 'Rezervacije', icon: 'calendar', link: '/moje-rezervacije' },
+          { label: 'Rezervacije', icon: 'calendar', link: '/moje-rezervacije', badge: this.bookings.upcomingCount() || undefined },
           { label: 'Recenzije', icon: 'star', link: '/moje-recenzije', desktopOnly: true },
         ];
       default:

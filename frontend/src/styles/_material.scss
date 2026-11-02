@@ -40,13 +40,14 @@ html {
   ));
 
   @include mat.timepicker-overrides((
-    container-shape: var(--radius-md),
+    container-shape: var(--radius-lg),
     container-elevation-shadow: var(--shadow-lg),
   ));
 }
 
-// Kalendar se "materijalizuje" iz polja (skala + prozirnost), kao i ostali plutajući slojevi.
-.mat-datepicker-content {
+// Kalendar i izbor vremena izgledaju kao ostali padajući paneli (.dropdown-panel): ista ivica, zaobljenje i sjena.
+.mat-datepicker-content,
+.mat-timepicker-panel {
   border: 1px solid var(--separator);
 }
 
