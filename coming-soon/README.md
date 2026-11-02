@@ -6,6 +6,9 @@ Stranica "Uskoro" sa listom čekanja, dok se aplikacija ne objavi. Odvojena je o
 
 - Mladenci ili ponuđači ostave email (ponuđači i kategoriju i grad) i dobiju svoje mjesto na listi.
 - Svako dobije link za preporuku (`/?ref=KOD`) i dugmad za WhatsApp, Viber i kopiranje linka. Na stranici vidi koliko se ljudi prijavilo preko njegovog linka.
+- Ko se prijavi kao par dobije poruku "Pošaljite link nekome za koga mislite da mu je došlo vrijeme za svadbu". Ko otvori taj link (`/?ref=KOD&svadba=1`) iznad forme vidi poruku da mu je neko drag poslao link.
+- Slagalica za preporuke: za svaku prijavu preko linka osoba dobije jedan od 9 dijelova loga; sa 9 dijelova se ispiše S. Broj čuva server (prijave sa `ref`), a šifra osobe je sačuvana u pregledniku, pa se slagalica vidi i kad se osoba vrati.
+- Uvodna animacija loga (dijelovi se slože, ispiše se S, znak sleti u traku) prikazuje se jednom po posjeti; dodir je preskače. Dok se stranica lista, u pozadini se slaže slagalica. Sa uključenim "smanji pokrete" nema ni jednog ni drugog.
 - Brojač "Na listi već čeka..." se prikazuje tek kad lista dostigne `PRIKAZI_OD` prijava (zadano 30).
 - Tim dobije email na svadbeno@gmail.com za svaku novu prijavu (preko Cloudflare Email Routing, vidi ispod).
 - `/admin` pokazuje spisak, brojke i izvoz u Excel (CSV), uz brisanje adrese kad neko zatraži odjavu.

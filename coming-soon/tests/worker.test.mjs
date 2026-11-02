@@ -39,7 +39,8 @@ const par = { email: 'ana@primjer.ba', uloga: 'par', saglasnost: true };
 // greške iz slanja idu u log; ovdje se samo prebroje
 function tihiLog(t) {
   const greske = [];
-  t.mock.method(console, 'error', (...a) => greske.push(a));
+  // broje se samo greške o mailu (Node 22 kroz console.error ispiše i upozorenje za node:sqlite)
+  t.mock.method(console, 'error', (...a) => { if (String(a[0]).startsWith('Mail o prijavi')) greske.push(a); });
   return greske;
 }
 

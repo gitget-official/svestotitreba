@@ -10,7 +10,9 @@
     del(k) { try { localStorage.removeItem(k); } catch { /* privatni prozor */ } }
   };
 
-  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('go')));
+  // ulazne animacije kreću tek kad se završi uvodna animacija loga (ako je ima)
+  const go = () => requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('go')));
+  if (root.classList.contains('uvod')) addEventListener('sv-uvod-kraj', go, { once: true }); else go();
 
   // ---- pojavljivanje pri listanju ----
   const rv = document.querySelectorAll('.rv');
@@ -215,7 +217,11 @@
 
   // preporuka: ?ref=KOD iz podijeljenog linka
   const refQ = new URLSearchParams(location.search).get('ref');
-  if (refQ && /^[A-HJ-NP-Z2-9]{6}$/.test(refQ)) { try { sessionStorage.setItem('planiraj-ref', refQ); } catch { /* */ } }
+  if (refQ && /^[A-HJ-NP-Z2-9]{6}$/.test(refQ)) {
+    try { sessionStorage.setItem('planiraj-ref', refQ); if (new URLSearchParams(location.search).get('svadba') === '1') sessionStorage.setItem('planiraj-svadba', '1'); } catch { /* */ }
+  }
+  // link od para ("došlo je tvoje vrijeme za svadbu"): poruka iznad forme
+  try { if (sessionStorage.getItem('planiraj-svadba') === '1' && !store.get('planiraj-kod')) $('#poziv').hidden = false; } catch { /* */ }
   const ref = () => { try { return sessionStorage.getItem('planiraj-ref') || ''; } catch { return ''; } };
 
   const fail = (msg, field) => {
@@ -235,6 +241,9 @@
     if (!ok.checked) return fail('Potvrdite da vam smijemo poslati email kad otvorimo.', ok);
     err.textContent = '';
     btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true');
+    // dugme se pretvori u logo koji se složi dok se prijava šalje
+    const anim = window.Slagalica ? window.Slagalica.dugme(btn) : { gotovo: Promise.resolve(), vrati() {} };
+    let uspjeh = false;
     try {
       const r = await fetch(API + '/prijava', {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -243,20 +252,29 @@
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) {
         if (tsWidget !== null && window.turnstile) window.turnstile.reset(tsWidget);
+        anim.vrati();
         return fail(d.greska || 'Nešto nije u redu. Pokušajte ponovo za minut.');
       }
       store.set('planiraj-kod', d.kod);
+      uspjeh = true;
+      await anim.gotovo;
       show(d, true);
     } catch {
+      anim.vrati();
       fail('Nema veze sa serverom. Provjerite internet i pokušajte ponovo.');
     } finally {
       btn.classList.remove('busy'); btn.removeAttribute('aria-busy');
+      if (uspjeh) anim.vrati();
     }
   });
 
-  const share = (kod) => {
-    const url = location.origin + '/?ref=' + kod;
-    const msg = 'Svadbeno stiže uskoro: sve za vjenčanje na jednom mjestu (sale, vjenčanice, fotografi, dekoracije). Prijavi se na listu: ' + url;
+  // par šalje link nekome kome je "došlo vrijeme za svadbu"; ponuđač ga šalje drugim ponuđačima
+  const share = (kod, uloga) => {
+    const par = uloga !== 'ponudjac';
+    const url = location.origin + '/?ref=' + kod + (par ? '&svadba=1' : '');
+    const msg = par
+      ? 'Mislim da je došlo tvoje vrijeme za svadbu. Svadbeno stiže uskoro, sve za vjenčanje na jednom mjestu: ' + url
+      : 'Svadbeno stiže uskoro: mjesto gdje mladenci traže sale, vjenčanice, fotografe i ostale usluge za vjenčanje. Prijavi i svoje usluge: ' + url;
     $('#sh-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
     $('#sh-vb').href = 'viber://forward?text=' + encodeURIComponent(msg);
     const c = $('#sh-kopiraj');
@@ -272,13 +290,24 @@
     form.hidden = true;
     done.hidden = false;
     done.classList.remove('pop'); void done.offsetWidth; done.classList.add('pop');
+    const uloga = d.uloga || role(), pon = uloga === 'ponudjac';
     $('#gotovo-p').textContent = d.vec
-      ? 'Ova adresa je već na listi. Javit ćemo vam se prvima čim otvorimo.'
-      : ((d.uloga || role()) === 'ponudjac' ? 'Hvala! Javit ćemo vam se prije otvaranja. Pozovite i druge salone koje poznajete.' : 'Javit ćemo vam se prvima čim otvorimo. Pozovite i drugi par koji planira vjenčanje.');
+      ? 'Ova adresa je već na listi. Javit ćemo vam se čim otvorimo.'
+      : (pon ? 'Hvala! Javit ćemo vam se prije otvaranja.' : 'Javit ćemo vam se čim Svadbeno otvori.');
+    $('#gotovo-sh').textContent = pon
+      ? 'Pošaljite link drugim salonima i ponuđačima koje poznajete.'
+      : 'Pošaljite link nekome za koga mislite da mu je došlo vrijeme za svadbu.';
+    $('#poziv').hidden = true;
     countUp($('#mjesto'), d.pozicija || 1, fresh ? 1400 : 0);
+    // slagalica za preporuke: jedan dio za svaku prijavu preko linka (broj čuva server, šifra je sačuvana na uređaju)
+    const n = d.pozvani || 0, pun = n >= 9;
+    $('#slagalica-n').textContent = Math.min(9, n);
+    $('#slagalica-k').textContent = pun ? 'Slagalica je složena!' : 'Vaša slagalica';
+    $('#slagalica-p').textContent = pun ? 'Hvala što širite glas o Svadbeno.' : 'Za svaku osobu koja se prijavi preko vašeg linka dobijate jedan dio.';
+    if (window.Slagalica) window.Slagalica.preporuke($('#slagalica'), n, fresh || n > 0);
     const pz = $('#pozvani');
-    if (d.pozvani > 0) { pz.hidden = false; pz.textContent = 'Preko vašeg linka se prijavilo: ' + d.pozvani; } else pz.hidden = true;
-    share(d.kod);
+    if (n > 9) { pz.hidden = false; pz.textContent = 'Preko vašeg linka se prijavilo: ' + n; } else pz.hidden = true;
+    share(d.kod, uloga);
     if (fresh) { done.focus({ preventScroll: true }); burst(); }
   }
 
