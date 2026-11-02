@@ -13,7 +13,8 @@
   <meta property="og:image" content="/img/og.jpg">
   <meta property="og:locale" content="bs_BA">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preload" href="/fonts/fraunces-normal.woff2" as="font" type="font/woff2" crossorigin>
   <script>document.documentElement.classList.add('js')</script>
   <link rel="stylesheet" href="/css/style.css">
@@ -26,7 +27,7 @@
 
   <header class="top">
     <a class="logo" href="/">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><text x="32" y="43">S</text></svg>
+      <img src="/img/logo.png" width="40" height="40" alt="">
       <span>Svadbeno</span>
     </a>
     <span class="soon"><i aria-hidden="true"></i>Uskoro</span>
@@ -61,8 +62,8 @@
               <div class="more-in">
                 <div class="fld dd" id="dd-kat">
                   <span id="l-kat">Šta nudite</span>
-                  <button class="dd-btn" type="button" id="kategorija" aria-haspopup="listbox" aria-expanded="false" aria-controls="kat-lista" aria-labelledby="l-kat kat-v">
-                    <span class="dd-v ph" id="kat-v">Izaberite usluge</span>
+                  <button class="dd-btn" type="button" id="kategorija" aria-haspopup="listbox" aria-expanded="false" aria-controls="kat-lista" aria-labelledby="l-kat kat-v kat-n">
+                    <span class="dd-v ph" id="kat-v">Izaberite usluge</span><span class="dd-n" id="kat-n" hidden></span>
                     <svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                   </button>
                   <div class="dd-panel" hidden>
@@ -182,7 +183,7 @@
           <button class="link-cta" type="button" data-uloga="par">Prijavite se kao par <span aria-hidden="true">→</span></button>
         </div>
 
-        <div class="split-line" aria-hidden="true"><span>&amp;</span></div>
+        <div class="split-line" aria-hidden="true"><span><svg viewBox="-4.1 -74.4 74.7 93.2"><path d="M8.9-9.8L8.9-9.8L55.8-47.8Q58.9-50.4 60.6-52.5Q62.4-54.6 63.1-56.6Q63.9-58.6 63.9-60.9L63.9-60.9Q63.9-62.9 63.0-64.4Q62.1-65.8 61.2-67.1Q60.3-68.4 60.2-70.0L60.2-70.0Q60.2-71.8 61.4-73.0Q62.6-74.4 64.7-74.4L64.7-74.4Q67.0-74.5 68.8-72.3Q70.5-70.2 70.5-66.5L70.5-66.5Q70.5-63.3 69.3-60.2Q68.1-57.2 65.4-54.1Q62.6-50.9 57.9-47.1L57.9-47.1L11.4-9.4Q8.2-6.8 6.2-4.3Q4.2-1.8 3.2 0.7Q2.3 3.1 2.3 5.6L2.3 5.6Q2.3 7.9 3.3 9.3Q4.2 10.7 5.1 11.9Q6.1 13 6.1 14.5L6.1 14.5Q6.1 16.2 4.8 17.5Q3.6 18.8 1.5 18.8L1.5 18.8Q-1.0 18.9-2.5 16.8Q-4.1 14.8-4.1 10.6L-4.1 10.6Q-4.2 5.6-0.9 0.6Q2.3-4.5 8.9-9.8ZM50.2-16.7L50.2-16.7Q50.3-18.6 49.8-20.1Q49.3-21.6 48.8-23Q48.3-24.4 48.4-26.1L48.4-26.1Q48.4-27.4 49.1-28.5Q49.8-29.7 51.1-30.5Q52.4-31.3 54.1-31.3L54.1-31.3Q56.4-31.3 57.6-29.8Q58.9-28.4 58.8-25.5L58.8-25.5Q58.7-20 56.4-15.2Q54.2-10.4 50.3-6.7Q46.4-3.1 41.1-1Q35.9 1.1 29.6 1.1L29.6 1.1Q21.9 1.1 16.6-2.4Q11.4-5.9 9.2-12.1Q7.1-18.4 8.7-26.6L8.7-26.6Q9.9-32.8 12.8-37.8Q15.7-42.9 19.8-46.6Q23.9-50.3 28.9-52.3Q33.9-54.3 39.3-54.3L39.3-54.3Q44.2-54.3 47.5-52.6Q50.9-50.9 52.6-48.1Q54.3-45.4 54.1-42.1L54.1-42.1Q54-40.7 53.4-39.8Q52.9-38.9 51.8-38.9L51.8-38.9Q49.4-38.8 47.2-37.9Q45-37.0 42.3-34.9L42.3-34.9Q42.8-36.0 43.3-37.7Q43.8-39.5 44-42.2L44-42.2Q44.2-47 42.6-49.6Q41.0-52.2 37.6-52.2L37.6-52.2Q33.7-52.2 30.2-49.4Q26.7-46.5 24-41Q21.3-35.5 19.9-27.5L19.9-27.5Q18.4-19.1 19.8-13.3Q21.2-7.5 24.7-4.6Q28.3-1.7 33.1-1.7L33.1-1.7Q36.7-1.7 39.8-2.9Q42.8-4.2 45.1-6.3Q47.5-8.3 48.8-11.1Q50.2-13.8 50.2-16.7Z"/></svg></span></div>
 
         <div class="side rv" data-d="1">
           <p class="side-k">
@@ -230,7 +231,7 @@
   </main>
 
   <footer class="foot">
-    <p><span class="logo-s">Svadbeno</span> · Sve za vaše vjenčanje, na jednom mjestu</p>
+    <p class="foot-b"><img src="/img/logo.png" width="22" height="22" alt="" loading="lazy"><span><span class="logo-s">Svadbeno</span> · Sve za vaše vjenčanje, na jednom mjestu</span></p>
     <p><a href="/privatnost">Privatnost</a> · © 2026</p>
   </footer>
 

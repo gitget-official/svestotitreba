@@ -78,10 +78,11 @@
   const GRADOVI = ['Banja Luka', 'Banovići', 'Bihać', 'Bijeljina', 'Bileća', 'Bosanska Krupa', 'Bosanski Petrovac', 'Bratunac', 'Brčko', 'Breza', 'Brod', 'Bugojno', 'Busovača', 'Bužim', 'Cazin', 'Čapljina', 'Čelić', 'Čelinac', 'Čitluk', 'Derventa', 'Doboj', 'Donji Vakuf', 'Drvar', 'Foča', 'Fojnica', 'Gacko', 'Glamoč', 'Goražde', 'Gornji Vakuf-Uskoplje', 'Gračanica', 'Gradačac', 'Gradiška', 'Grude', 'Hadžići', 'Ilidža', 'Ilijaš', 'Istočno Sarajevo', 'Jablanica', 'Jajce', 'Kakanj', 'Kalesija', 'Kiseljak', 'Kladanj', 'Ključ', 'Konjic', 'Kotor Varoš', 'Kozarska Dubica', 'Kreševo', 'Kupres', 'Laktaši', 'Livno', 'Lopare', 'Lukavac', 'Ljubuški', 'Maglaj', 'Modriča', 'Mostar', 'Mrkonjić Grad', 'Neum', 'Nevesinje', 'Novi Grad', 'Novi Travnik', 'Odžak', 'Olovo', 'Orašje', 'Pale', 'Posušje', 'Prijedor', 'Prnjavor', 'Prozor-Rama', 'Rogatica', 'Sanski Most', 'Sarajevo', 'Srbac', 'Srebrenica', 'Srebrenik', 'Stolac', 'Šamac', 'Šipovo', 'Široki Brijeg', 'Teslić', 'Tešanj', 'Tomislavgrad', 'Travnik', 'Trebinje', 'Tuzla', 'Ugljevik', 'Usora', 'Vareš', 'Velika Kladuša', 'Visoko', 'Višegrad', 'Vitez', 'Vlasenica', 'Vogošća', 'Zavidovići', 'Zenica', 'Zvornik', 'Žepče', 'Živinice'].sort((a, b) => a.localeCompare(b, 'bs'));
   const OSTALO = 'Moj grad nije na listi';
   const low = (t) => t.toLocaleLowerCase('bs');
+  const coarse = matchMedia('(pointer: coarse)').matches;
 
   function dropdown(box, { items, multi = false, other = null, placeholder, onPick = () => {} }) {
     const btn = box.querySelector('.dd-btn'), panel = box.querySelector('.dd-panel'), list = box.querySelector('.dd-list');
-    const v = box.querySelector('.dd-v'), search = box.querySelector('.dd-search');
+    const v = box.querySelector('.dd-v'), count = box.querySelector('.dd-n'), search = box.querySelector('.dd-search');
     const all = other ? items.concat(other) : items;
     const sel = new Set();
     let shown = [], act = 0;
@@ -91,7 +92,7 @@
       act = i;
       const opts = list.querySelectorAll('.dd-opt');
       opts.forEach((o, k) => o.classList.toggle('act', k === i));
-      (search || list).setAttribute('aria-activedescendant', opts[i] ? opts[i].id : '');
+      [search, list].forEach((el) => el && el.setAttribute('aria-activedescendant', opts[i] ? opts[i].id : ''));
       if (opts[i]) opts[i].scrollIntoView({ block: 'nearest' });
     };
     const render = () => {
@@ -119,9 +120,9 @@
     const label = () => {
       const vals = all.filter((t) => sel.has(t));
       v.classList.toggle('ph', !vals.length);
-      v.textContent = !vals.length ? placeholder
-        : vals[0] === other ? 'Drugi grad'
-        : vals.length <= 2 ? vals.join(', ') : vals[0] + ' i još ' + (vals.length - 1);
+      v.textContent = !vals.length ? placeholder : vals[0] === other ? 'Drugi grad' : vals[0];
+      // više usluga: prva po imenu, ostale kao broj ("Fotografi +2"), da tekst ne izlazi iz polja
+      if (count) { count.hidden = vals.length < 2; count.textContent = '+' + (vals.length - 1); }
       if (vals.length) btn.removeAttribute('aria-invalid');
     };
     const pick = (i) => {
@@ -143,7 +144,9 @@
       panel.hidden = false;
       btn.setAttribute('aria-expanded', 'true');
       render();
-      (search || list).focus({ preventScroll: true });
+      // na telefonu bez fokusa na pretragu (ne iskače tastatura); lista se pomjeri u ekran ako je ispod njega
+      (search && !coarse ? search : list).focus({ preventScroll: true });
+      panel.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
     };
     function close(focus = true) {
       if (panel.hidden) return;
