@@ -7,7 +7,7 @@ export const BRAND = {
   name: 'Svadbeno',
   mark: 'S',
   tagline: 'Sve za vaše vjenčanje, na jednom mjestu.',
-  email: 'info@svadbeno.ba',
+  email: 'info@svadbeno.com',
 } as const;
 
 /** Rute imaju kratke naslove ("Istraži"); brend se dodaje ovdje, na jednom mjestu. */
