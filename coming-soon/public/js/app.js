@@ -1,4 +1,4 @@
-// Planiraj coming soon: ulazne animacije, latice, telefon koji mijenja ekrane, forma za listu čekanja.
+// Svadbeno coming soon: ulazne animacije, latice, telefon koji mijenja ekrane, forma za listu čekanja.
 (() => {
   const $ = (s) => document.querySelector(s);
   const root = document.documentElement;
@@ -73,21 +73,142 @@
   const API = '/api';
   let tsWidget = null;
 
+  // ---- padajući izbornici: usluge (više njih) i grad (pretraga i "Ostalo") ----
+  const USLUGE = ['Sale i prostori za vjenčanje', 'Vjenčanice i odijela', 'Dekoracije', 'Fotografi', 'Rent svečanih automobila', 'Frizeri', 'Beauty i make-up', 'Nešto drugo'];
+  const GRADOVI = ['Banja Luka', 'Banovići', 'Bihać', 'Bijeljina', 'Bileća', 'Bosanska Krupa', 'Bosanski Petrovac', 'Bratunac', 'Brčko', 'Breza', 'Brod', 'Bugojno', 'Busovača', 'Bužim', 'Cazin', 'Čapljina', 'Čelić', 'Čelinac', 'Čitluk', 'Derventa', 'Doboj', 'Donji Vakuf', 'Drvar', 'Foča', 'Fojnica', 'Gacko', 'Glamoč', 'Goražde', 'Gornji Vakuf-Uskoplje', 'Gračanica', 'Gradačac', 'Gradiška', 'Grude', 'Hadžići', 'Ilidža', 'Ilijaš', 'Istočno Sarajevo', 'Jablanica', 'Jajce', 'Kakanj', 'Kalesija', 'Kiseljak', 'Kladanj', 'Ključ', 'Konjic', 'Kotor Varoš', 'Kozarska Dubica', 'Kreševo', 'Kupres', 'Laktaši', 'Livno', 'Lopare', 'Lukavac', 'Ljubuški', 'Maglaj', 'Modriča', 'Mostar', 'Mrkonjić Grad', 'Neum', 'Nevesinje', 'Novi Grad', 'Novi Travnik', 'Odžak', 'Olovo', 'Orašje', 'Pale', 'Posušje', 'Prijedor', 'Prnjavor', 'Prozor-Rama', 'Rogatica', 'Sanski Most', 'Sarajevo', 'Srbac', 'Srebrenica', 'Srebrenik', 'Stolac', 'Šamac', 'Šipovo', 'Široki Brijeg', 'Teslić', 'Tešanj', 'Tomislavgrad', 'Travnik', 'Trebinje', 'Tuzla', 'Ugljevik', 'Usora', 'Vareš', 'Velika Kladuša', 'Visoko', 'Višegrad', 'Vitez', 'Vlasenica', 'Vogošća', 'Zavidovići', 'Zenica', 'Zvornik', 'Žepče', 'Živinice'].sort((a, b) => a.localeCompare(b, 'bs'));
+  const OSTALO = 'Moj grad nije na listi';
+  const low = (t) => t.toLocaleLowerCase('bs');
+
+  function dropdown(box, { items, multi = false, other = null, placeholder, onPick = () => {} }) {
+    const btn = box.querySelector('.dd-btn'), panel = box.querySelector('.dd-panel'), list = box.querySelector('.dd-list');
+    const v = box.querySelector('.dd-v'), search = box.querySelector('.dd-search');
+    const all = other ? items.concat(other) : items;
+    const sel = new Set();
+    let shown = [], act = 0;
+    panel.classList.toggle('dd-multi', multi);
+
+    const setAct = (i) => {
+      act = i;
+      const opts = list.querySelectorAll('.dd-opt');
+      opts.forEach((o, k) => o.classList.toggle('act', k === i));
+      (search || list).setAttribute('aria-activedescendant', opts[i] ? opts[i].id : '');
+      if (opts[i]) opts[i].scrollIntoView({ block: 'nearest' });
+    };
+    const render = () => {
+      const q = search ? low(search.value.trim()) : '';
+      shown = items.filter((t) => !q || low(t).includes(q));
+      list.innerHTML = '';
+      if (!shown.length && !other) list.innerHTML = '<p class="dd-none">Nema rezultata</p>';
+      if (other) shown.push(other);
+      shown.forEach((t, i) => {
+        if (t === other && i) list.insertAdjacentHTML('beforeend', '<div class="dd-sep" role="presentation"></div>');
+        const o = document.createElement('div');
+        o.className = 'dd-opt' + (t === other ? ' other' : '');
+        o.id = list.id + '-' + i;
+        o.setAttribute('role', 'option');
+        o.setAttribute('aria-selected', String(sel.has(t)));
+        o.innerHTML = '<span></span><svg class="tk" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+        o.firstChild.textContent = t;
+        o.addEventListener('pointermove', () => { if (act !== i) setAct(i); });
+        o.addEventListener('mousedown', (e) => e.preventDefault());
+        o.addEventListener('click', () => pick(i));
+        list.appendChild(o);
+      });
+      setAct(q ? 0 : Math.max(0, shown.findIndex((t) => sel.has(t))));
+    };
+    const label = () => {
+      const vals = all.filter((t) => sel.has(t));
+      v.classList.toggle('ph', !vals.length);
+      v.textContent = !vals.length ? placeholder
+        : vals[0] === other ? 'Drugi grad'
+        : vals.length <= 2 ? vals.join(', ') : vals[0] + ' i još ' + (vals.length - 1);
+      if (vals.length) btn.removeAttribute('aria-invalid');
+    };
+    const pick = (i) => {
+      const t = shown[i];
+      if (t === undefined) return;
+      if (multi) {
+        if (sel.has(t)) sel.delete(t); else sel.add(t);
+        list.querySelectorAll('.dd-opt')[i].setAttribute('aria-selected', String(sel.has(t)));
+        label();
+        return;
+      }
+      const q = search ? search.value.trim() : '';
+      sel.clear(); sel.add(t); label();
+      close(t !== other);
+      onPick(t, q);
+    };
+    const open = () => {
+      if (search) search.value = '';
+      panel.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      render();
+      (search || list).focus({ preventScroll: true });
+    };
+    function close(focus = true) {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+      if (focus) btn.focus({ preventScroll: true });
+    }
+
+    btn.addEventListener('click', () => (panel.hidden ? open() : close()));
+    btn.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); } });
+    if (search) search.addEventListener('input', render);
+    panel.addEventListener('keydown', (e) => {
+      const last = shown.length - 1;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setAct(Math.min(last, Math.max(0, act + (e.key === 'ArrowDown' ? 1 : -1)))); }
+      else if (e.key === 'Home' && !search) { e.preventDefault(); setAct(0); }
+      else if (e.key === 'End' && !search) { e.preventDefault(); setAct(last); }
+      else if (e.key === 'Enter' || (e.key === ' ' && !search)) { e.preventDefault(); pick(act); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    // klik ili Tab van izbornika ga zatvara
+    document.addEventListener('pointerdown', (e) => { if (!box.contains(e.target)) close(false); });
+    box.addEventListener('focusout', (e) => { if (e.relatedTarget && !box.contains(e.relatedTarget)) close(false); });
+
+    return {
+      btn, close,
+      values: () => all.filter((t) => sel.has(t)),
+      reset() { sel.clear(); label(); close(false); }
+    };
+  }
+
+  const gradOstalo = $('#grad');
+  const katDD = dropdown($('#dd-kat'), { items: USLUGE, multi: true, placeholder: 'Izaberite usluge' });
+  const gradDD = dropdown($('#dd-grad'), {
+    items: GRADOVI, other: OSTALO, placeholder: 'Izaberite grad',
+    onPick(t, q) {
+      gradOstalo.hidden = t !== OSTALO;
+      if (t !== OSTALO) { gradOstalo.value = ''; return; }
+      if (q && !gradOstalo.value) gradOstalo.value = q;
+      gradOstalo.focus();
+    }
+  });
+  const grad = () => { const [g] = gradDD.values(); return g === OSTALO ? gradOstalo.value.trim() : g || ''; };
+
   const role = () => form.uloga.value;
+  let moreT = 0;
   const syncRole = () => {
     const on = role() === 'ponudjac';
     more.classList.toggle('on', on);
     more.inert = !on;
+    // izbornici smiju izaći iz polja tek kad se ono do kraja otvori
+    clearTimeout(moreT);
+    if (on) moreT = setTimeout(() => more.classList.add('open'), calm ? 0 : 450);
+    else { more.classList.remove('open'); katDD.close(false); gradDD.close(false); }
   };
   form.addEventListener('change', (e) => { if (e.target.name === 'uloga') syncRole(); });
   syncRole();
 
-  $('#za-salone').addEventListener('click', () => {
+  // Dugmad "Prijavite..." u sekcijama: izaberu ulogu u formi i vrate na nju.
+  document.querySelectorAll('[data-uloga]').forEach((el) => el.addEventListener('click', () => {
     if (!done.hidden) { card.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' }); return; }
-    $('#u-pon').checked = true; syncRole();
+    const pon = el.dataset.uloga === 'ponudjac';
+    $(pon ? '#u-pon' : '#u-par').checked = true; syncRole();
     card.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
-    setTimeout(() => kat.focus({ preventScroll: true }), calm ? 0 : 600);
-  });
+    setTimeout(() => (pon ? kat : email).focus({ preventScroll: true }), calm ? 0 : 600);
+  }));
 
   // preporuka: ?ref=KOD iz podijeljenog linka
   const refQ = new URLSearchParams(location.search).get('ref');
@@ -107,14 +228,14 @@
     e.preventDefault();
     const mail = email.value.trim();
     if (!MAIL.test(mail)) return fail('Upišite ispravnu email adresu.', email);
-    if (role() === 'ponudjac' && !kat.value) return fail('Izaberite šta nudite.', kat);
+    if (role() === 'ponudjac' && !katDD.values().length) return fail('Izaberite šta nudite.', kat);
     if (!ok.checked) return fail('Potvrdite da vam smijemo poslati email kad otvorimo.', ok);
     err.textContent = '';
     btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true');
     try {
       const r = await fetch(API + '/prijava', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: mail, uloga: role(), kategorija: kat.value, grad: form.grad.value.trim(), saglasnost: true, web: form.web.value, ref: ref(), turnstile: tsWidget !== null && window.turnstile ? window.turnstile.getResponse(tsWidget) : '' })
+        body: JSON.stringify({ email: mail, uloga: role(), kategorija: katDD.values(), grad: grad(), saglasnost: true, web: form.web.value, ref: ref(), turnstile: tsWidget !== null && window.turnstile ? window.turnstile.getResponse(tsWidget) : '' })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) {
@@ -132,7 +253,7 @@
 
   const share = (kod) => {
     const url = location.origin + '/?ref=' + kod;
-    const msg = 'Planiraj stiže uskoro: sve za vjenčanje na jednom mjestu (sale, vjenčanice, fotografi, dekoracije). Prijavi se na listu: ' + url;
+    const msg = 'Svadbeno stiže uskoro: sve za vjenčanje na jednom mjestu (sale, vjenčanice, fotografi, dekoracije). Prijavi se na listu: ' + url;
     $('#sh-wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
     $('#sh-vb').href = 'viber://forward?text=' + encodeURIComponent(msg);
     const c = $('#sh-kopiraj');
@@ -161,7 +282,7 @@
   $('#druga').addEventListener('click', () => {
     store.del('planiraj-kod');
     done.hidden = true; form.hidden = false;
-    form.reset(); syncRole(); email.focus();
+    form.reset(); katDD.reset(); gradDD.reset(); gradOstalo.hidden = true; syncRole(); email.focus();
   });
 
   // latice izlete iz kartice kad se prijava uspije

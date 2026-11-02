@@ -1,4 +1,4 @@
-// Planiraj coming soon: statična stranica (public/) i mali API za listu čekanja.
+// Svadbeno coming soon: statična stranica (public/) i mali API za listu čekanja.
 //   POST   /api/prijava          upis na listu
 //   GET    /api/broj             broj prijava (prikazuje se tek od PRIKAZI_OD)
 //   GET    /api/ja?kod=XXXXXX     mjesto na listi za vraćenog posjetioca
@@ -122,7 +122,7 @@ async function admin(req, url, env) {
   if (put === 'csv' && req.method === 'GET') {
     const { results } = await env.DB.prepare('SELECT id, email, uloga, kategorija, grad, vrijeme FROM prijave ORDER BY id').all();
     return new Response(csv(results, ['id', 'email', 'uloga', 'kategorija', 'grad', 'vrijeme']), {
-      headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="planiraj-lista.csv"', 'cache-control': 'no-store', ...SIGURNOST }
+      headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="svadbeno-lista.csv"', 'cache-control': 'no-store', ...SIGURNOST }
     });
   }
   if (put === 'prijava' && req.method === 'DELETE') {

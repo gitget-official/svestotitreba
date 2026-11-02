@@ -1,4 +1,4 @@
-# Planiraj: coming soon stranica
+# Svadbeno: coming soon stranica
 
 Stranica "Uskoro" sa listom čekanja, dok se aplikacija ne objavi. Odvojena je od Angular frontenda i .NET backenda: jedan Cloudflare Worker služi statičnu stranicu iz `public/` i mali API, a prijave se čuvaju u D1 bazi.
 

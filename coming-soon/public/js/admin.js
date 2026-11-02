@@ -20,7 +20,7 @@
   $('#osvjezi').addEventListener('click', ucitaj);
   $('#csv').addEventListener('click', async () => {
     const r = await api('csv'); if (!r.ok) return;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'planiraj-lista.csv'; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'svadbeno-lista.csv'; a.click(); URL.revokeObjectURL(a.href);
   });
   $('#redovi').addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-email]'); if (!b) return;

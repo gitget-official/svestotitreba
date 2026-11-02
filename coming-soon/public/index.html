@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Planiraj · Uskoro: sve za vaše vjenčanje na jednom mjestu</title>
-  <meta name="description" content="Planiraj uskoro stiže u Bosnu i Hercegovinu. Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili na jednom mjestu. Ostavite email i javit ćemo vam prvima.">
+  <title>Svadbeno · Uskoro: sve za vaše vjenčanje na jednom mjestu</title>
+  <meta name="description" content="Svadbeno uskoro stiže u Bosnu i Hercegovinu. Sale, vjenčanice, fotografi, dekoracije, frizeri i svečani automobili na jednom mjestu. Ostavite email i javit ćemo vam prvima.">
   <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#141211" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Planiraj stiže uskoro">
+  <meta property="og:title" content="Svadbeno stiže uskoro">
   <meta property="og:description" content="Sve za vaše vjenčanje, na jednom mjestu. Prijavite se i saznajte prvi kad otvorimo.">
   <meta property="og:image" content="/img/og.jpg">
   <meta property="og:locale" content="bs_BA">
@@ -26,8 +26,8 @@
 
   <header class="top">
     <a class="logo" href="/">
-      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><text x="32" y="43">P</text></svg>
-      <span>Planiraj</span>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><text x="32" y="43">S</text></svg>
+      <span>Svadbeno</span>
     </a>
     <span class="soon"><i aria-hidden="true"></i>Uskoro</span>
   </header>
@@ -59,25 +59,29 @@
 
             <div class="more" id="more" inert>
               <div class="more-in">
-                <label class="fld">
-                  <span>Šta nudite</span>
-                  <select name="kategorija" id="kategorija">
-                    <option value="">Izaberite kategoriju</option>
-                    <option>Sale i prostori za vjenčanje</option>
-                    <option>Vjenčanice i odijela</option>
-                    <option>Dekoracije</option>
-                    <option>Fotografi</option>
-                    <option>Rent svečanih automobila</option>
-                    <option>Frizeri</option>
-                    <option>Beauty i make-up</option>
-                    <option>Nešto drugo</option>
-                  </select>
-                </label>
-                <label class="fld">
-                  <span>Grad</span>
-                  <input name="grad" id="grad" list="gradovi" maxlength="60" autocomplete="address-level2" placeholder="npr. Sarajevo">
-                  <datalist id="gradovi"><option>Sarajevo</option><option>Banja Luka</option><option>Tuzla</option><option>Zenica</option><option>Mostar</option><option>Bihać</option><option>Travnik</option><option>Brčko</option><option>Bijeljina</option><option>Doboj</option><option>Cazin</option><option>Goražde</option><option>Konjic</option><option>Livno</option><option>Visoko</option></datalist>
-                </label>
+                <div class="fld dd" id="dd-kat">
+                  <span id="l-kat">Šta nudite</span>
+                  <button class="dd-btn" type="button" id="kategorija" aria-haspopup="listbox" aria-expanded="false" aria-controls="kat-lista" aria-labelledby="l-kat kat-v">
+                    <span class="dd-v ph" id="kat-v">Izaberite usluge</span>
+                    <svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="dd-panel" hidden>
+                    <p class="dd-hint">Možete izabrati više usluga</p>
+                    <div class="dd-list" role="listbox" id="kat-lista" aria-labelledby="l-kat" aria-multiselectable="true" tabindex="-1"></div>
+                  </div>
+                </div>
+                <div class="fld dd" id="dd-grad">
+                  <span id="l-grad">Grad</span>
+                  <button class="dd-btn" type="button" id="grad-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="grad-lista" aria-labelledby="l-grad grad-v">
+                    <span class="dd-v ph" id="grad-v">Izaberite grad</span>
+                    <svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                  <div class="dd-panel dd-end" hidden>
+                    <input class="dd-search" type="search" placeholder="Pretražite grad" aria-label="Pretražite grad" aria-controls="grad-lista" autocomplete="off" maxlength="60">
+                    <div class="dd-list" role="listbox" id="grad-lista" aria-labelledby="l-grad" tabindex="-1"></div>
+                  </div>
+                  <input class="dd-other" name="grad" id="grad" maxlength="60" autocomplete="address-level2" placeholder="Upišite grad" aria-label="Upišite grad" hidden>
+                </div>
               </div>
             </div>
 
@@ -91,7 +95,7 @@
 
             <label class="ok-box">
               <input type="checkbox" name="saglasnost" id="saglasnost" required>
-              <span>Slažem se da mi pošaljete email kad Planiraj otvori. <a href="/privatnost">Privatnost</a></span>
+              <span>Slažem se da mi pošaljete email kad Svadbeno otvori. <a href="/privatnost">Privatnost</a></span>
             </label>
             <div class="hp" aria-hidden="true"><label>Web stranica <input name="web" tabindex="-1" autocomplete="off"></label></div>
             <div class="ts" id="ts"></div>
@@ -159,24 +163,50 @@
       </ul>
     </section>
 
-    <section class="band" aria-labelledby="ponudjaci">
-      <div class="band-in">
-        <p class="kick kick-l rv">Za salone i ponuđače</p>
-        <h2 id="ponudjaci" class="h2 rv">Neka vas mladenci <em>pronađu</em>.</h2>
-        <p class="band-p rv">Vlastita stranica sa opisom, galerijom, cjenovnikom i lokacijom, upiti i rezervacije na jednom mjestu. Prijavite interes i javit ćemo vam se prije otvaranja.</p>
-        <button class="btn btn-light" type="button" id="za-salone">Prijavite svoj salon</button>
-      </div>
-      <div class="marq" aria-hidden="true">
-        <ul><li>Sale i prostori</li><li>Vjenčanice i odijela</li><li>Dekoracije</li><li>Fotografi</li><li>Svečani automobili</li><li>Frizeri</li><li>Beauty i make-up</li></ul>
-        <ul><li>Sale i prostori</li><li>Vjenčanice i odijela</li><li>Dekoracije</li><li>Fotografi</li><li>Svečani automobili</li><li>Frizeri</li><li>Beauty i make-up</li></ul>
+    <section class="sec duo" aria-labelledby="za-koga">
+      <p class="kick rv">Za koga je Svadbeno</p>
+      <h2 id="za-koga" class="h2 rv">Za obje strane <em>velikog dana</em>.</h2>
+      <div class="split">
+        <div class="side rv" data-d="0">
+          <p class="side-k">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="19" cy="27" r="10"/><circle cx="29" cy="27" r="10"/><path d="m24 6 3 4-3 4-3-4z"/></svg>
+            <span id="za-mladence">Za mladence</span>
+          </p>
+          <ul class="ticks">
+            <li><b>Sve usluge na jednom mjestu:</b> sale, vjenčanice, fotografi, dekoracije, frizeri i automobili, po gradu, cijeni i ocjeni.</li>
+            <li><b>Okvirne cijene unaprijed,</b> sa cjenovnikom i galerijom, prije prvog poziva.</li>
+            <li><b>Planer po budžetu</b> koji u tri koraka složi cijeli paket.</li>
+            <li><b>Slobodni datumi i rezervacija</b> direktno kod salona, uz status svakog zahtjeva.</li>
+            <li><b>Favoriti i vaš plan,</b> sačuvani da se vratite kad god želite.</li>
+          </ul>
+          <button class="link-cta" type="button" data-uloga="par">Prijavite se kao par <span aria-hidden="true">→</span></button>
+        </div>
+
+        <div class="split-line" aria-hidden="true"><span>&amp;</span></div>
+
+        <div class="side rv" data-d="1">
+          <p class="side-k">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 20 12 9h24l4 11"/><path d="M8 20c0 3 2 5 5.3 5s5.3-2 5.3-5c0 3 2 5 5.4 5s5.4-2 5.4-5c0 3 2 5 5.3 5S40 23 40 20"/><path d="M11 25v15h26V25M20 40v-9h8v9"/></svg>
+            <span id="za-davaoce">Za davaoce usluga</span>
+          </p>
+          <ul class="ticks">
+            <li><b>Vlastita stranica</b> sa opisom, galerijom, cjenovnikom i lokacijom.</li>
+            <li><b>Mladenci vas pronađu</b> po gradu, kategoriji i budžetu, i kroz planer.</li>
+            <li><b>Zahtjevi za termin na jednom mjestu:</b> potvrdite ili odbijte jednim klikom.</li>
+            <li><b>Pregled zauzetih datuma,</b> bez dvostrukih rezervacija i dugih poruka.</li>
+            <li><b>Ocjene parova</b> koje grade povjerenje kod budućih mladenaca.</li>
+          </ul>
+          <button class="link-cta" type="button" data-uloga="ponudjac">Prijavite svoje usluge <span aria-hidden="true">→</span></button>
+        </div>
       </div>
     </section>
+
 
     <section class="sec faq" aria-labelledby="pitanja">
       <h2 id="pitanja" class="h2 rv">Česta pitanja</h2>
       <div class="qa rv">
         <details>
-          <summary>Kada Planiraj otvara?</summary>
+          <summary>Kada Svadbeno otvara?</summary>
           <p>Radimo na završnim detaljima. Svi koji se prijave na listu dobiju email prvi, čim otvorimo.</p>
         </details>
         <details>
@@ -184,7 +214,7 @@
           <p>Samo obavijest kad otvorimo. Vašu adresu koristimo samo za to i ne šaljemo reklame.</p>
         </details>
         <details>
-          <summary>Za koje gradove je Planiraj?</summary>
+          <summary>Za koje gradove je Svadbeno?</summary>
           <p>Za cijelu Bosnu i Hercegovinu. Ponuđače možete filtrirati po gradu.</p>
         </details>
         <details>
@@ -200,7 +230,7 @@
   </main>
 
   <footer class="foot">
-    <p><span class="logo-s">Planiraj</span> · Sve za vaše vjenčanje, na jednom mjestu</p>
+    <p><span class="logo-s">Svadbeno</span> · Sve za vaše vjenčanje, na jednom mjestu</p>
     <p><a href="/privatnost">Privatnost</a> · © 2026</p>
   </footer>
 

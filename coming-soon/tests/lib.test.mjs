@@ -16,6 +16,13 @@ test('ponuđač mora izabrati kategoriju sa liste', () => {
   assert.equal(v.podaci.grad, 'Mostarscript');
 });
 
+test('ponuđač može izabrati više usluga', () => {
+  const v = provjeri({ email: 'a@b.ba', uloga: 'ponudjac', kategorija: [KATEGORIJE[3], KATEGORIJE[0], KATEGORIJE[3]], saglasnost: true });
+  assert.equal(v.podaci.kategorija, KATEGORIJE[0] + ', ' + KATEGORIJE[3]);
+  assert.equal(provjeri({ email: 'a@b.ba', uloga: 'ponudjac', kategorija: [], saglasnost: true }).ok, false);
+  assert.equal(provjeri({ email: 'a@b.ba', uloga: 'ponudjac', kategorija: [KATEGORIJE[1], 'Hakeri'], saglasnost: true }).ok, false);
+});
+
 test('odbija loš email, nepoznatu ulogu i prijavu bez saglasnosti', () => {
   for (const email of ['', 'nije', 'a@b', 'a b@c.ba', 'x'.repeat(250) + '@b.ba']) assert.equal(provjeri({ email, uloga: 'par', saglasnost: true }).ok, false, email);
   assert.equal(provjeri({ email: 'a@b.ba', uloga: 'admin', saglasnost: true }).ok, false);

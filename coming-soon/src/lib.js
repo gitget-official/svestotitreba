@@ -26,8 +26,10 @@ export function provjeri(b) {
   if (b.saglasnost !== true) return { ok: false, greska: 'Potvrdite da vam smijemo poslati email kad otvorimo.' };
   let kategorija = null, grad = null;
   if (uloga === 'ponudjac') {
-    kategorija = String(b.kategorija || '');
-    if (!KATEGORIJE.includes(kategorija)) return { ok: false, greska: 'Izaberite šta nudite.' };
+    // jedna ili više usluga; čuvaju se kao "Fotografi, Dekoracije" u istoj koloni
+    const izabrane = [...new Set([].concat(b.kategorija ?? []).map(String))];
+    if (!izabrane.length || !izabrane.every((k) => KATEGORIJE.includes(k))) return { ok: false, greska: 'Izaberite šta nudite.' };
+    kategorija = KATEGORIJE.filter((k) => izabrane.includes(k)).join(', ');
     grad = String(b.grad || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60) || null;
   }
   const ref = jeKod(b.ref) ? b.ref : null;
