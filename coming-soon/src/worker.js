@@ -5,7 +5,9 @@
 //   GET    /api/admin/lista      spisak (Authorization: Bearer ADMIN_TOKEN)
 //   GET    /api/admin/csv        spisak za Excel
 //   DELETE /api/admin/prijava    brisanje adrese (odjava), body { email }
+import { EmailMessage } from 'cloudflare:email';
 import { provjeri, noviKod, jeKod, csv, isti } from './lib.js';
+import { napraviMail } from './mail.js';
 
 const SIGURNOST = {
   'x-content-type-options': 'nosniff',
@@ -51,15 +53,24 @@ async function mjesto(env, red) {
   return { pozicija: a.results[0].n, pozvani: b.results[0].n };
 }
 
-// obavijest timu u Telegram grupu (ako su postavljeni TELEGRAM_BOT_TOKEN i TELEGRAM_CHAT_ID)
+// broj prijava po ulozi (isti upit za /api/broj i za mail timu)
+async function brojevi(env) {
+  const r = await env.DB.prepare("SELECT SUM(uloga = 'par') AS parovi, SUM(uloga = 'ponudjac') AS ponudjaci FROM prijave").first();
+  return { parovi: r.parovi || 0, ponudjaci: r.ponudjaci || 0 };
+}
+
+// email timu za novu prijavu (Cloudflare Email Routing, binding MAIL).
+// Dok Email Routing nije uključen ili ako slanje padne, prijava ipak prolazi: greška ide samo u log.
 async function javiTimu(env, p, pozicija) {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
-  const ko = p.uloga === 'ponudjac' ? 'Ponuđač: ' + p.kategorija + (p.grad ? ', ' + p.grad : '') : 'Mladenci';
-  const text = 'Nova prijava #' + pozicija + '\n' + ko + '\n' + p.email + (p.ref ? '\nPreko preporuke: ' + p.ref : '');
-  await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/sendMessage', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text, disable_web_page_preview: true })
-  }).catch(() => {});
+  try {
+    if (!env.MAIL) throw new Error('nema MAIL bindinga (Email Routing nije uključen)');
+    const ukupno = await brojevi(env);
+    const preporucio = p.ref ? (await env.DB.prepare('SELECT email FROM prijave WHERE kod = ?').bind(p.ref).first())?.email ?? null : null;
+    const { raw } = napraviMail({ od: env.MAIL_FROM, za: env.MAIL_TO, prijava: p, pozicija, ukupno, preporucio, vrijeme: new Date() });
+    await env.MAIL.send(new EmailMessage(env.MAIL_FROM, env.MAIL_TO, raw));
+  } catch (e) {
+    console.error('Mail o prijavi nije poslan:', e);
+  }
 }
 
 async function prijava(req, env, ctx) {
@@ -96,8 +107,7 @@ async function prijava(req, env, ctx) {
 }
 
 async function broj(env) {
-  const r = await env.DB.prepare("SELECT SUM(uloga = 'par') AS parovi, SUM(uloga = 'ponudjac') AS ponudjaci FROM prijave").first();
-  const parovi = r.parovi || 0, ponudjaci = r.ponudjaci || 0;
+  const { parovi, ponudjaci } = await brojevi(env);
   const od = Number(env.PRIKAZI_OD ?? 30);
   return json({ prikazi: parovi + ponudjaci >= od, parovi, ponudjaci, turnstile: env.TURNSTILE_SITE_KEY || null }, 200, { 'cache-control': 'public, max-age=60' });
 }

@@ -7,7 +7,7 @@ Stranica "Uskoro" sa listom čekanja, dok se aplikacija ne objavi. Odvojena je o
 - Mladenci ili ponuđači ostave email (ponuđači i kategoriju i grad) i dobiju svoje mjesto na listi.
 - Svako dobije link za preporuku (`/?ref=KOD`) i dugmad za WhatsApp, Viber i kopiranje linka. Na stranici vidi koliko se ljudi prijavilo preko njegovog linka.
 - Brojač "Na listi već čeka..." se prikazuje tek kad lista dostigne `PRIKAZI_OD` prijava (zadano 30).
-- Tim dobije obavijest u Telegram grupu za svaku novu prijavu (opciono).
+- Tim dobije email na svadbeno@gmail.com za svaku novu prijavu (preko Cloudflare Email Routing, vidi ispod).
 - `/admin` pokazuje spisak, brojke i izvoz u Excel (CSV), uz brisanje adrese kad neko zatraži odjavu.
 - Zaštita od spama: skriveno polje za botove, najviše 6 prijava sa iste IP adrese u 10 minuta (čuva se samo hash adrese, briše se nakon 24 sata) i opciono Cloudflare Turnstile.
 
@@ -18,8 +18,10 @@ coming-soon/
   public/            stranica: index.html, privatnost.html, 404.html, admin/, css/, js/, fonts/, img/, _headers
   src/worker.js      API (/api/prijava, /api/broj, /api/ja, /api/admin/*)
   src/lib.js         provjera podataka, kodovi, CSV
+  src/mail.js        email timu za novu prijavu (MIME, HTML i tekst)
+  scripts/           npm run mail:primjer (primjer maila u mail-primjer.html)
   migrations/        šema baze
-  tests/             testovi za src/lib.js (npm test)
+  tests/             testovi za src/lib.js, src/mail.js i worker (npm test)
 ```
 
 ## Lokalno
@@ -30,7 +32,8 @@ npm install
 cp .dev.vars.example .dev.vars
 npm run db:local
 npm run dev            # http://localhost:8788, admin ključ: lokalni-kljuc
-npm test
+npm test               # Node 22.15 ili noviji (koristi node:sqlite i module.registerHooks)
+npm run mail:primjer   # mail-primjer.html: kako izgleda mail timu (otvoriti u pregledniku)
 ```
 
 ## Objava na Cloudflare
@@ -48,15 +51,21 @@ Domena se poveže u Cloudflare panelu: Workers & Pages, `planiraj-uskoro`, Setti
 
 ### Prije objave obavezno
 
-1. U `public/privatnost.html` zamijeniti `EMAIL_TIMA` stvarnom email adresom tima (dva mjesta).
-2. U `public/index.html` u `og:image` upisati punu adresu slike kad domena bude poznata, npr. `https://domena.ba/img/og.jpg` (Facebook i Viber traže punu adresu).
+1. U `public/index.html` u `og:image` upisati punu adresu slike kad domena bude poznata, npr. `https://domena.ba/img/og.jpg` (Facebook i Viber traže punu adresu).
 
-### Telegram obavijesti (opciono)
+### Email obavijest za svaku prijavu
 
-1. U Telegramu otvoriti @BotFather, napraviti bota i kopirati token.
-2. Dodati bota u grupu tima i poslati jednu poruku u grupu.
-3. Otvoriti `https://api.telegram.org/bot<TOKEN>/getUpdates` i prepisati `chat.id` grupe.
-4. `npx wrangler secret put TELEGRAM_BOT_TOKEN` i `npx wrangler secret put TELEGRAM_CHAT_ID`.
+Za svaku novu prijavu worker pošalje mail na svadbeno@gmail.com sa adrese prijave@svadbeno.com (binding `MAIL` i `MAIL_FROM`/`MAIL_TO` u `wrangler.toml`). Mail ne ide kad se ista adresa prijavi ponovo ni za botove.
+
+Prijave rade i bez ovoga: dok Email Routing nije uključen, mail samo ne stiže (greška je u logu workera, posjetilac je ne vidi).
+
+Ovo radimo mi u Cloudflare panelu, kad domena svadbeno.com bude kupljena:
+
+1. Domena svadbeno.com, Email, Email Routing, Enable. Cloudflare sam doda potrebne DNS zapise.
+2. Destination addresses: dodati svadbeno@gmail.com i potvrditi link koji stigne na Gmail.
+3. Routing rules: info@svadbeno.com prosljeđivati na svadbeno@gmail.com (da radi adresa sa stranice i iz izjave o privatnosti).
+4. `npm run deploy`.
+5. Test: prijaviti se na stranici sa nekom adresom i provjeriti Gmail. Prvi put pogledati i Spam; ako je mail tamo, označiti ga sa "Nije spam".
 
 ### Turnstile (opciono, ako krene spam)
 
