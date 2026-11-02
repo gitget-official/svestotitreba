@@ -5,7 +5,7 @@ import { BRAND } from '../../core/brand';
 @Component({
   selector: 'app-brand-mark',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<span class="mark" aria-hidden="true">{{ brand.mark }}</span><span class="name">{{ brand.name }}</span>`,
+  template: `<img class="mark" src="/img/logo.png" width="30" height="30" alt="" /><span class="name">{{ brand.name }}</span>`,
   styles: `
     :host {
       display: inline-flex;
@@ -17,19 +17,13 @@ import { BRAND } from '../../core/brand';
       letter-spacing: -0.015em;
     }
 
-    // Krug: prsten i kolo, bez punog kvadrata.
+    // Logo: slagalica sa S (isti kao na kraju uvodne animacije, pa se oblik ne mijenja kad znak sleti).
     .mark {
-      display: grid;
-      place-items: center;
+      display: block;
+      flex: none;
       width: 1.875rem;
       height: 1.875rem;
-      border-radius: 50%;
-      box-shadow: inset 0 0 0 2px var(--accent);
-      color: var(--accent);
-      font-family: var(--font-display);
-      font-size: 1.05rem;
-      font-weight: 600;
-      line-height: 1;
+      filter: drop-shadow(0 2px 5px rgba(60, 35, 15, 0.14));
     }
 
     .name {

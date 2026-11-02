@@ -80,3 +80,23 @@
     animation: none !important;
   }
 }
+
+// ---- Uvodna animacija loga (core/intro.ts) ----
+#uvod { display: none; }
+.uvod #uvod {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  cursor: pointer;
+  // ako se aplikacija ne učita, ekran sam nestane
+  animation: uvod-kraj 0.4s 5s forwards;
+}
+.uvod body { overflow: hidden; }
+#uvod .sv-logo { width: min(58vw, 250px); overflow: visible; }
+#uvod .sv-pc { filter: drop-shadow(0 6px 10px rgba(94, 24, 35, 0.18)); }
+[data-theme='dark'] #uvod .sv-pc { filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45)); }
+@media (prefers-color-scheme: dark) { html:not([data-theme='light']) #uvod .sv-pc { filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45)); } }
+@keyframes uvod-kraj { to { opacity: 0; visibility: hidden; } }
