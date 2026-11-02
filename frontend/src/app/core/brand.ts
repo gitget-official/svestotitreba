@@ -2,12 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 
-/** Ime platforme se još bira: mijenja se samo ovdje (i u index.html). */
+/** Ime platforme: mijenja se samo ovdje (i u index.html). */
 export const BRAND = {
-  name: 'Planiraj',
-  mark: 'P',
+  name: 'Svadbeno',
+  mark: 'S',
   tagline: 'Sve za vaše vjenčanje, na jednom mjestu.',
-  email: 'info@planiraj.ba',
+  email: 'info@svadbeno.ba',
 } as const;
 
 /** Rute imaju kratke naslove ("Istraži"); brend se dodaje ovdje, na jednom mjestu. */
