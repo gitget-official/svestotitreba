@@ -43,7 +43,7 @@ npm run mail:primjer   # mail-primjer.html: kako izgleda mail timu (otvoriti u p
 
 ```bash
 npx wrangler login
-npx wrangler d1 create planiraj-uskoro      # dobijeni database_id upisati u wrangler.toml
+npx wrangler d1 create svadbeno-uskoro      # dobijeni database_id upisati u wrangler.toml
 npm run db:remote
 npx wrangler secret put ADMIN_TOKEN         # dugačak nasumičan ključ za /admin
 npx wrangler secret put IP_SOL              # bilo koji nasumičan tekst
@@ -52,17 +52,13 @@ npm run deploy
 
 Domena se poveže u Cloudflare panelu: Workers & Pages, `planiraj-uskoro`, Settings, Domains & Routes.
 
-### Prije objave obavezno
-
-1. U `public/index.html` u `og:image` upisati punu adresu slike kad domena bude poznata, npr. `https://domena.ba/img/og.jpg` (Facebook i Viber traže punu adresu).
-
 ### Email obavijest za svaku prijavu
 
 Za svaku novu prijavu worker pošalje mail na svadbeno@gmail.com sa adrese prijave@svadbeno.com (binding `MAIL` i `MAIL_FROM`/`MAIL_TO` u `wrangler.toml`). Mail ne ide kad se ista adresa prijavi ponovo ni za botove.
 
 Prijave rade i bez ovoga: dok Email Routing nije uključen, mail samo ne stiže (greška je u logu workera, posjetilac je ne vidi).
 
-Ovo radimo mi u Cloudflare panelu, kad domena svadbeno.com bude kupljena:
+Ovo radimo mi u Cloudflare panelu:
 
 1. Domena svadbeno.com, Email, Email Routing, Enable. Cloudflare sam doda potrebne DNS zapise.
 2. Destination addresses: dodati svadbeno@gmail.com i potvrditi link koji stigne na Gmail.

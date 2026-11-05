@@ -3,6 +3,12 @@ name = "planiraj-uskoro"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
 
+# domena stranice (Cloudflare sam napravi DNS zapise)
+routes = [
+  { pattern = "svadbeno.com", custom_domain = true },
+  { pattern = "www.svadbeno.com", custom_domain = true }
+]
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
@@ -12,8 +18,8 @@ run_worker_first = ["/api/*"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "planiraj-uskoro"
-database_id = "00000000-0000-0000-0000-000000000000" # zamijeniti ID-om iz: npx wrangler d1 create planiraj-uskoro
+database_name = "svadbeno-uskoro"
+database_id = "8b33d650-8808-4b1e-88df-d63258ed081f"
 migrations_dir = "migrations"
 
 # email timu za svaku novu prijavu (Cloudflare Email Routing, vidi README)
