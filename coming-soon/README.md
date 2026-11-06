@@ -72,7 +72,7 @@ U Cloudflare panelu napraviti Turnstile widget za domenu, javni ključ upisati u
 
 ## Kad aplikacija bude spremna
 
-Svi sa liste se izvezu iz `/admin` (CSV) i pošalje im se email o otvaranju. Domena se zatim prebaci na pravu aplikaciju.
+Svi sa liste se izvezu iz `/admin` (CSV) i pošalje im se email o pokretanju. Domena se zatim prebaci na pravu aplikaciju.
 
 ## Slike u telefonu
 

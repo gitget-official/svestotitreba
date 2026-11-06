@@ -238,7 +238,7 @@
     const mail = email.value.trim();
     if (!MAIL.test(mail)) return fail('Upišite ispravnu email adresu.', email);
     if (role() === 'ponudjac' && !katDD.values().length) return fail('Izaberite šta nudite.', kat);
-    if (!ok.checked) return fail('Potvrdite da vam smijemo poslati email kad otvorimo.', ok);
+    if (!ok.checked) return fail('Potvrdite da vam smijemo poslati email kad Svadbeno bude dostupno.', ok);
     err.textContent = '';
     btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true');
     // dugme se pretvori u logo koji se složi dok se prijava šalje
@@ -292,8 +292,8 @@
     done.classList.remove('pop'); void done.offsetWidth; done.classList.add('pop');
     const uloga = d.uloga || role(), pon = uloga === 'ponudjac';
     $('#gotovo-p').textContent = d.vec
-      ? 'Ova adresa je već na listi. Javit ćemo vam se čim otvorimo.'
-      : (pon ? 'Hvala! Javit ćemo vam se prije otvaranja.' : 'Javit ćemo vam se čim Svadbeno otvori.');
+      ? 'Ova adresa je već na listi. Javit ćemo vam se čim Svadbeno bude dostupno.'
+      : (pon ? 'Hvala! Javit ćemo vam se prije pokretanja.' : 'Javit ćemo vam se čim Svadbeno bude dostupno.');
     $('#gotovo-sh').textContent = pon
       ? 'Pošaljite link drugim salonima i ponuđačima koje poznajete.'
       : 'Pošaljite link nekome za koga mislite da mu je došlo vrijeme za svadbu.';

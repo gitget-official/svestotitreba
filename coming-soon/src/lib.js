@@ -23,7 +23,7 @@ export function provjeri(b) {
   if (email.length > 254 || !MAIL.test(email)) return { ok: false, greska: 'Upišite ispravnu email adresu.' };
   const uloga = b.uloga === 'ponudjac' ? 'ponudjac' : b.uloga === 'par' ? 'par' : null;
   if (!uloga) return { ok: false, greska: 'Izaberite da li planirate vjenčanje ili nudite uslugu.' };
-  if (b.saglasnost !== true) return { ok: false, greska: 'Potvrdite da vam smijemo poslati email kad otvorimo.' };
+  if (b.saglasnost !== true) return { ok: false, greska: 'Potvrdite da vam smijemo poslati email kad Svadbeno bude dostupno.' };
   let kategorija = null, grad = null;
   if (uloga === 'ponudjac') {
     // jedna ili više usluga; čuvaju se kao "Fotografi, Dekoracije" u istoj koloni
