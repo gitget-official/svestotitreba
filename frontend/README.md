@@ -1,4 +1,4 @@
-# Planiraj: frontend (Angular 22)
+# Svadbeno: frontend (Angular 22)
 
 Web aplikacija za mladence, salone i administratore. Backend je u `../backend`.
 

@@ -110,6 +110,7 @@ public class BookingService
         await EnsureSlotAvailableAsync(vendor.Id, request.EventDate, request.StartTime, null);
 
         entity.UserId = CurrentUser.RequireUserId();
+        await EnsureNoOpenRequestAsync(entity.UserId, vendor.Id, request.EventDate, null);
         entity.Status = vendor.AutoConfirmBookings ? BookingStatus.Confirmed : BookingStatus.Pending;
         entity.CreatedAt = DateTime.UtcNow;
     }
@@ -122,6 +123,7 @@ public class BookingService
         ValidateDate(request.EventDate);
         await ValidateOfferingAsync(entity.VendorId, request.OfferingId);
         await EnsureSlotAvailableAsync(entity.VendorId, request.EventDate, request.StartTime, entity.Id);
+        await EnsureNoOpenRequestAsync(entity.UserId, entity.VendorId, request.EventDate, entity.Id);
 
         entity.UpdatedAt = DateTime.UtcNow;
     }
@@ -193,6 +195,23 @@ public class BookingService
         if (offeringId.HasValue
             && !await Context.VendorOfferings.AnyAsync(o => o.Id == offeringId.Value && o.VendorId == vendorId && o.IsActive))
             throw new UserException("Odabrana usluga ne pripada ovom ponuđaču.");
+    }
+
+    /// <summary>
+    /// Mladenci imaju najviše jedan otvoren zahtjev (na čekanju ili potvrđen) kod istog ponuđača za isti dan,
+    /// pa slučajan dvostruki klik ili zaboravljen zahtjev ne pravi duplikate kod salona.
+    /// </summary>
+    private async Task EnsureNoOpenRequestAsync(int userId, int vendorId, DateOnly date, int? excludeBookingId)
+    {
+        var open = await Context.Bookings.AnyAsync(b =>
+            b.UserId == userId
+            && b.VendorId == vendorId
+            && b.EventDate == date
+            && (b.Status == BookingStatus.Pending || b.Status == BookingStatus.Confirmed)
+            && b.Id != excludeBookingId);
+
+        if (open)
+            throw new ConflictException("Već imate zahtjev kod ovog ponuđača za taj datum. Pogledajte Moje rezervacije.");
     }
 
     /// <summary>Jednostavno pravilo (FR-22): isti dan i isto vrijeme ne mogu imati dvije potvrđene rezervacije.</summary>

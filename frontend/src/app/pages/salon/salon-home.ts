@@ -37,7 +37,7 @@ interface CheckItem {
         <div class="empty-state">
           <app-icon name="store" />
           <h3 class="t-title-3">Nalog još nije povezan sa salonom</h3>
-          <p>Administrator treba da vaš nalog dodijeli salonu. Javite nam se na info&#64;planiraj.ba.</p>
+          <p>Administrator treba da vaš nalog dodijeli salonu. Javite nam se na info&#64;svadbeno.com.</p>
         </div>
       } @else if (current(); as v) {
         <header class="page-header">

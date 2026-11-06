@@ -1,0 +1,4 @@
+# Kopirati u .dev.vars za lokalno pokretanje (npm run dev)
+ADMIN_TOKEN=lokalni-kljuc
+IP_SOL=lokalno
+PRIKAZI_OD=1
