@@ -60,7 +60,20 @@ public interface IAuthService
     /// <summary>Vraća korisnika ako su podaci ispravni i nalog aktivan, inače null.</summary>
     Task<UserDto?> ValidateCredentialsAsync(string login, string password);
     Task<UserDto> RegisterCoupleAsync(RegisterRequest request);
+    /// <summary>
+    /// Prijava preko Googlea (samo mladenci): pronalazi nalog po Google ID-u ili e-mailu, a ako ga nema,
+    /// pravi novi nalog mladenaca. IsNew je true kad je nalog upravo napravljen.
+    /// </summary>
+    Task<(UserDto User, bool IsNew)> LoginWithGoogleAsync(GoogleIdentity identity);
     Task<UserDto> GetCurrentAsync();
     Task<UserDto> UpdateProfileAsync(ProfileUpdateRequest request);
     Task ChangePasswordAsync(ChangePasswordRequest request);
+}
+
+/// <summary>Provjerava Google ID token (potpis, izdavač, rok, publika) i vraća podatke o osobi; null ako token ne valja.</summary>
+public interface IGoogleTokenValidator
+{
+    /// <summary>Client id iz podešavanja, ili null kad Google prijava nije podešena.</summary>
+    string? ClientId { get; }
+    Task<GoogleIdentity?> ValidateAsync(string credential);
 }

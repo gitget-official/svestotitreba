@@ -22,6 +22,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.Register),
   },
   {
+    // poslije prve prijave preko Googlea: slika, ime i grad
+    path: 'dobrodosli',
+    canActivate: [authGuard],
+    title: 'Dobro došli',
+    loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.Welcome),
+  },
+  {
     path: 'promjena-lozinke',
     canActivate: [authGuard],
     title: 'Nova lozinka',

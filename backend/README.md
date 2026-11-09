@@ -34,6 +34,29 @@ Potrebno: **.NET 10 SDK** i **SQL Server** (Express, Developer ili LocalDB).
 
 Za ponovno punjenje baze od nule: `dotnet ef database drop --project Planiraj.Services --startup-project Planiraj.API`, pa ponovo pokreni API.
 
+## Prijava preko Googlea (mladenci)
+
+Mladenci se registruju i prijavljuju samo preko Googlea (bez lozinke). Saloni i administratori i dalje
+koriste korisničko ime i lozinku. Reset lozinke i potvrda e-maila dolaze kasnije.
+
+1. U [Google Cloud Console](https://console.cloud.google.com/apis/credentials) napravi **OAuth client ID**
+   tipa **Web application**. U **Authorized JavaScript origins** dodaj `http://localhost:4200` i produkcijsku
+   adresu (npr. `https://svadbeno.com`). Redirect URI nije potreban (dugme radi u popup prozoru).
+2. Client ID upiši u `Google:ClientId` (`appsettings.Development.json`) ili varijablu okruženja `Google__ClientId`.
+   Client ID nije tajna (vidi ga i preglednik).
+3. Primijeni migraciju `AddGoogleLogin` (radi se automatski pri pokretanju API-ja).
+
+Tok: frontend dobije ID token od Googlea i pošalje ga na `POST /api/auth/google`. Backend ga provjeri
+(`Google.Apis.Auth`: potpis, izdavač, rok i client id), pa:
+
+- nalog sa istim Google ID-om: prijava;
+- nalog mladenaca sa istim e-mailom: poveže se sa Googleom i prijavi;
+- nalog salona ili administratora sa istim e-mailom: odbije se (prijava lozinkom);
+- nema naloga: napravi se nalog mladenaca bez lozinke, a odgovor ima `isNew: true` (frontend vodi na `/dobrodosli`).
+
+E-mail na Google nalogu mora biti potvrđen. `GET /api/auth/config` vraća client id (ili `null` kad nije podešen,
+pa frontend ne prikazuje dugme).
+
 ## Test nalozi (seed)
 
 | Uloga | Korisničko ime | E-mail | Lozinka |
@@ -60,7 +83,7 @@ Svi endpointi osim `login` i `register` zahtijevaju prijavu (FR-1). URL-ovi su m
 
 | Resurs | Ruta | Čitanje | Izmjene |
 |---|---|---|---|
-| Auth | `/api/auth/login`, `/register`, `/me` (GET/PUT), `/change-password` | | Svako za sebe |
+| Auth | `/api/auth/login`, `/register`, `/google`, `/config`, `/me` (GET/PUT), `/change-password` | | Svako za sebe |
 | Korisnici | `/api/users` | Admin (ili vlastiti profil po Id-u) | Admin |
 | Gradovi | `/api/cities` | Svi | Admin |
 | Kategorije | `/api/servicecategories` | Svi (aktivne) | Admin |

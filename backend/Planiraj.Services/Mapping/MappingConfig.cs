@@ -14,7 +14,9 @@ public static class MappingConfig
         config.NewConfig<TimeOnly, TimeOnly>().MapWith(s => s);
 
         config.NewConfig<User, UserDto>()
-            .Map(d => d.CityName, s => s.City != null ? s.City.Name : null);
+            .Map(d => d.CityName, s => s.City != null ? s.City.Name : null)
+            .Map(d => d.HasPassword, s => s.PasswordHash != "")
+            .Map(d => d.HasGoogle, s => s.GoogleId != null);
 
         config.NewConfig<VendorOffering, OfferingDto>()
             .Map(d => d.VendorName, s => s.Vendor != null ? s.Vendor.Name : null)

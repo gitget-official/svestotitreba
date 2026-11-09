@@ -250,6 +250,10 @@ namespace Planiraj.Services.Database.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -294,6 +298,10 @@ namespace Planiraj.Services.Database.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("GoogleId")
+                        .IsUnique()
+                        .HasFilter("[GoogleId] IS NOT NULL");
 
                     b.HasIndex("Username")
                         .IsUnique();

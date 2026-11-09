@@ -67,6 +67,15 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
       </section>
 
       <div class="side">
+      @if (auth.user()?.hasPassword === false) {
+      <section class="stack">
+        <h2 class="t-title-3">Prijava</h2>
+        <div class="card card-pad stack">
+          <p>Prijavljujete se preko Googlea{{ auth.user()?.email ? ' (' + auth.user()?.email + ')' : '' }}.</p>
+          <p class="t-footnote muted">Lozinka vam ne treba. Prijava lozinkom stiže uskoro.</p>
+        </div>
+      </section>
+      } @else {
       <section class="stack">
         <h2 class="t-title-3">Lozinka</h2>
         <form class="card card-pad stack" [formGroup]="password" (ngSubmit)="savePassword()">
@@ -87,6 +96,7 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
           </div>
         </form>
       </section>
+      }
 
       <section class="stack">
         <h2 class="t-title-3">Izgled</h2>

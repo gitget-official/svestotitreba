@@ -32,6 +32,9 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   mustChangePassword: boolean;
+  /** Nalozi napravljeni preko Googlea nemaju lozinku. */
+  hasPassword: boolean;
+  hasGoogle: boolean;
   cityId: number | null;
   cityName: string | null;
   createdAt: string;
@@ -42,6 +45,13 @@ export interface AuthResponse {
   token: string;
   expiresAt: string;
   user: User;
+  /** True kad je nalog upravo napravljen preko Googlea (vodi na dovršavanje profila). */
+  isNew?: boolean;
+}
+
+/** Javna podešavanja prijave; googleClientId je null dok Google prijava nije podešena. */
+export interface AuthConfig {
+  googleClientId: string | null;
 }
 
 export interface LoginRequest {

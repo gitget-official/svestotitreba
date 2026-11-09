@@ -31,6 +31,8 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Username).IsUnique();
+            e.Property(x => x.GoogleId).HasMaxLength(64);
+            e.HasIndex(x => x.GoogleId).IsUnique().HasFilter("[GoogleId] IS NOT NULL");
             e.HasOne(x => x.City).WithMany().HasForeignKey(x => x.CityId);
         });
 

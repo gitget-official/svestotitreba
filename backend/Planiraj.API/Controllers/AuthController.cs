@@ -14,11 +14,39 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ITokenService _tokenService;
+    private readonly IGoogleTokenValidator _google;
 
-    public AuthController(IAuthService authService, ITokenService tokenService)
+    public AuthController(IAuthService authService, ITokenService tokenService, IGoogleTokenValidator google)
     {
         _authService = authService;
         _tokenService = tokenService;
+        _google = google;
+    }
+
+    /// <summary>Javna podešavanja prijave (Google client id), da frontend zna treba li prikazati Google dugme.</summary>
+    [AllowAnonymous]
+    [HttpGet("config")]
+    public AuthConfigDto Config() => new() { GoogleClientId = _google.ClientId };
+
+    /// <summary>
+    /// Prijava i registracija mladenaca preko Googlea. Prima ID token sa Googleovog dugmeta, provjerava ga
+    /// i vraća naš JWT. Novi nalog dobija IsNew = true (frontend vodi na dovršavanje profila).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("google")]
+    public async Task<ActionResult<AuthResponse>> Google([FromBody] GoogleLoginRequest request)
+    {
+        if (_google.ClientId == null)
+            return StatusCode(503, new { status = 503, message = "Prijava preko Googlea još nije podešena." });
+
+        var identity = await _google.ValidateAsync(request.Credential);
+        if (identity == null)
+            return Unauthorized(new { status = 401, message = "Prijava preko Googlea nije uspjela. Pokušajte ponovo." });
+
+        var (user, isNew) = await _authService.LoginWithGoogleAsync(identity);
+        var response = CreateAuthResponse(user);
+        response.IsNew = isNew;
+        return response;
     }
 
     [AllowAnonymous]

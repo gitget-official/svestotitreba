@@ -43,6 +43,10 @@ builder.Services.Configure<JwtSettings>(jwtSection);
 var jwt = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
 
 builder.Services.AddSingleton<ITokenService, TokenService>();
+
+// ---------- Google prijava (mladenci) ----------
+builder.Services.Configure<GoogleSettings>(builder.Configuration.GetSection("Google"));
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
