@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Planiraj.API.Auth;
+using Microsoft.Extensions.FileProviders;
 using Planiraj.API.Middleware;
+using Planiraj.API.Uploads;
 using Planiraj.Services.Database;
 using Planiraj.Services.Interfaces;
 using Planiraj.Services.Mapping;
@@ -31,6 +33,9 @@ builder.Services.AddScoped<ICityService, CityService>();
 builder.Services.AddScoped<IServiceCategoryService, ServiceCategoryService>();
 builder.Services.AddScoped<ISubscriptionPlanService, SubscriptionPlanService>();
 builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddSingleton(builder.Configuration.GetSection("Uploads").Get<UploadSettings>() ?? new UploadSettings());
+builder.Services.AddSingleton<LocalFileStorage>();
+builder.Services.AddSingleton<IFileStorage>(sp => sp.GetRequiredService<LocalFileStorage>());
 builder.Services.AddScoped<IOfferingService, OfferingService>();
 builder.Services.AddScoped<IVendorImageService, VendorImageService>();
 builder.Services.AddScoped<IWorkingHourService, WorkingHourService>();
@@ -141,6 +146,19 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+// Slike koje su saloni uploadovali (vidi UploadsController); keširaju se dugo jer svaka ima jedinstveno ime.
+var uploads = app.Services.GetRequiredService<LocalFileStorage>();
+Directory.CreateDirectory(uploads.RootPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploads.RootPath),
+    RequestPath = LocalFileStorage.RequestPath,
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        ctx.Context.Response.Headers.XContentTypeOptions = "nosniff";
+    }
+});
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseRateLimiter();

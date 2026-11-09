@@ -36,8 +36,9 @@ interface CheckItem {
       } @else if (!vendors().length) {
         <div class="empty-state">
           <app-icon name="store" />
-          <h3 class="t-title-3">Nalog još nije povezan sa salonom</h3>
-          <p>Administrator treba da vaš nalog dodijeli salonu. Javite nam se na info&#64;planiraj.ba.</p>
+          <h3 class="t-title-3">Postavite svoj salon</h3>
+          <p>Unesite naziv, grad i kontakt, pa dodajte usluge, cijene i fotografije. Salon se odmah prikazuje mladencima.</p>
+          <a class="btn btn-primary" routerLink="/salon/postavljanje"><app-icon name="plus" /> Postavi salon</a>
         </div>
       } @else if (current(); as v) {
         <header class="page-header">

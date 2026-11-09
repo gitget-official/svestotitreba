@@ -15,12 +15,39 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { GoogleButton } from '../../shared/ui/google-button';
 import { LookupStore } from '../../core/lookups';
 import { AuthResponse } from '../../core/models';
+import { BRAND } from '../../core/brand';
 
 /** Poslije Google prijave: novi nalog ide na dovršavanje profila, postojeći tamo odakle je došao. */
 function afterGoogle(router: Router, auth: AuthService, r: AuthResponse, povratak?: string): void {
   if (r.isNew) void router.navigate(['/dobrodosli'], { queryParams: { povratak: povratak || null } });
   else void router.navigateByUrl(povratak || auth.homeUrl());
 }
+
+const PERKS_STYLES = `
+    .perks {
+      display: grid;
+      gap: var(--space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .perks li {
+      position: relative;
+      padding-left: 1.5rem;
+    }
+
+    .perks li::before {
+      content: '';
+      position: absolute;
+      left: 0.25rem;
+      top: 0.55em;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+`;
 
 const AUTH_STYLES = `
   // isolation: latice i linija (z-index −1) ostaju iznad pozadine stranice, a ispod kartice.
@@ -238,6 +265,7 @@ const AUTH_STYLES = `
       <p class="footer t-callout muted">
         Nemate profil? <a routerLink="/registracija" [queryParams]="{ povratak: povratak() || null }">Registrujte se</a>
       </p>
+      <p class="footer t-footnote muted">Salon ste? <a routerLink="/za-salone">Prijava za salone</a></p>
     </div>
   `,
   styles: AUTH_STYLES,
@@ -307,7 +335,7 @@ export class Login {
       <div class="card">
         <div class="heading">
           <h1 class="t-title-2 serif">Napravite profil</h1>
-          <p class="t-callout muted">Za mladence. Jednim klikom, bez nove lozinke. Saloni dobijaju nalog od nas.</p>
+          <p class="t-callout muted">Za mladence. Jednim klikom, bez nove lozinke.</p>
         </div>
 
         @if (error()) {
@@ -329,33 +357,10 @@ export class Login {
       </div>
 
       <p class="footer t-callout muted">Već imate profil? <a routerLink="/prijava" [queryParams]="{ povratak: povratak() || null }">Prijavite se</a></p>
+      <p class="footer t-footnote muted">Imate salon ili uslugu za vjenčanja? <a routerLink="/za-salone">Registrujte salon</a></p>
     </div>
   `,
-  styles: AUTH_STYLES + `
-    .perks {
-      display: grid;
-      gap: var(--space-2);
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .perks li {
-      position: relative;
-      padding-left: 1.5rem;
-    }
-
-    .perks li::before {
-      content: '';
-      position: absolute;
-      left: 0.25rem;
-      top: 0.55em;
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--accent);
-    }
-  `,
+  styles: AUTH_STYLES + PERKS_STYLES,
 })
 export class Register {
   /** Povratak na stranicu sa koje je gost došao (npr. ponuđač kojeg je htio rezervisati). */
@@ -375,6 +380,81 @@ export class Register {
       next: (r) => {
         if (!r.isNew) this.toasts.info('Već imate profil, prijavljeni ste.');
         afterGoogle(this.router, this.auth, r, this.povratak());
+      },
+      error: (e) => {
+        this.busy.set(false);
+        this.error.set(apiErrorMessage(e));
+      },
+    });
+  }
+}
+
+/**
+ * Prijava i registracija salona (posebna stranica za salone, uvijek preko Googlea). Novi salon ide na
+ * postavljanje svoje stranice, a postojeći na svoj pregled. Mladenci imaju svoju stranicu (/registracija).
+ */
+@Component({
+  selector: 'app-salon-signup',
+  host: { role: 'main' },
+  imports: [RouterLink, BrandMark, Petals, LoveLine, GoogleButton],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <app-petals [count]="8" [seed]="23" />
+    <app-love-line mode="draw" [contentWidth]="640" />
+
+    <div class="panel enter">
+      <a class="brand" routerLink="/"><app-brand-mark /></a>
+
+      <div class="card">
+        <div class="heading">
+          <p class="t-eyebrow">Za salone i ponuđače</p>
+          <h1 class="t-title-2 serif">Vaš salon na {{ brand.name }}</h1>
+          <p class="t-callout muted">Prijavite se Google nalogom salona i sami postavite svoju stranicu. Besplatno, za par minuta.</p>
+        </div>
+
+        @if (error()) {
+          <div class="alert" role="alert">{{ error() }}</div>
+        }
+
+        <div class="google">
+          <app-google-button text="continue_with" [showMissing]="true" (credential)="google($event)" />
+          @if (busy()) { <p class="t-footnote muted legal"><span class="spinner"></span> Prijavljujemo vas…</p> }
+        </div>
+
+        <ul class="perks t-callout">
+          <li>Sami unesite opis, usluge i cijene</li>
+          <li>Dodajte fotografije direktno sa telefona ili računara</li>
+          <li>Primajte zahtjeve za termin i odgovarajte na njih</li>
+        </ul>
+
+        <p class="t-footnote muted legal">
+          Savjet: koristite poslovni Google nalog salona, ne lični (lični može biti profil mladenaca).
+          Nastavkom prihvatate <a routerLink="/uslovi">uslove korištenja</a> i <a routerLink="/privatnost">politiku privatnosti</a>.
+        </p>
+      </div>
+
+      <p class="footer t-callout muted">Planirate vjenčanje? <a routerLink="/registracija">Profil za mladence</a></p>
+      <p class="footer t-footnote muted">Imate korisničko ime i lozinku od nas? <a routerLink="/prijava">Prijavite se ovdje</a></p>
+    </div>
+  `,
+  styles: AUTH_STYLES + PERKS_STYLES,
+})
+export class SalonSignup {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
+  protected readonly brand = BRAND;
+  protected readonly busy = signal(false);
+  protected readonly error = signal<string | null>(null);
+
+  protected google(credential: string): void {
+    this.busy.set(true);
+    this.error.set(null);
+    this.auth.loginWithGoogle(credential, 'salon').subscribe({
+      next: (r) => {
+        // Novi salon odmah postavlja stranicu; postojeći ide na pregled (koji vodi na postavljanje ako salona još nema).
+        if (r.user.role === 'Vendor') void this.router.navigateByUrl(r.isNew ? '/salon/postavljanje' : '/salon');
+        else void this.router.navigateByUrl(this.auth.homeUrl());
       },
       error: (e) => {
         this.busy.set(false);

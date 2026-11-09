@@ -65,6 +65,11 @@ public interface IAuthService
     /// pravi novi nalog mladenaca. IsNew je true kad je nalog upravo napravljen.
     /// </summary>
     Task<(UserDto User, bool IsNew)> LoginWithGoogleAsync(GoogleIdentity identity);
+    /// <summary>
+    /// Prijava i registracija salona preko Googlea: novi nalog dobija ulogu Vendor (salon zatim sam postavlja
+    /// svoju stranicu), a postojeći nalog salona iste e-mail adrese se povezuje sa Googleom.
+    /// </summary>
+    Task<(UserDto User, bool IsNew)> LoginVendorWithGoogleAsync(GoogleIdentity identity);
     Task<UserDto> GetCurrentAsync();
     Task<UserDto> UpdateProfileAsync(ProfileUpdateRequest request);
     Task ChangePasswordAsync(ChangePasswordRequest request);

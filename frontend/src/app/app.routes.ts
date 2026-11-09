@@ -22,6 +22,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.Register),
   },
   {
+    // saloni: posebna prijava i registracija preko Googlea
+    path: 'za-salone',
+    canActivate: [guestGuard],
+    title: 'Za salone',
+    loadComponent: () => import('./pages/auth/auth-pages').then((m) => m.SalonSignup),
+  },
+  {
     // poslije prve prijave preko Googlea: slika, ime i grad
     path: 'dobrodosli',
     canActivate: [authGuard],
@@ -91,6 +98,11 @@ export const routes: Routes = [
             path: '',
             title: 'Moj salon',
             loadComponent: () => import('./pages/salon/salon-home').then((m) => m.SalonHome),
+          },
+          {
+            path: 'postavljanje',
+            title: 'Postavljanje salona',
+            loadComponent: () => import('./pages/salon/vendor-setup').then((m) => m.VendorSetup),
           },
           {
             path: 'rezervacije',

@@ -21,7 +21,7 @@ const FAQ = [
   },
   {
     q: 'Imam salon. Kako da se pojavim na platformi?',
-    a: 'Pošaljite nam upit preko forme ispod. Otvorićemo vam nalog sa vlastitom stranicom, cjenovnikom, galerijom i (ako želite) online rezervacijama.',
+    a: 'Kliknite "Registrujte salon", prijavite se Google nalogom salona i sami postavite stranicu: opis, usluge i cijene, fotografije i (ako želite) online rezervacije. Ako ne stignete, ostavite nam broj preko forme ispod i postavićemo je za vas.',
   },
 ];
 

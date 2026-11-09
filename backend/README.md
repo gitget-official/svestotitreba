@@ -43,10 +43,11 @@ Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profil
 
 Za ponovno punjenje baze od nule: `dotnet ef database drop --project Planiraj.Services --startup-project Planiraj.API`, pa ponovo pokreni API.
 
-## Prijava preko Googlea (mladenci)
+## Prijava preko Googlea (mladenci i saloni)
 
-Mladenci se registruju i prijavljuju samo preko Googlea (bez lozinke). Saloni i administratori i dalje
-koriste korisničko ime i lozinku. Reset lozinke i potvrda e-maila dolaze kasnije.
+Mladenci (`POST /api/auth/google`) i saloni (`POST /api/auth/google/salon`) se registruju i prijavljuju preko
+Googlea, bez lozinke, svako na svojoj stranici. Administratori i saloni kojima je admin dao lozinku mogu i dalje
+koristiti korisničko ime i lozinku. Reset lozinke i potvrda e-maila dolaze kasnije.
 
 1. U [Google Cloud Console](https://console.cloud.google.com/apis/credentials) napravi **OAuth client ID**
    tipa **Web application**. U **Authorized JavaScript origins** dodaj `http://localhost:4200` i produkcijsku
@@ -58,10 +59,29 @@ koriste korisničko ime i lozinku. Reset lozinke i potvrda e-maila dolaze kasnij
 Tok: frontend dobije ID token od Googlea i pošalje ga na `POST /api/auth/google`. Backend ga provjeri
 (`Google.Apis.Auth`: potpis, izdavač, rok i client id), pa:
 
-- nalog sa istim Google ID-om: prijava;
-- nalog mladenaca sa istim e-mailom: poveže se sa Googleom i prijavi;
-- nalog salona ili administratora sa istim e-mailom: odbije se (prijava lozinkom);
-- nema naloga: napravi se nalog mladenaca bez lozinke, a odgovor ima `isNew: true` (frontend vodi na `/dobrodosli`).
+- nalog sa istim Google ID-om: prijava (osim mladenaca na stranici za salone, to se odbije);
+- nalog iste uloge sa istim e-mailom (mladenci na stranici mladenaca, salon na stranici salona): poveže se sa Googleom
+  i prijavi; tako se salon kojem je admin napravio nalog sam poveže sa svojim Google nalogom;
+- nalog druge uloge sa istim e-mailom: odbije se uz poruku gdje da se prijavi (admin uvijek lozinkom);
+- nema naloga: napravi se nalog (mladenci ili salon) bez lozinke, a odgovor ima `isNew: true`
+  (frontend vodi mladence na `/dobrodosli`, a salon na `/salon/postavljanje`).
+
+Jedan Google nalog je ili mladenci ili salon, nikad oboje.
+
+## Saloni: samostalno postavljanje i slike
+
+- Salon poslije registracije sam pravi svoju stranicu (`POST /api/vendors` sa ulogom Vendor): uvijek za sebe,
+  jedan salon po nalogu (dodatni preko administratora), i objavljuje se odmah, bez odobrenja. Admin ga može
+  isključiti kao i svaki drugi salon.
+- Opis, usluge, cijene, slike i radno vrijeme salon uređuje sam; administrator može sve isto za bilo koji salon
+  (isti endpointi, ista prava kao vlasnik), i može napraviti salon za nekoga i dodijeliti mu vlasnika.
+- Upload: `POST /api/uploads/vendors/{vendorId}` (multipart, polje `file`), smije vlasnik tog salona ili admin.
+  Prima JPG, PNG i WebP (provjera po sadržaju fajla, ne po imenu) do `Uploads:MaxSizeMb` (zadano 5 MB) i vraća
+  `{ url }`. Ta adresa se zatim šalje kao slika galerije (`/api/vendorimages`) ili logo salona.
+- Fajlovi se čuvaju na disku (`Uploads:Root`, zadano `Planiraj.API/uploads`, nije u gitu) i serviraju na
+  `/api/uploads/...` uz dugo keširanje. `Uploads:PublicBaseUrl` se postavlja samo ako se slike serviraju sa druge
+  adrese (npr. CDN). Za produkciju taj folder mora biti trajan i uključen u backup; kasnije se može preći na
+  Cloudflare R2 zamjenom `IFileStorage`.
 
 E-mail na Google nalogu mora biti potvrđen. `GET /api/auth/config` vraća client id (ili `null` kad nije podešen,
 pa frontend ne prikazuje dugme).
@@ -100,7 +120,8 @@ Sačuvano i plan traže prijavu. URL-ovi su malim slovima.
 | Gradovi | `/api/cities` | Svi | Admin |
 | Kategorije | `/api/servicecategories` | Svi (aktivne) | Admin |
 | Planovi pretplate | `/api/subscriptionplans` | Svi (aktivni) | Admin |
-| Ponuđači | `/api/vendors` | Svi (aktivni) | Kreira i briše admin; uređuje admin ili vlasnik |
+| Ponuđači | `/api/vendors` | Svi (aktivni) | Kreira admin ili salon sam za sebe (jedan); briše admin; uređuje admin ili vlasnik |
+| Upload slika | `POST /api/uploads/vendors/{vendorId}` | | Admin ili vlasnik salona |
 | Ponuđači (admin polja) | `PUT /api/vendors/{id}/admin` | | Admin: vlasnik, aktivnost, pretplata |
 | Usluge ponuđača | `/api/offerings` | Svi | Admin ili vlasnik salona |
 | Slike | `/api/vendorimages` | Svi | Admin ili vlasnik salona |
@@ -160,6 +181,6 @@ Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. I
 ## Otvoreno / sljedeće
 
 - Odluke #3 (filter dostupnosti) i #4 (ko smije ostaviti recenziju) implementirane su privremeno, uz `@TODO` u kodu
-- Upload slika (sada se čuva samo URL)
+- Brisanje uploadovanog fajla sa diska kad se slika ukloni iz galerije (sada ostaje na disku)
 - Interni chat (faza 2), AI planiranje (faza 4), naplata pretplata (faza 5)
 - Produkcija: `Jwt:Key` i connection string preko varijabli okruženja, ne u `appsettings`

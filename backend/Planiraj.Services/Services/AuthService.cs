@@ -70,7 +70,18 @@ public class AuthService : IAuthService
         return await LoadAsync(user.Id);
     }
 
-    public async Task<(UserDto User, bool IsNew)> LoginWithGoogleAsync(GoogleIdentity identity)
+    public Task<(UserDto User, bool IsNew)> LoginWithGoogleAsync(GoogleIdentity identity) =>
+        GoogleLoginAsync(identity, UserRole.Couple);
+
+    public Task<(UserDto User, bool IsNew)> LoginVendorWithGoogleAsync(GoogleIdentity identity) =>
+        GoogleLoginAsync(identity, UserRole.Vendor);
+
+    /// <summary>
+    /// Zajednička Google prijava. <paramref name="role"/> je uloga sa čije stranice se korisnik prijavljuje
+    /// (mladenci ili saloni): novi nalog dobija tu ulogu, a postojeći nalog iste e-mail adrese se povezuje samo
+    /// ako ima tu ulogu. Već povezan nalog se prijavljuje bez obzira na stranicu, osim mladenaca na stranici za salone.
+    /// </summary>
+    private async Task<(UserDto User, bool IsNew)> GoogleLoginAsync(GoogleIdentity identity, UserRole role)
     {
         if (!identity.EmailVerified)
             throw new UserException("Google nalog nema potvrđen e-mail. Potvrdite ga kod Googlea pa pokušajte ponovo.");
@@ -79,15 +90,21 @@ public class AuthService : IAuthService
 
         // 1) nalog je već povezan sa ovim Google nalogom
         var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == identity.Subject);
+        if (user != null && role == UserRole.Vendor && user.Role == UserRole.Couple)
+            throw new UserException(CoupleNotVendor);
 
-        // 2) nalog sa istim e-mailom postoji (npr. registrovan lozinkom): povezuje se, ali samo kod mladenaca.
-        //    Saloni i administratori se i dalje prijavljuju korisničkim imenom i lozinkom.
+        // 2) nalog sa istim e-mailom postoji (npr. salon koji je napravio admin): povezuje se samo ako ima istu ulogu.
+        //    Administratori se i dalje prijavljuju korisničkim imenom i lozinkom.
         if (user == null)
         {
             user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (user != null)
             {
-                if (user.Role != UserRole.Couple)
+                if (user.Role == UserRole.Couple && role == UserRole.Vendor)
+                    throw new UserException(CoupleNotVendor);
+                if (user.Role == UserRole.Vendor && role == UserRole.Couple)
+                    throw new UserException("Ova e-mail adresa pripada salonu. Prijavite se na stranici za salone.");
+                if (user.Role != role)
                     throw new UserException("Ovaj nalog se prijavljuje korisničkim imenom i lozinkom.");
                 user.GoogleId = identity.Subject;
             }
@@ -102,7 +119,7 @@ public class AuthService : IAuthService
             return (await LoadAsync(user.Id), false);
         }
 
-        // 3) novi nalog mladenaca, bez lozinke; ime i prezime se mogu urediti na dovršavanju profila
+        // 3) novi nalog (mladenci ili salon), bez lozinke; ime i prezime se mogu urediti kasnije
         var (first, last) = SplitName(identity, email);
         user = new User
         {
@@ -111,7 +128,7 @@ public class AuthService : IAuthService
             Email = email,
             Username = await UniqueUsernameAsync(email),
             GoogleId = identity.Subject,
-            Role = UserRole.Couple,
+            Role = role,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow
@@ -120,6 +137,9 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
         return (await LoadAsync(user.Id), true);
     }
+
+    private const string CoupleNotVendor =
+        "Ovaj Google nalog je već profil mladenaca. Za salon se prijavite drugim Google nalogom (npr. poslovnim).";
 
     /// <summary>Ime i prezime iz Googlea (given/family name), inače iz punog imena ili dijela e-maila prije @.</summary>
     internal static (string First, string Last) SplitName(GoogleIdentity identity, string email)

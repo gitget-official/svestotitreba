@@ -50,3 +50,6 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Slike koje uploaduju saloni (lokalno skladište API-ja)
+backend/Planiraj.API/uploads/

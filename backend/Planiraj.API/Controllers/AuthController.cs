@@ -36,7 +36,21 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     [HttpPost("google")]
     [EnableRateLimiting(RateLimits.Auth)]
-    public async Task<ActionResult<AuthResponse>> Google([FromBody] GoogleLoginRequest request)
+    public Task<ActionResult<AuthResponse>> Google([FromBody] GoogleLoginRequest request) =>
+        GoogleLoginAsync(request, _authService.LoginWithGoogleAsync);
+
+    /// <summary>
+    /// Prijava i registracija salona preko Googlea (posebna stranica za salone). Novi nalog dobija ulogu
+    /// Vendor i IsNew = true, pa frontend vodi na postavljanje salona.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("google/salon")]
+    [EnableRateLimiting(RateLimits.Auth)]
+    public Task<ActionResult<AuthResponse>> GoogleSalon([FromBody] GoogleLoginRequest request) =>
+        GoogleLoginAsync(request, _authService.LoginVendorWithGoogleAsync);
+
+    private async Task<ActionResult<AuthResponse>> GoogleLoginAsync(
+        GoogleLoginRequest request, Func<GoogleIdentity, Task<(UserDto User, bool IsNew)>> login)
     {
         if (_google.ClientId == null)
             return StatusCode(503, new { status = 503, message = "Prijava preko Googlea još nije podešena." });
@@ -45,7 +59,7 @@ public class AuthController : ControllerBase
         if (identity == null)
             return Unauthorized(new { status = 401, message = "Prijava preko Googlea nije uspjela. Pokušajte ponovo." });
 
-        var (user, isNew) = await _authService.LoginWithGoogleAsync(identity);
+        var (user, isNew) = await login(identity);
         var response = CreateAuthResponse(user);
         response.IsNew = isNew;
         return response;
