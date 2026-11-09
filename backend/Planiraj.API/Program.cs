@@ -69,6 +69,17 @@ builder.Services
             NameClaimType = AppClaims.Name,
             RoleClaimType = AppClaims.Role
         };
+        // Token važi samo dok nalog postoji i aktivan je: obrisan ili isključen nalog odmah gubi pristup.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                var sub = ctx.Principal?.FindFirst(AppClaims.UserId)?.Value;
+                var auth = ctx.HttpContext.RequestServices.GetRequiredService<IAuthService>();
+                if (!int.TryParse(sub, out var userId) || !await auth.IsActiveAsync(userId))
+                    ctx.Fail("Nalog više nije aktivan.");
+            }
+        };
     });
 builder.Services.AddAuthorization();
 
@@ -102,6 +113,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+var rateLimit = builder.Configuration.GetSection("RateLimit").Get<RateLimitSettings>() ?? new RateLimitSettings();
+builder.Services.AddPlanirajRateLimits(rateLimit);
+
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? new[] { "http://localhost:4200" };
 builder.Services.AddCors(o => o.AddPolicy("Frontend", p => p
     .WithOrigins(corsOrigins)
@@ -112,6 +126,7 @@ var app = builder.Build();
 
 await InitializeDatabaseAsync(app);
 
+if (rateLimit.TrustForwardedHeaders) app.UseForwardedHeaders();
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -127,6 +142,7 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseCors("Frontend");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 

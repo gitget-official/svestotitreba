@@ -205,15 +205,18 @@ export class Terms {
         </li>
         <li>Plan i "Sačuvano" možete obrisati sami, u aplikaciji.</li>
         <li>
-          Možete tražiti kopiju svojih podataka ili brisanje profila. Pišite na
-          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a> sa e-mail adrese profila.
+          Profil možete obrisati sami, na stranici <a routerLink="/profil">Profil</a> (dio "Brisanje
+          profila"). Kopiju svojih podataka možete tražiti na
+          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>, sa e-mail adrese profila.
         </li>
       </ul>
 
       <h2 class="t-title-3">Koliko dugo čuvamo podatke</h2>
       <p>
-        Dok imate profil. Kad zatražite brisanje, brišemo profil, plan i "Sačuvano". Recenzije i
-        zahtjeve za termin brišemo ili anonimiziramo.
+        Dok imate profil. Kad ga obrišete, odmah brišemo ime, e-mail, telefon, sliku, grad, vezu sa
+        Google nalogom, plan i "Sačuvano". Budući zahtjevi za termin se otkazuju i ostaju kod
+        ponuđača bez napomene i bez vaših podataka. Recenzije ostaju, potpisane kao "Obrisan
+        korisnik".
       </p>
 
       <h2 class="t-title-3">Kontakt</h2>

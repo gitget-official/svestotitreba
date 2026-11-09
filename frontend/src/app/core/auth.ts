@@ -83,6 +83,25 @@ export class AuthService {
     );
   }
 
+  /** Briše vlastiti profil (samo mladenci), briše lokalne kopije plana i Sačuvanog i odjavljuje. */
+  deleteAccount(): Observable<void> {
+    return this.http.delete<void>(`${this.url}/me`).pipe(
+      tap(() => {
+        const id = this.user()?.id;
+        try {
+          if (id != null) {
+            localStorage.removeItem(`planiraj.saved.${id}`);
+            localStorage.removeItem(`planiraj.mojplan.${id}`);
+          }
+        } catch {
+          /* storage nedostupan */
+        }
+        this.logout(false);
+        void this.router.navigateByUrl('/');
+      }),
+    );
+  }
+
   logout(redirect = true): void {
     this.session.set(null);
     try {

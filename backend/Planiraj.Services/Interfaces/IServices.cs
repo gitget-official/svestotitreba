@@ -68,6 +68,13 @@ public interface IAuthService
     Task<UserDto> GetCurrentAsync();
     Task<UserDto> UpdateProfileAsync(ProfileUpdateRequest request);
     Task ChangePasswordAsync(ChangePasswordRequest request);
+    /// <summary>
+    /// Brisanje vlastitog profila (samo mladenci): briše plan i Sačuvano, otkazuje buduće termine, uklanja napomene
+    /// uz zahtjeve i lične podatke. Recenzije ostaju, ali bez imena ("Obrisan korisnik").
+    /// </summary>
+    Task DeleteAccountAsync();
+    /// <summary>True ako korisnik postoji, aktivan je i nije obrisan (provjera uz svaki token).</summary>
+    Task<bool> IsActiveAsync(int userId);
 }
 
 /// <summary>Provjerava Google ID token (potpis, izdavač, rok, publika) i vraća podatke o osobi; null ako token ne valja.</summary>

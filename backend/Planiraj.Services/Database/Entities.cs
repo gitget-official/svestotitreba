@@ -34,6 +34,8 @@ public class User : BaseEntity
 
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    /// <summary>Kad je korisnik sam obrisao profil. Lični podaci su tada uklonjeni, a nalog se ne može ponovo uključiti.</summary>
+    public DateTime? DeletedAt { get; set; }
 
     public ICollection<Vendor> OwnedVendors { get; set; } = new List<Vendor>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
