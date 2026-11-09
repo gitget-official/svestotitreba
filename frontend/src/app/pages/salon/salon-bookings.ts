@@ -55,7 +55,7 @@ type Filter = 'Pending' | 'Confirmed' | 'all';
               <strong>{{ b.userFullName }}</strong>
               <div class="row-wrap t-footnote">
                 @if (b.userPhoneNumber) { <a [href]="'tel:' + b.userPhoneNumber"><app-icon name="phone" /> {{ b.userPhoneNumber }}</a> }
-                @if (b.userEmail) { <a [href]="'mailto:' + b.userEmail"><app-icon name="mail" /> {{ b.userEmail }}</a> }
+                @if (b.userEmail && !b.userEmail.endsWith('.invalid')) { <a [href]="'mailto:' + b.userEmail"><app-icon name="mail" /> {{ b.userEmail }}</a> }
               </div>
             </div>
             @if (b.note) { <p class="note">{{ b.note }}</p> }

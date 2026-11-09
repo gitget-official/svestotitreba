@@ -8,7 +8,8 @@ Backend platforme za planiranje vjenčanja. Zahtjevi su u `../docs/zahtjevi-proj
 |---|---|
 | `Planiraj.Model` | DTO-ovi, request modeli, search objekti, enumi, izuzeci (bez zavisnosti) |
 | `Planiraj.Services` | EF Core entiteti i `PlanirajDbContext`, migracije, seeder, servisi (poslovna logika i pravila pristupa) |
-| `Planiraj.API` | Kontroleri, JWT autentifikacija, middleware za greške, Swagger |
+| `Planiraj.API` | Kontroleri, JWT autentifikacija, ograničenje broja zahtjeva, middleware za greške, Swagger |
+| `Planiraj.Tests` | Integracioni testovi (xUnit): cijeli API u memoriji sa SQLite bazom i seed podacima |
 
 Generički `BaseService` / `BaseCRUDService` i `BaseController` / `BaseCRUDController` daju paginiranu listu sa filterima, GET po Id-u, POST, PUT i DELETE. Konkretni servisi pregaze samo filtere, include, sortiranje i pravila (ko smije šta).
 
@@ -31,6 +32,14 @@ Potrebno: **.NET 10 SDK** i **SQL Server** (Express, Developer ili LocalDB).
    ```
    Pri pokretanju se migracije primjenjuju automatski, a prazna baza se puni seed podacima.
 4. Swagger: http://localhost:5080/swagger
+
+Testovi (ne trebaju SQL Server ni Google):
+
+```bash
+dotnet test Planiraj.sln
+```
+
+Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profila i ograničenje zahtjeva.
 
 Za ponovno punjenje baze od nule: `dotnet ef database drop --project Planiraj.Services --startup-project Planiraj.API`, pa ponovo pokreni API.
 
@@ -86,7 +95,7 @@ Sačuvano i plan traže prijavu. URL-ovi su malim slovima.
 
 | Resurs | Ruta | Čitanje | Izmjene |
 |---|---|---|---|
-| Auth | `/api/auth/login`, `/register`, `/google`, `/config`, `/me` (GET/PUT), `/change-password` | | Svako za sebe |
+| Auth | `/api/auth/login`, `/register`, `/google`, `/config`, `/me` (GET/PUT/DELETE), `/change-password` | | Svako za sebe; `DELETE /me` briše profil (samo mladenci) |
 | Korisnici | `/api/users` | Admin (ili vlastiti profil po Id-u) | Admin |
 | Gradovi | `/api/cities` | Svi | Admin |
 | Kategorije | `/api/servicecategories` | Svi (aktivne) | Admin |
@@ -116,7 +125,26 @@ Sortiranje: istaknuti (aktivna pretplata) prvi, zatim po prosječnoj ocjeni, pa 
 - Zakazivanje je opciono po ponuđaču; ako je uključena automatska potvrda, rezervacija odmah dobija status `Confirmed`
 - Isti ponuđač ne može imati dvije potvrđene rezervacije za isti datum i isto vrijeme
 - Recenzija: jedna po paru za jednog ponuđača; nova ili izmijenjena recenzija ide na moderaciju
+- Token važi samo dok je nalog aktivan: isključen ili obrisan nalog odmah dobija 401, i prije isteka tokena
+- Brisanje profila (`DELETE /api/auth/me`, samo mladenci): brišu se plan i Sačuvano, buduće rezervacije na čekanju ili
+  potvrđene se otkazuju, napomene uz rezervacije se brišu, a ime, e-mail, telefon, slika, grad i veza sa Googleom se
+  uklanjaju (`Obrisan korisnik`, `obrisan-{id}@obrisano.invalid`). Red korisnika ostaje zbog recenzija i rezervacija
+  salona; `DeletedAt` je popunjen i admin takav nalog ne može ponovo uključiti. Saloni i admini se brišu preko admina.
 - Greške se vraćaju kao `{ "status": 400, "message": "..." }` (400, 403, 404, 409)
+
+## Ograničenje broja zahtjeva
+
+Sekcija `RateLimit` u `appsettings.json`:
+
+| Postavka | Zadano | Značenje |
+|---|---|---|
+| `Enabled` | `true` | Isključiti samo za testiranje |
+| `PermitPerMinute` | `120` | Zahtjeva u minuti po korisniku (prijavljen) ili po IP adresi (gost) |
+| `AuthPermitPerMinute` | `10` | Pokušaja prijave i registracije (`login`, `register`, `google`) u minuti po IP adresi |
+| `TrustForwardedHeaders` | `false` | `true` samo iza proxyja koji postavlja `X-Forwarded-For` (nginx, Cloudflare) i kad API nije direktno dostupan sa interneta |
+
+Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. Iza proxyja bez
+`TrustForwardedHeaders` svi korisnici dijele jednu IP adresu (adresu proxyja), pa bi brzo dobili 429.
 
 ## Otvoreno / sljedeće
 

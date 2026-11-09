@@ -194,6 +194,50 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
+    public async Task DeleteAccountAsync()
+    {
+        var user = await FindCurrentAsync();
+        if (user.Role != UserRole.Couple)
+            throw new UserException("Nalog salona ili administratora briše administrator. Pišite nam na e-mail.");
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+
+        _context.Favorites.RemoveRange(_context.Favorites.Where(f => f.UserId == user.Id));
+        _context.SavedPlans.RemoveRange(_context.SavedPlans.Where(p => p.UserId == user.Id));
+
+        var bookings = await _context.Bookings.Where(b => b.UserId == user.Id).ToListAsync();
+        foreach (var b in bookings)
+        {
+            b.Note = null;
+            if (b.Status is BookingStatus.Pending or BookingStatus.Confirmed && b.EventDate >= today)
+            {
+                b.Status = BookingStatus.Cancelled;
+                b.StatusNote = "Mladenci su obrisali profil.";
+                b.UpdatedAt = now;
+            }
+        }
+
+        // Red korisnika ostaje zbog recenzija i rezervacija salona, ali bez ičega što ga identifikuje.
+        user.FirstName = "Obrisan";
+        user.LastName = "korisnik";
+        user.Email = $"obrisan-{user.Id}@obrisano.invalid";
+        user.Username = $"obrisan-{user.Id}";
+        user.PhoneNumber = null;
+        user.AvatarUrl = null;
+        user.CityId = null;
+        user.GoogleId = null;
+        user.PasswordHash = string.Empty;
+        user.PasswordSalt = string.Empty;
+        user.IsActive = false;
+        user.DeletedAt = now;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public Task<bool> IsActiveAsync(int userId) =>
+        _context.Users.AnyAsync(u => u.Id == userId && u.IsActive && u.DeletedAt == null);
+
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private async Task<User> FindCurrentAsync()

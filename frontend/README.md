@@ -9,16 +9,36 @@ Potrebno: **Node.js 24** (vidi `.nvmrc`; Angular CLI 22 traži najmanje 22.22.3 
 ```bash
 npm install
 npm start          # http://localhost:4200
-npm test           # unit testovi (Vitest): planer, linkovi, množina
+npm test           # unit testovi (Vitest): planer, linkovi, množina, Sačuvano, plan
 ```
 
 `ng serve` prosljeđuje sve `/api` pozive na backend `http://localhost:5080` (vidi `proxy.conf.json`),
 pa prvo pokrenite API (`dotnet run --project Planiraj.API --launch-profile http` u folderu `backend`).
 
 Produkcijski build: `npm run build` → `dist/frontend/browser`. Server mora sve nepoznate putanje vraćati na
-`index.html` (SPA fallback), inače osvježavanje npr. `/istrazi` daje 404.
+`index.html` (SPA fallback), inače osvježavanje npr. `/istrazi` daje 404. Poslije prerendera (vidi ispod) postojeće
+fajlove, npr. `ponudjaci/6-sala-panorama/index.html`, server vraća direktno; većina statičnih hostinga to radi sama.
 
-CI (`.github/workflows/ci.yml`) na svaki push pravi build i pokreće testove frontenda i build backenda.
+CI (`.github/workflows/ci.yml`) na svaki push i PR pravi build i pokreće testove frontenda i backenda.
+
+## Pretraživači (SEO)
+
+Poslije builda skripta `scripts/prerender.mjs` pravi statične stranice za pretraživače i dijeljenje linkova:
+
+```bash
+npm run build
+SITE_URL=https://prava-domena.ba API_URL=http://localhost:5080/api npm run prerender
+```
+
+- `ponudjaci/{id}-{slug}/index.html` za svakog aktivnog ponuđača: naslov, opis, Open Graph (slika za WhatsApp,
+  Viber, Facebook), kanonski link, strukturirani podaci (schema.org `LocalBusiness`) i osnovni sadržaj
+  (naziv, grad, opis, usluge i cijene, adresa). Kad se Angular pokrene, zamijeni ga pravom stranicom.
+- Isto za `/istrazi`, `/planiranje`, `/uslovi` i `/privatnost`.
+- `sitemap.xml` sa svim tim adresama i `robots.txt` (lične stranice, prijava i admin nisu za indeksiranje).
+
+Ime i opis se čitaju iz `core/brand.ts`. Bez `SITE_URL` adrese su relativne (samo za lokalnu provjeru). Ako API nije
+dostupan, prave se samo opće stranice, sitemap i robots.txt. Novi ponuđači ulaze u sitemap pri sljedećem buildu, pa
+prerender treba pokretati pri svakom deployu. U aplikaciji isto radi `core/seo.ts` (stranica ponuđača).
 
 Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
 

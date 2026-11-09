@@ -89,6 +89,9 @@ public class UserService
 
     protected override async Task BeforeUpdateAsync(UserUpdateRequest request, User entity)
     {
+        if (entity.DeletedAt != null)
+            throw new UserException("Korisnik je obrisao profil. Taj nalog se više ne može mijenjati.");
+
         entity.Email = request.Email.Trim().ToLowerInvariant();
         await AccessRules.EnsureUniqueUserAsync(Context, entity.Email, null, entity.Id);
         await AccessRules.EnsureCityExistsAsync(Context, entity.CityId);

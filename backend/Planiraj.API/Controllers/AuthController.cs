@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Planiraj.API.Auth;
 using Planiraj.Model.Dtos;
 using Planiraj.Model.Requests;
@@ -34,6 +35,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [HttpPost("google")]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<ActionResult<AuthResponse>> Google([FromBody] GoogleLoginRequest request)
     {
         if (_google.ClientId == null)
@@ -51,6 +53,7 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
         var user = await _authService.ValidateCredentialsAsync(request.Login, request.Password);
@@ -63,6 +66,7 @@ public class AuthController : ControllerBase
     /// <summary>Samostalna registracija mladenaca (FR-2). Ponuđačima nalog kreira administrator.</summary>
     [AllowAnonymous]
     [HttpPost("register")]
+    [EnableRateLimiting(RateLimits.Auth)]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
         var user = await _authService.RegisterCoupleAsync(request);
@@ -76,6 +80,15 @@ public class AuthController : ControllerBase
     [Authorize]
     [HttpPut("me")]
     public Task<UserDto> UpdateProfile([FromBody] ProfileUpdateRequest request) => _authService.UpdateProfileAsync(request);
+
+    /// <summary>Brisanje vlastitog profila (mladenci). Poslije toga token više ne važi.</summary>
+    [Authorize]
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        await _authService.DeleteAccountAsync();
+        return NoContent();
+    }
 
     [Authorize]
     [HttpPost("change-password")]

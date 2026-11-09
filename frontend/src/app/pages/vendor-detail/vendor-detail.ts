@@ -16,7 +16,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
-import { DomSanitizer, Meta, Title } from '@angular/platform-browser';
+import { DomSanitizer, Title } from '@angular/platform-browser';
+import { SeoService, vendorJsonLd } from '../../core/seo';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { BookingApi, ReviewApi, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
@@ -756,7 +757,7 @@ export class VendorDetail {
   private readonly location = inject(Location);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly titleService = inject(Title);
-  private readonly meta = inject(Meta);
+  private readonly seo = inject(SeoService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly plan = inject(PlanStore);
   private readonly lookups = inject(LookupStore);
@@ -900,7 +901,7 @@ export class VendorDetail {
       else this.availability.set('idle');
     });
 
-    this.destroyRef.onDestroy(() => this.meta.removeTag('name="description"'));
+    this.destroyRef.onDestroy(() => this.seo.reset());
   }
 
   protected here(): string {
@@ -1040,10 +1041,11 @@ export class VendorDetail {
   /** Naslov, opis i čitljiv URL za dijeljenje i pretraživače. */
   private applySeo(v: Vendor): void {
     this.titleService.setTitle(`${v.name} · ${v.cityName} · ${BRAND.name}`);
-    const description = (v.description ?? `${v.categories.join(', ')} u gradu ${v.cityName}.`).slice(0, 160);
-    this.meta.updateTag({ name: 'description', content: description });
+    const description = (v.description || `${v.categories.join(', ')} u gradu ${v.cityName}.`).slice(0, 160);
     const canonical = this.router.serializeUrl(this.router.createUrlTree(vendorLink(v)));
     if (!this.router.url.startsWith(canonical)) this.location.replaceState(canonical);
+    const image = (v.images.find((i) => i.isCover) ?? v.images[0])?.url ?? null;
+    this.seo.set({ description, path: canonical, image, jsonLd: vendorJsonLd(v, location.origin + canonical, image) });
   }
 
   private loadReviews(vendorId: number): void {

@@ -4,15 +4,18 @@ import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
 import { AuthService } from '../../core/auth';
 import { ROLE_LABEL } from '../../core/format';
+import { BRAND } from '../../core/brand';
 import { LookupStore } from '../../core/lookups';
 import { ThemePreference, ThemeService } from '../../core/theme';
 import { ToastService } from '../../shared/ui/toast';
 import { Avatar } from '../../shared/ui/avatar';
 import { AvatarPicker } from '../../shared/ui/avatar-picker';
+import { ConfirmService } from '../../shared/ui/confirm';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule, FieldError, Avatar, AvatarPicker],
+  imports: [ReactiveFormsModule, RouterLink, FieldError, Avatar, AvatarPicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page enter narrow">
@@ -114,6 +117,24 @@ import { AvatarPicker } from '../../shared/ui/avatar-picker';
       </section>
 
       <button class="btn btn-danger btn-block logout" type="button" (click)="auth.logout()">Odjava</button>
+
+      @if (auth.user()?.role === 'Couple') {
+      <section class="stack danger-zone">
+        <h2 class="t-title-3">Brisanje profila</h2>
+        <div class="card card-pad stack">
+          <p class="t-callout">
+            Brišu se vaši lični podaci, plan i Sačuvano. Budući zahtjevi za termin se otkazuju. Recenzije ostaju, ali bez vašeg imena.
+            Ovo se ne može poništiti.
+          </p>
+          <div class="form-actions">
+            <button class="btn btn-danger" type="button" [disabled]="deleting()" (click)="deleteAccount()">
+              @if (deleting()) { <span class="spinner"></span> } Obriši profil
+            </button>
+          </div>
+          <p class="t-footnote muted">Više u <a routerLink="/privatnost">politici privatnosti</a>.</p>
+        </div>
+      </section>
+      }
       </div>
       </div>
     </div>
@@ -182,6 +203,7 @@ export class Profile implements OnInit {
   protected readonly theme = inject(ThemeService);
   protected readonly lookups = inject(LookupStore);
   private readonly toasts = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
   protected readonly roleLabel = ROLE_LABEL;
@@ -206,6 +228,7 @@ export class Profile implements OnInit {
 
   protected readonly savingProfile = signal(false);
   protected readonly savingPassword = signal(false);
+  protected readonly deleting = signal(false);
 
   ngOnInit(): void {
     this.lookups.ensureLoaded();
@@ -248,6 +271,21 @@ export class Profile implements OnInit {
         this.toasts.success('Lozinka je promijenjena.');
       },
       error: () => this.savingPassword.set(false),
+    });
+  }
+
+  protected async deleteAccount(): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Obrisati profil?',
+      message:
+        'Brišemo vaše lične podatke, plan i Sačuvano, a buduće zahtjeve za termin otkazujemo. Recenzije ostaju bez vašeg imena. Ovo se ne može poništiti.',
+      confirmText: 'Obriši profil',
+    });
+    if (!ok) return;
+    this.deleting.set(true);
+    this.auth.deleteAccount().subscribe({
+      next: () => this.toasts.success('Profil je obrisan. Hvala što ste koristili ' + BRAND.name + '.'),
+      error: () => this.deleting.set(false),
     });
   }
 }
