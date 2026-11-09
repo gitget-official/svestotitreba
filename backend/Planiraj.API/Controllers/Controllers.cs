@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Planiraj.API.Auth;
 using Planiraj.Model.Dtos;
 using Planiraj.Model.Requests;
 using Planiraj.Model.SearchObjects;
@@ -15,6 +16,7 @@ public class UsersController : BaseCRUDController<UserDto, UserSearchObject, Use
 }
 
 /// <summary>/api/cities — gradovi.</summary>
+[PublicRead]
 public class CitiesController : BaseCRUDController<CityDto, CitySearchObject, CityUpsertRequest, CityUpsertRequest>
 {
     public CitiesController(ICityService service) : base(service)
@@ -23,6 +25,7 @@ public class CitiesController : BaseCRUDController<CityDto, CitySearchObject, Ci
 }
 
 /// <summary>/api/servicecategories — kategorije usluga.</summary>
+[PublicRead]
 public class ServiceCategoriesController
     : BaseCRUDController<ServiceCategoryDto, ServiceCategorySearchObject, ServiceCategoryInsertRequest, ServiceCategoryUpdateRequest>
 {
@@ -32,6 +35,7 @@ public class ServiceCategoriesController
 }
 
 /// <summary>/api/subscriptionplans — planovi pretplate.</summary>
+[PublicRead]
 public class SubscriptionPlansController
     : BaseCRUDController<SubscriptionPlanDto, SubscriptionPlanSearchObject, SubscriptionPlanUpsertRequest, SubscriptionPlanUpsertRequest>
 {
@@ -41,6 +45,7 @@ public class SubscriptionPlansController
 }
 
 /// <summary>/api/vendors — ponuđači (saloni) i pretraga.</summary>
+[PublicRead]
 public class VendorsController : BaseCRUDController<VendorDto, VendorSearchObject, VendorInsertRequest, VendorUpdateRequest>
 {
     private readonly IVendorService _vendorService;
@@ -57,6 +62,7 @@ public class VendorsController : BaseCRUDController<VendorDto, VendorSearchObjec
 }
 
 /// <summary>/api/offerings — usluge ponuđača po kategorijama.</summary>
+[PublicRead]
 public class OfferingsController : BaseCRUDController<OfferingDto, OfferingSearchObject, OfferingInsertRequest, OfferingUpdateRequest>
 {
     public OfferingsController(IOfferingService service) : base(service)
@@ -65,6 +71,7 @@ public class OfferingsController : BaseCRUDController<OfferingDto, OfferingSearc
 }
 
 /// <summary>/api/vendorimages — galerija.</summary>
+[PublicRead]
 public class VendorImagesController
     : BaseCRUDController<VendorImageDto, VendorImageSearchObject, VendorImageInsertRequest, VendorImageUpdateRequest>
 {
@@ -74,6 +81,7 @@ public class VendorImagesController
 }
 
 /// <summary>/api/workinghours — radno vrijeme.</summary>
+[PublicRead]
 public class WorkingHoursController
     : BaseCRUDController<WorkingHourDto, WorkingHourSearchObject, WorkingHourInsertRequest, WorkingHourUpdateRequest>
 {
@@ -83,6 +91,7 @@ public class WorkingHoursController
 }
 
 /// <summary>/api/reviews — recenzije i moderacija.</summary>
+[PublicRead]
 public class ReviewsController : BaseCRUDController<ReviewDto, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>
 {
     private readonly IReviewService _reviewService;

@@ -233,6 +233,8 @@ const CATEGORIES = [
           <a routerLink="/istrazi">Istraži</a>
           <a routerLink="/planiranje">Planer</a>
           <a href="#saloni">Za salone</a>
+          <a routerLink="/uslovi">Uslovi</a>
+          <a routerLink="/privatnost">Privatnost</a>
           <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>
         </nav>
         <p class="t-caption subtle">© {{ year }} {{ brand.name }}</p>

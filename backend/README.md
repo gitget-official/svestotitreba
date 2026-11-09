@@ -79,7 +79,10 @@ Svi nazivi firmi, adrese, telefoni i e-mailovi u seedu su izmišljeni.
 
 ## Endpointi
 
-Svi endpointi osim `login` i `register` zahtijevaju prijavu (FR-1). URL-ovi su malim slovima.
+Pregled ponude je javan: gost bez prijave može čitati gradove, kategorije, planove pretplate, ponuđače, usluge,
+slike, radno vrijeme i odobrene recenzije (samo `GET` liste i `GET {id}`, oznaka `[PublicRead]` i
+`PublicReadConvention`). Gost vidi samo aktivne ponuđače i odobrene recenzije. Sve izmjene, rezervacije, korisnici,
+Sačuvano i plan traže prijavu. URL-ovi su malim slovima.
 
 | Resurs | Ruta | Čitanje | Izmjene |
 |---|---|---|---|
@@ -96,6 +99,8 @@ Svi endpointi osim `login` i `register` zahtijevaju prijavu (FR-1). URL-ovi su m
 | Recenzije | `/api/reviews` | Odobrene + vlastite | Kreira mladenci; mijenja autor; briše autor ili admin |
 | Moderacija | `PUT /api/reviews/{id}/approve`, `/reject` | | Admin |
 | Rezervacije | `/api/bookings` | Admin sve; salon svoje; mladenci svoje | Kreira mladenci; mijenja autor dok je na čekanju; briše admin |
+| Sačuvano | `/api/favorites` (GET), `/{vendorId}` (POST/DELETE), `/sync` (POST) | Svako svoje | Svako svoje; `sync` spaja listu iz preglednika sa profilom |
+| Moj plan | `/api/plans/me` (GET/PUT/DELETE) | Svako svoje (204 kad plana nema) | Svako svoje; `manual: true` bilježi vrijeme ručnog čuvanja |
 | Status rezervacije | `PUT /api/bookings/{id}/confirm`, `/reject`, `/cancel` | | Potvrda/odbijanje: salon ili admin; otkazivanje: mladenci, salon ili admin |
 
 ### Pretraga ponuđača (FR-6)

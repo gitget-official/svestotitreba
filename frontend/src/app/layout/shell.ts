@@ -7,6 +7,7 @@ import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
 import { PlanCart } from '../shared/ui/plan-cart';
 import { Avatar } from '../shared/ui/avatar';
+import { BRAND } from '../core/brand';
 
 interface NavItem {
   label: string;
@@ -87,6 +88,11 @@ interface NavItem {
 
     <main id="sadrzaj" tabindex="-1">
       <router-outlet />
+      <footer class="app-foot t-caption subtle">
+        <a routerLink="/uslovi">Uslovi korištenja</a>
+        <a routerLink="/privatnost">Privatnost</a>
+        <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>
+      </footer>
     </main>
 
     <app-plan-cart />
@@ -302,6 +308,17 @@ interface NavItem {
       }
     }
 
+    .app-foot {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--space-1) var(--space-4);
+      padding: var(--space-6) var(--space-4) var(--space-4);
+    }
+    .app-foot a {
+      color: inherit;
+    }
+
     main {
       // donja traka + plutajuće dugme "Moj plan", da ništa na dnu stranice ne ostane ispod njih
       padding-bottom: calc(8.5rem + var(--safe-bottom));
@@ -385,6 +402,7 @@ interface NavItem {
   `,
 })
 export class Shell {
+  protected readonly brand = BRAND;
   protected readonly auth = inject(AuthService);
   protected readonly theme = inject(ThemeService);
   private readonly favorites = inject(FavoritesService);

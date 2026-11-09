@@ -7,8 +7,8 @@ using Planiraj.Services.Interfaces;
 namespace Planiraj.API.Controllers;
 
 /// <summary>
-/// GET lista (paginirano, sa filterima) i GET po Id-u. Svi endpointi zahtijevaju prijavu (FR-1);
-/// pravila po ulogama i vlasništvu provjeravaju servisi.
+/// GET lista (paginirano, sa filterima) i GET po Id-u. Endpointi traže prijavu, osim čitanja u kontrolerima
+/// sa [PublicRead] (ponuda je javna, vidi PublicReadConvention); pravila po ulogama i vlasništvu provjeravaju servisi.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]

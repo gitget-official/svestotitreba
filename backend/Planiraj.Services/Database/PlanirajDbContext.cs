@@ -5,6 +5,8 @@ namespace Planiraj.Services.Database;
 public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<Favorite> Favorites => Set<Favorite>();
+    public DbSet<SavedPlan> SavedPlans => Set<SavedPlan>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<ServiceCategory> ServiceCategories => Set<ServiceCategory>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
@@ -34,6 +36,20 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
             e.Property(x => x.GoogleId).HasMaxLength(64);
             e.HasIndex(x => x.GoogleId).IsUnique().HasFilter("[GoogleId] IS NOT NULL");
             e.HasOne(x => x.City).WithMany().HasForeignKey(x => x.CityId);
+        });
+
+        modelBuilder.Entity<Favorite>(e =>
+        {
+            e.HasIndex(x => new { x.UserId, x.VendorId }).IsUnique();
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+            e.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
+        });
+
+        modelBuilder.Entity<SavedPlan>(e =>
+        {
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.Property(x => x.Data).IsRequired();
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         });
 
         modelBuilder.Entity<City>(e =>
@@ -142,6 +158,10 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
         modelBuilder.Entity<Review>()
             .HasOne(x => x.Vendor).WithMany(v => v.Reviews).HasForeignKey(x => x.VendorId)
             .OnDelete(DeleteBehavior.Cascade);
+        // Sačuvano i plan pripadaju korisniku: brišu se sa njim (i sačuvani ponuđač kad se ponuđač obriše).
+        modelBuilder.Entity<Favorite>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Favorite>().HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SavedPlan>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         // Rezervacije ostaju Restrict: ponuđač sa rezervacijama se ne može obrisati (samo deaktivirati).
         modelBuilder.Entity<Booking>()
             .HasOne(x => x.Vendor).WithMany(v => v.Bookings).HasForeignKey(x => x.VendorId)

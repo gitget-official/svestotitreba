@@ -183,6 +183,22 @@ public class AuthResponse
     public bool IsNew { get; set; }
 }
 
+/// <summary>Jedan sačuvani ponuđač.</summary>
+public class FavoriteDto
+{
+    public int VendorId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>"Moj plan": odgovori i stavke su JSON koji čuva i čita frontend.</summary>
+public class PlanDto
+{
+    public System.Text.Json.JsonElement Answers { get; set; }
+    public System.Text.Json.JsonElement Items { get; set; }
+    public DateTime? SavedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
 /// <summary>Javna podešavanja prijave za frontend (Google client id nije tajna).</summary>
 public class AuthConfigDto
 {

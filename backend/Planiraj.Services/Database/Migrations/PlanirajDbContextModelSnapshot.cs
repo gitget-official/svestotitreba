@@ -96,6 +96,33 @@ namespace Planiraj.Services.Database.Migrations
                     b.ToTable("Cities");
                 });
 
+            modelBuilder.Entity("Planiraj.Services.Database.Favorite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VendorId");
+
+                    b.HasIndex("UserId", "VendorId")
+                        .IsUnique();
+
+                    b.ToTable("Favorites");
+                });
+
             modelBuilder.Entity("Planiraj.Services.Database.Review", b =>
                 {
                     b.Property<int>("Id")
@@ -147,6 +174,35 @@ namespace Planiraj.Services.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_Reviews_Rating", "[Rating] BETWEEN 1 AND 5");
                         });
+                });
+
+            modelBuilder.Entity("Planiraj.Services.Database.SavedPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SavedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("SavedPlans");
                 });
 
             modelBuilder.Entity("Planiraj.Services.Database.ServiceCategory", b =>
@@ -561,6 +617,25 @@ namespace Planiraj.Services.Database.Migrations
                     b.Navigation("Vendor");
                 });
 
+            modelBuilder.Entity("Planiraj.Services.Database.Favorite", b =>
+                {
+                    b.HasOne("Planiraj.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Planiraj.Services.Database.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Vendor");
+                });
+
             modelBuilder.Entity("Planiraj.Services.Database.Review", b =>
                 {
                     b.HasOne("Planiraj.Services.Database.User", "ModeratedBy")
@@ -585,6 +660,17 @@ namespace Planiraj.Services.Database.Migrations
                     b.Navigation("User");
 
                     b.Navigation("Vendor");
+                });
+
+            modelBuilder.Entity("Planiraj.Services.Database.SavedPlan", b =>
+                {
+                    b.HasOne("Planiraj.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Planiraj.Services.Database.User", b =>

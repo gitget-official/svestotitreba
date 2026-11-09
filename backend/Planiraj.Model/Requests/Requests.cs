@@ -12,6 +12,21 @@ public class LoginRequest
     [Required] public string Password { get; set; } = string.Empty;
 }
 
+/// <summary>Spajanje lokalno sačuvanih ponuđača (gost ili drugi uređaj) sa onima na serveru.</summary>
+public class FavoriteSyncRequest
+{
+    [MaxLength(500)] public List<int> VendorIds { get; set; } = new();
+}
+
+/// <summary>Čuvanje plana: odgovori iz planera i stavke (JSON objekt i JSON niz).</summary>
+public class PlanSaveRequest
+{
+    public System.Text.Json.JsonElement Answers { get; set; }
+    public System.Text.Json.JsonElement Items { get; set; }
+    /// <summary>True kad je korisnik sam kliknuo "Sačuvaj" (inače automatsko čuvanje).</summary>
+    public bool Manual { get; set; } = true;
+}
+
 /// <summary>Prijava ili registracija mladenaca preko Googlea: ID token (JWT) koji vrati Googleovo dugme.</summary>
 public class GoogleLoginRequest
 {
