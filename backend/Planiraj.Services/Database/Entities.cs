@@ -17,8 +17,12 @@ public class User : BaseEntity
     /// <summary>Profilna slika: ilustrovani avatar ("avatar:ključ") ili mala fotografija kao data URL (vidi AvatarAttribute).</summary>
     public string? AvatarUrl { get; set; }
 
+    /// <summary>Prazno kod naloga koji se prijavljuju samo preko Googlea.</summary>
     public string PasswordHash { get; set; } = string.Empty;
     public string PasswordSalt { get; set; } = string.Empty;
+
+    /// <summary>Googleov stalni identifikator naloga ("sub" iz ID tokena); null ako nalog nije povezan sa Googleom.</summary>
+    public string? GoogleId { get; set; }
 
     public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;

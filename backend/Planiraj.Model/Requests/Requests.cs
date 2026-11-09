@@ -12,6 +12,12 @@ public class LoginRequest
     [Required] public string Password { get; set; } = string.Empty;
 }
 
+/// <summary>Prijava ili registracija mladenaca preko Googlea: ID token (JWT) koji vrati Googleovo dugme.</summary>
+public class GoogleLoginRequest
+{
+    [Required, MaxLength(4096)] public string Credential { get; set; } = string.Empty;
+}
+
 /// <summary>Samostalna registracija mladenaca (FR-2).</summary>
 public class RegisterRequest
 {

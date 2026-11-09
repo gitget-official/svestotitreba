@@ -22,6 +22,16 @@ CI (`.github/workflows/ci.yml`) na svaki push pravi build i pokreće testove fro
 
 Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
 
+## Prijava mladenaca preko Googlea
+
+Registracija (`/registracija`) i prijava (`/prijava`) za mladence imaju samo Googleovo dugme
+(`shared/ui/google-button.ts`). Client ID frontend čita sa backenda (`GET /api/auth/config`), pa nije u kodu.
+Dok backend nema `Google:ClientId`, umjesto dugmeta stoji napomena. Prijava korisničkim imenom i lozinkom
+(saloni, administratori, test nalozi) je ispod, u sklopljenom dijelu „Prijava korisničkim imenom i lozinkom“.
+
+Nakon prve prijave novi nalog ide na `/dobrodosli` (profilna slika, ime i prezime, grad, telefon; može se preskočiti).
+Kod naloga bez lozinke profil umjesto promjene lozinke prikazuje da se prijava radi preko Googlea.
+
 ## Struktura
 
 ```

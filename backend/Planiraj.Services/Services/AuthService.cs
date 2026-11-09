@@ -70,6 +70,98 @@ public class AuthService : IAuthService
         return await LoadAsync(user.Id);
     }
 
+    public async Task<(UserDto User, bool IsNew)> LoginWithGoogleAsync(GoogleIdentity identity)
+    {
+        if (!identity.EmailVerified)
+            throw new UserException("Google nalog nema potvrđen e-mail. Potvrdite ga kod Googlea pa pokušajte ponovo.");
+
+        var email = identity.Email.Trim().ToLowerInvariant();
+
+        // 1) nalog je već povezan sa ovim Google nalogom
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == identity.Subject);
+
+        // 2) nalog sa istim e-mailom postoji (npr. registrovan lozinkom): povezuje se, ali samo kod mladenaca.
+        //    Saloni i administratori se i dalje prijavljuju korisničkim imenom i lozinkom.
+        if (user == null)
+        {
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user != null)
+            {
+                if (user.Role != UserRole.Couple)
+                    throw new UserException("Ovaj nalog se prijavljuje korisničkim imenom i lozinkom.");
+                user.GoogleId = identity.Subject;
+            }
+        }
+
+        if (user != null)
+        {
+            if (!user.IsActive)
+                throw new ForbiddenException("Nalog je deaktiviran.");
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return (await LoadAsync(user.Id), false);
+        }
+
+        // 3) novi nalog mladenaca, bez lozinke; ime i prezime se mogu urediti na dovršavanju profila
+        var (first, last) = SplitName(identity, email);
+        user = new User
+        {
+            FirstName = first,
+            LastName = last,
+            Email = email,
+            Username = await UniqueUsernameAsync(email),
+            GoogleId = identity.Subject,
+            Role = UserRole.Couple,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow
+        };
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        return (await LoadAsync(user.Id), true);
+    }
+
+    /// <summary>Ime i prezime iz Googlea (given/family name), inače iz punog imena ili dijela e-maila prije @.</summary>
+    internal static (string First, string Last) SplitName(GoogleIdentity identity, string email)
+    {
+        static string Clip(string? s)
+        {
+            var t = (s ?? string.Empty).Trim();
+            return t.Length > 100 ? t[..100] : t;
+        }
+        var first = Clip(identity.GivenName);
+        var last = Clip(identity.FamilyName);
+        if (first.Length == 0 && !string.IsNullOrWhiteSpace(identity.Name))
+        {
+            var parts = identity.Name.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            first = Clip(parts[0]);
+            if (last.Length == 0 && parts.Length > 1) last = Clip(parts[1]);
+        }
+        if (first.Length == 0) first = Clip(email.Split('@')[0]);
+        return (first, last);
+    }
+
+    /// <summary>Korisničko ime iz e-maila (mala slova, brojevi, tačka, crtica, donja crta), uz broj ako je zauzeto.</summary>
+    private async Task<string> UniqueUsernameAsync(string email)
+    {
+        var baseName = UsernameFromEmail(email);
+        var candidate = baseName;
+        for (var i = 2; await _context.Users.AnyAsync(u => u.Username == candidate); i++)
+        {
+            var suffix = i.ToString();
+            candidate = (baseName.Length + suffix.Length > 50 ? baseName[..(50 - suffix.Length)] : baseName) + suffix;
+        }
+        return candidate;
+    }
+
+    internal static string UsernameFromEmail(string email)
+    {
+        var local = email.Split('@')[0].ToLowerInvariant();
+        var clean = new string(local.Where(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c is '.' or '_' or '-').ToArray()).Trim('.', '_', '-');
+        if (clean.Length < 3) clean += "mladenci";
+        return clean.Length > 40 ? clean[..40] : clean;
+    }
+
     public Task<UserDto> GetCurrentAsync() => LoadAsync(_currentUser.RequireUserId());
 
     public async Task<UserDto> UpdateProfileAsync(ProfileUpdateRequest request)

@@ -1,10 +1,11 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { Observable, catchError, tap, throwError } from 'rxjs';
+import { Observable, catchError, of, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, apiErrorMessage } from './api';
 import {
+  AuthConfig,
   AuthResponse,
   ChangePasswordRequest,
   LoginRequest,
@@ -41,6 +42,24 @@ export class AuthService {
     // Pogrešna lozinka se prikazuje u formi, ne kao toast.
     const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
     return this.http.post<AuthResponse>(`${this.url}/login`, request, { context }).pipe(tap((r) => this.store(r)));
+  }
+
+  /** Prijava ili registracija mladenaca: ID token sa Googleovog dugmeta u zamjenu za našu sesiju. */
+  loginWithGoogle(credential: string): Observable<AuthResponse> {
+    const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
+    return this.http.post<AuthResponse>(`${this.url}/google`, { credential }, { context }).pipe(tap((r) => this.store(r)));
+  }
+
+  private config$?: Observable<AuthConfig>;
+
+  /** Google client id sa backenda (jednom po učitavanju); bez backenda ili podešavanja dugme se ne prikazuje. */
+  config(): Observable<AuthConfig> {
+    const context = new HttpContext().set(SKIP_ERROR_TOAST, true).set(SKIP_AUTH_REDIRECT, true);
+    this.config$ ??= this.http.get<AuthConfig>(`${this.url}/config`, { context }).pipe(
+      catchError(() => of({ googleClientId: null })),
+      shareReplay(1),
+    );
+    return this.config$;
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {
@@ -141,7 +160,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(request).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
-        const isAuthCall = req.url.includes('/auth/login') || req.url.includes('/auth/register');
+        const isAuthCall = req.url.includes('/auth/login') || req.url.includes('/auth/register') || req.url.includes('/auth/google');
         if (error.status === 401 && !isAuthCall) {
           if (auth.isLoggedIn()) {
             auth.logout();

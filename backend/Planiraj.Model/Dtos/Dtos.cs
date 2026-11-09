@@ -14,6 +14,10 @@ public class UserDto
     public UserRole Role { get; set; }
     public bool IsActive { get; set; }
     public bool MustChangePassword { get; set; }
+    /// <summary>Ima li nalog lozinku (nalozi napravljeni preko Googleovog dugmeta je nemaju).</summary>
+    public bool HasPassword { get; set; }
+    /// <summary>Je li nalog povezan sa Googleom.</summary>
+    public bool HasGoogle { get; set; }
     public int? CityId { get; set; }
     public string? CityName { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -175,4 +179,16 @@ public class AuthResponse
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public UserDto User { get; set; } = new();
+    /// <summary>True kad je nalog upravo napravljen (prva prijava preko Googlea): frontend vodi na dovršavanje profila.</summary>
+    public bool IsNew { get; set; }
 }
+
+/// <summary>Javna podešavanja prijave za frontend (Google client id nije tajna).</summary>
+public class AuthConfigDto
+{
+    /// <summary>Null kad Google prijava nije podešena; frontend tada ne prikazuje dugme.</summary>
+    public string? GoogleClientId { get; set; }
+}
+
+/// <summary>Podaci o osobi iz provjerenog Google ID tokena.</summary>
+public record GoogleIdentity(string Subject, string Email, bool EmailVerified, string? GivenName, string? FamilyName, string? Name);
