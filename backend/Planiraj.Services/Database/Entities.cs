@@ -205,3 +205,33 @@ public class Booking : BaseEntity
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
+
+/// <summary>Ponuđač kojeg su mladenci sačuvali ("Sačuvano").</summary>
+public class Favorite : BaseEntity
+{
+    public int UserId { get; set; }
+    public User User { get; set; } = null!;
+
+    public int VendorId { get; set; }
+    public Vendor Vendor { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// "Moj plan" (FR-27): odgovori iz planera i izabrani ponuđači po kategorijama, kao JSON koji piše frontend.
+/// Jedan plan po korisniku.
+/// </summary>
+public class SavedPlan : BaseEntity
+{
+    public int UserId { get; set; }
+    public User User { get; set; } = null!;
+
+    /// <summary>JSON: { "answers": {...}, "items": [...] }.</summary>
+    public string Data { get; set; } = "{}";
+
+    /// <summary>Kad je korisnik zadnji put kliknuo "Sačuvaj".</summary>
+    public DateTime? SavedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+

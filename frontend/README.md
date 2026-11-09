@@ -50,7 +50,7 @@ src/styles/      dizajn tokeni, tipografija, zajedničke komponente
 
 | Uloga | Ekrani |
 |---|---|
-| Gost | Početna (brza pretraga, izdvojeni ponuđači, planer, forma za salone, česta pitanja), prijava, registracija. Istraži, stranica ponuđača, planer i Sačuvano su otvoreni u frontendu; dok backend traži prijavu, gost se na 401 vodi na prijavu i vraća na istu stranicu |
+| Gost | Početna (brza pretraga, izdvojeni ponuđači, planer, forma za salone, česta pitanja), prijava, registracija, uslovi korištenja (`/uslovi`), privatnost (`/privatnost`). Istraži, stranica ponuđača, planer i Sačuvano rade bez prijave; rezervacija i recenzija vode na prijavu i nazad na istu stranicu |
 | Mladenci | Istraži (filteri: kategorija, grad, cijena, ocjena, slobodan datum), stranica ponuđača (galerija, usluge po kategoriji, raspodjela ocjena, mapa, dijeljenje, rezervacija sa provjerom datuma uživo), Sačuvano sa poređenjem do 3 ponuđača, planer vjenčanja, moje rezervacije, moje recenzije |
 | Salon | Pregled (zahtjevi na čekanju, potvrđeni termini, ocjena, kontrolna lista kompletnosti stranice), uređivanje (stranica, usluge, galerija, radno vrijeme; `?kartica=` otvara tačnu karticu), rezervacije |
 | Administrator | Ponuđači (dodavanje, vlasnik, aktivnost, pretplata), korisnici, moderacija recenzija, šifarnici |
@@ -66,13 +66,17 @@ Tri koraka: usluge → budžet, grad, datum i broj gostiju → paket. Budžet se
 cijena staje u taj dio (ocjena je ublažena brojem recenzija). Ako ukupno prelazi budžet, najveća prekoračenja
 se spuštaju na jeftinije opcije. Bira se samo iz baze (FR-28). Logika je u `core/planner.ts` i pokrivena je testovima.
 
-### Šta se za sada čuva samo u pregledniku
+### Gdje se čuvaju Sačuvano i plan
 
-| Podatak | Gdje | Zašto |
+| Podatak | Gost | Prijavljen korisnik |
 |---|---|---|
-| Sačuvano (favoriti) | `localStorage`, po korisniku | Backend još nema endpoint |
-| Sačuvani plan | `localStorage`, po korisniku | Backend još nema endpoint (FR-27) |
-| Upit salona sa početne | otvara e-mail sa popunjenim podacima | Backend još nema endpoint za upite |
+| Sačuvano (favoriti) | `localStorage` | Server (`/api/favorites`); preglednik čuva sažetke ponuđača da lista radi odmah |
+| Moj plan (FR-27) | `localStorage` | Server (`/api/plans/me`), automatski kratko poslije svake promjene i odmah na "Sačuvaj" |
+
+Pri prijavi se gostova lista Sačuvanog spaja sa profilom (`POST /api/favorites/sync`), a gostov plan ide u
+profil ako profil još nema plan. Bez mreže plan ostaje u pregledniku i ide na server pri sljedećoj promjeni ili prijavi.
+
+Upit salona sa početne još otvara e-mail sa popunjenim podacima (backend nema endpoint za upite).
 
 ## Dizajn i pokret
 

@@ -205,6 +205,7 @@ const AUTH_STYLES = `
         <div class="google">
           <app-google-button text="signin_with" [showMissing]="true" (credential)="google($event)" />
           @if (googleBusy()) { <p class="t-footnote muted legal"><span class="spinner"></span> Prijavljujemo vas…</p> }
+          @else { <p class="t-footnote muted legal">Prijavom prihvatate <a routerLink="/uslovi">uslove korištenja</a> i <a routerLink="/privatnost">politiku privatnosti</a>.</p> }
         </div>
 
         <!-- Saloni i administratori: korisničko ime i lozinka. Mladenci se prijavljuju preko Googlea. -->
@@ -324,7 +325,7 @@ export class Login {
           <li>Rezervišite termine i pratite ih na jednom mjestu</li>
         </ul>
 
-        <p class="t-footnote muted legal">Nastavkom prihvatate uslove korištenja. Od Googlea uzimamo samo ime i e-mail adresu.</p>
+        <p class="t-footnote muted legal">Nastavkom prihvatate <a routerLink="/uslovi">uslove korištenja</a> i <a routerLink="/privatnost">politiku privatnosti</a>. Od Googlea uzimamo samo ime i e-mail adresu.</p>
       </div>
 
       <p class="footer t-callout muted">Već imate profil? <a routerLink="/prijava" [queryParams]="{ povratak: povratak() || null }">Prijavite se</a></p>

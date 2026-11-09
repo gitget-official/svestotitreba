@@ -77,3 +77,23 @@ public interface IGoogleTokenValidator
     string? ClientId { get; }
     Task<GoogleIdentity?> ValidateAsync(string credential);
 }
+
+/// <summary>"Sačuvano" prijavljenog korisnika.</summary>
+public interface IFavoriteService
+{
+    Task<List<FavoriteDto>> ListAsync();
+    Task<FavoriteDto> AddAsync(int vendorId);
+    Task RemoveAsync(int vendorId);
+    /// <summary>Dodaje ponuđače koji još nisu sačuvani (postojeći i aktivni) i vraća cijelu listu.</summary>
+    Task<List<FavoriteDto>> SyncAsync(FavoriteSyncRequest request);
+}
+
+/// <summary>"Moj plan" prijavljenog korisnika.</summary>
+public interface IPlanService
+{
+    /// <summary>Null kad korisnik još nema sačuvan plan.</summary>
+    Task<PlanDto?> GetAsync();
+    Task<PlanDto> SaveAsync(PlanSaveRequest request);
+    Task DeleteAsync();
+}
+

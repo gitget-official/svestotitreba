@@ -44,8 +44,9 @@ const EMPTY: PlanState = {
  * "Moj plan" (FR-27): izabrani ponuđači po kategorijama, budžet i odgovori iz planera.
  * - Čuva se automatski pri svakoj promjeni (ništa se ne gubi ako korisnik zaboravi kliknuti "Sačuvaj").
  * - Vezan je za profil: ključ je Id korisnika; gost ima svoj plan koji se pri prijavi prenosi u profil.
- * - "Sačuvaj" šalje plan na server (PUT /api/plans/me). @TODO backend: dok endpoint ne postoji,
- *   plan ostaje sačuvan u pregledniku i to se korisniku jasno kaže.
+ * - Prijavljenom korisniku se plan, kratko poslije svake promjene, čuva i na serveru (PUT /api/plans/me),
+ *   pa je isti na svakom uređaju. "Sačuvaj" to radi odmah i bilježi vrijeme ručnog čuvanja.
+ * - Bez mreže plan ostaje u pregledniku; sljedeća promjena ili prijava ga pošalje na server.
  */
 @Injectable({ providedIn: 'root' })
 export class PlanStore {
@@ -67,6 +68,7 @@ export class PlanStore {
 
   private key = PREFIX + 'gost';
   private writeTimer: ReturnType<typeof setTimeout> | undefined;
+  private serverTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     // Prijava/odjava: učitaj plan tog profila. Gostov plan ide u profil ako je profil prazan.
@@ -116,23 +118,29 @@ export class PlanStore {
     this.update(() => ({ ...EMPTY, answers: { ...EMPTY.answers } }));
   }
 
-  /** Ručno čuvanje: na server ako postoji endpoint, inače ostaje u pregledniku. */
+  /** Ručno čuvanje: odmah na server ako je korisnik prijavljen, inače ostaje u pregledniku. */
   save(): Promise<SyncState> {
     this.update((s) => ({ ...s, savedAt: new Date().toISOString() }));
     if (!this.auth.isLoggedIn()) {
       this.sync.set('local');
       return Promise.resolve('local');
     }
+    return this.putServer(true);
+  }
+
+  private putServer(manual: boolean): Promise<SyncState> {
+    clearTimeout(this.serverTimer);
     this.sync.set('saving');
+    const userId = this.auth.user()?.id;
     const { answers, items } = this.state();
     return new Promise((resolve) =>
-      this.http.put(this.url, { answers, items }, { context: this.quiet }).subscribe({
+      this.http.put(this.url, { answers, items, manual }, { context: this.quiet }).subscribe({
         next: () => {
-          this.sync.set('server');
+          if (this.auth.user()?.id === userId) this.sync.set('server');
           resolve('server');
         },
         error: () => {
-          this.sync.set('offline');
+          if (this.auth.user()?.id === userId) this.sync.set('offline');
           resolve('offline');
         },
       }),
@@ -165,10 +173,14 @@ export class PlanStore {
     // Automatsko čuvanje, kratko odgođeno da brze promjene (klizač budžeta) ne pišu svaki put.
     clearTimeout(this.writeTimer);
     this.writeTimer = setTimeout(() => write(this.key, this.state()), 250);
+    // Na server rjeđe: tek kad korisnik na trenutak stane sa izmjenama.
+    clearTimeout(this.serverTimer);
+    if (this.auth.isLoggedIn()) this.serverTimer = setTimeout(() => void this.putServer(false), 1500);
   }
 
   private switchUser(userId: number | null): void {
     clearTimeout(this.writeTimer);
+    clearTimeout(this.serverTimer);
     const guestKey = PREFIX + 'gost';
     const nextKey = PREFIX + (userId ?? 'gost');
     let next = read(nextKey);
@@ -188,20 +200,30 @@ export class PlanStore {
     if (userId !== null) this.pull();
   }
 
-  /** Ako server ima noviji plan (npr. sa drugog uređaja), preuzmi ga. */
+  /** Ako server ima noviji plan (npr. sa drugog uređaja), preuzmi ga; ako je lokalni noviji, pošalji ga. */
   private pull(): void {
-    this.http.get<Partial<PlanState>>(this.url, { context: this.quiet }).subscribe({
+    const userId = this.auth.user()?.id;
+    this.http.get<Partial<PlanState> | null>(this.url, { context: this.quiet }).subscribe({
       next: (remote) => {
-        if (!remote?.items) return;
+        if (this.auth.user()?.id !== userId) return;
         const local = this.state();
+        if (!remote?.items) {
+          // Na serveru još nema plana (204): pošalji lokalni, npr. onaj koji je gost napravio prije prijave.
+          if (local.items.length || local.answers.categoryIds.length) void this.putServer(false);
+          return;
+        }
         if (!local.updatedAt || (remote.updatedAt && remote.updatedAt > local.updatedAt)) {
           this.state.set({ ...EMPTY, ...remote } as PlanState);
           write(this.key, this.state());
+          this.sync.set('server');
+        } else if (remote.updatedAt !== local.updatedAt) {
+          void this.putServer(false);
+        } else {
+          this.sync.set('server');
         }
-        this.sync.set('server');
       },
       error: () => {
-        /* endpoint još ne postoji: radimo lokalno */
+        /* server nedostupan: radimo lokalno */
       },
     });
   }

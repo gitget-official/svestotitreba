@@ -36,6 +36,8 @@ builder.Services.AddScoped<IVendorImageService, VendorImageService>();
 builder.Services.AddScoped<IWorkingHourService, WorkingHourService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IFavoriteService, FavoriteService>();
+builder.Services.AddScoped<IPlanService, PlanService>();
 
 // ---------- JWT autentifikacija ----------
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -71,7 +73,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // ---------- API ----------
-builder.Services.AddControllers()
+builder.Services.AddControllers(o => o.Conventions.Add(new PublicReadConvention()))
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRouting(o => o.LowercaseUrls = true);
 
@@ -153,3 +155,6 @@ static async Task InitializeDatabaseAsync(WebApplication app)
         logger.LogInformation("Baza je spremna (migracije primijenjene, seed provjeren).");
     }
 }
+
+/// <summary>Za integracione testove (WebApplicationFactory).</summary>
+public partial class Program;

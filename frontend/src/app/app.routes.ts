@@ -62,6 +62,16 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/planning/planning').then((m) => m.Planning),
       },
       {
+        path: 'uslovi',
+        title: 'Uslovi korištenja',
+        loadComponent: () => import('./pages/legal/legal').then((m) => m.Terms),
+      },
+      {
+        path: 'privatnost',
+        title: 'Privatnost',
+        loadComponent: () => import('./pages/legal/legal').then((m) => m.Privacy),
+      },
+      {
         path: 'moje-rezervacije',
         canActivate: [roleGuard('Couple')],
         title: 'Moje rezervacije',

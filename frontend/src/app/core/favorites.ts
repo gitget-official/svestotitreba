@@ -1,4 +1,8 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST } from './api';
 import { AuthService } from './auth';
 import { Vendor } from './models';
 
@@ -46,22 +50,39 @@ export function toSaved(v: Vendor): SavedVendor {
   };
 }
 
+interface FavoriteDto {
+  vendorId: number;
+  createdAt: string;
+}
+
 /**
  * "Sačuvano": ponuđači koje mladenci razmatraju.
- * @TODO backend: za sada se čuva u pregledniku (po korisniku); kad bude endpointa, sinhronizovati sa serverom.
+ * - Gost: lista je samo u pregledniku.
+ * - Prijavljen korisnik: server (/api/favorites) je izvor istine, a preglednik čuva sažetke da lista i poređenje
+ *   rade odmah i bez mreže. Pri prijavi se gostova lista spaja u profil (POST /api/favorites/sync).
  */
 @Injectable({ providedIn: 'root' })
 export class FavoritesService {
   private readonly auth = inject(AuthService);
-  private readonly key = computed(() => PREFIX + (this.auth.user()?.id ?? 'gost'));
+  private readonly http = inject(HttpClient);
+  private readonly url = `${environment.apiUrl}/favorites`;
+  private readonly quiet = new HttpContext()
+    .set(SKIP_AUTH_REDIRECT, true)
+    .set(SKIP_ERROR_TOAST, true);
 
   readonly items = signal<SavedVendor[]>([]);
   readonly count = computed(() => this.items().length);
   private readonly ids = computed(() => new Set(this.items().map((i) => i.id)));
 
+  private key = PREFIX + 'gost';
+  private userId: number | null = null;
+
   constructor() {
     // Novi korisnik (prijava/odjava) = njegova lista.
-    effect(() => this.items.set(read(this.key())));
+    effect(() => {
+      const userId = this.auth.user()?.id ?? null;
+      untracked(() => this.switchUser(userId));
+    });
   }
 
   has(id: number): boolean {
@@ -81,10 +102,13 @@ export class FavoritesService {
   add(vendor: Vendor): void {
     if (this.has(vendor.id)) return;
     this.write([toSaved(vendor), ...this.items()]);
+    this.push('POST', vendor.id);
   }
 
   remove(id: number): void {
+    if (!this.has(id)) return;
     this.write(this.items().filter((i) => i.id !== id));
+    this.push('DELETE', id);
   }
 
   /** Vraća uklonjenu stavku na isto mjesto (za "Poništi"). */
@@ -93,12 +117,87 @@ export class FavoritesService {
     const list = [...this.items()];
     list.splice(Math.min(index, list.length), 0, item);
     this.write(list);
+    this.push('POST', item.id);
+  }
+
+  private push(method: 'POST' | 'DELETE', vendorId: number): void {
+    if (this.userId === null) return;
+    // Greška (npr. bez mreže) ne smeta: lokalna lista ostaje, a sljedeća prijava je uskladi sa serverom.
+    this.http
+      .request(method, `${this.url}/${vendorId}`, { context: this.quiet })
+      .subscribe({ error: () => undefined });
+  }
+
+  private switchUser(userId: number | null): void {
+    const guestKey = PREFIX + 'gost';
+    this.userId = userId;
+    this.key = PREFIX + (userId ?? 'gost');
+    const cached = read(this.key);
+    this.items.set(cached);
+    if (userId === null) return;
+
+    // Gostova lista ide u profil, a server vraća cijelu listu profila.
+    const guest = read(guestKey);
+    const request =
+      guest.length > 0
+        ? this.http.post<FavoriteDto[]>(
+            `${this.url}/sync`,
+            { vendorIds: guest.map((g) => g.id) },
+            { context: this.quiet },
+          )
+        : this.http.get<FavoriteDto[]>(this.url, { context: this.quiet });
+    request.subscribe({
+      next: (remote) => {
+        if (this.userId !== userId) return;
+        if (guest.length) remove(guestKey);
+        this.reconcile(remote, [...cached, ...guest]);
+      },
+      error: () => {
+        /* server nedostupan: radimo sa lokalnom listom */
+      },
+    });
+  }
+
+  /** Lista sa servera, sa sažecima iz preglednika; one kojih nema lokalno dohvati sa servera. */
+  private reconcile(remote: FavoriteDto[], known: SavedVendor[]): void {
+    const byId = new Map(known.map((k) => [k.id, k]));
+    const list: SavedVendor[] = [];
+    const missing: FavoriteDto[] = [];
+    for (const f of remote) {
+      const k = byId.get(f.vendorId);
+      if (k) list.push({ ...k, savedAt: f.createdAt });
+      else missing.push(f);
+    }
+    this.write(list);
+    if (!missing.length) return;
+
+    const userId = this.userId;
+    forkJoin(
+      missing.map((f) =>
+        this.http
+          .get<Vendor>(`${environment.apiUrl}/vendors/${f.vendorId}`, { context: this.quiet })
+          .pipe(
+            map((v) => ({ ...toSaved(v), savedAt: f.createdAt })),
+            catchError(() => of(null)),
+          ),
+      ),
+    ).subscribe((fetched) => {
+      if (this.userId !== userId) return;
+      const add = fetched.filter((x): x is SavedVendor => x !== null && !this.has(x.id));
+      if (!add.length) return;
+      const order = new Map(remote.map((f, i) => [f.vendorId, i]));
+      this.write(
+        [...this.items(), ...add].sort(
+          (a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9),
+        ),
+      );
+    });
   }
 
   private write(list: SavedVendor[]): void {
     this.items.set(list);
     try {
-      localStorage.setItem(this.key(), JSON.stringify(list));
+      localStorage.setItem(this.key, JSON.stringify(list));
     } catch {
       /* storage nedostupan: lista ostaje samo u memoriji */
     }
@@ -112,5 +211,13 @@ function read(key: string): SavedVendor[] {
     return Array.isArray(list) ? list : [];
   } catch {
     return [];
+  }
+}
+
+function remove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignoriši */
   }
 }
