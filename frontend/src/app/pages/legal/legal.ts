@@ -61,7 +61,10 @@ const STYLES = `
           Profil za mladence pravi se prijavom preko Google naloga. Lozinku za {{ brand.name }} ne
           pravite.
         </li>
-        <li>Saloni i drugi ponuđači ne prave profil sami. Nalog im otvaramo mi, nakon dogovora.</li>
+        <li>
+          Saloni i drugi ponuđači se registruju sami, Google nalogom na stranici "Za salone", i sami
+          postavljaju svoju stranicu. Na zahtjev salona stranicu možemo postaviti i mi.
+        </li>
         <li>
           Odgovorni ste za tačnost podataka koje unesete (ime, telefon, grad) i za sve što se radi
           sa vašeg profila.
@@ -73,6 +76,14 @@ const STYLES = `
 
       <h2 class="t-title-3">Ponuda, cijene i rezervacije</h2>
       <ul>
+        <li>
+          Salon je odgovoran za tačnost opisa, cijena i kontakt podataka na svojoj stranici.
+          Fotografije koje salon doda moraju biti njegove ili mora imati pravo da ih objavi.
+        </li>
+        <li>
+          Stranicu salona koja je lažna, obmanjujuća ili krši tuđa prava možemo izmijeniti ili
+          isključiti.
+        </li>
         <li>
           Opise, slike i cijene unose ponuđači ili ih unosimo u dogovoru sa njima. Cijene su okvirne
           ("od do") i nisu ponuda.
@@ -187,6 +198,14 @@ export class Terms {
       </ul>
       <p>Vaše podatke ne prodajemo i ne dijelimo za reklame.</p>
 
+      <h2 class="t-title-3">Saloni</h2>
+      <p>
+        Za nalog salona čuvamo iste podatke sa Google naloga (ime, e-mail, Google identifikator).
+        Podaci koje salon unese na svoju stranicu (naziv, opis, adresa, telefon, e-mail, linkovi,
+        usluge, cijene, radno vrijeme i fotografije) su javni, jer im je svrha da ih mladenci vide.
+        Uploadovane fotografije čuvamo na našem serveru.
+      </p>
+
       <h2 class="t-title-3">Ko vidi vaše podatke</h2>
       <ul>
         <li>
@@ -207,7 +226,8 @@ export class Terms {
         <li>
           Profil možete obrisati sami, na stranici <a routerLink="/profil">Profil</a> (dio "Brisanje
           profila"). Kopiju svojih podataka možete tražiti na
-          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>, sa e-mail adrese profila.
+          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a
+          >, sa e-mail adrese profila.
         </li>
       </ul>
 

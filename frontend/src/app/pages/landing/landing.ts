@@ -179,6 +179,8 @@ const CATEGORIES = [
               <li><app-icon name="check-circle" /> Recenzije koje grade povjerenje</li>
               <li><app-icon name="check-circle" /> Više kategorija na jednom nalogu (npr. frizer i make-up)</li>
             </ul>
+            <a class="btn btn-primary btn-lg" routerLink="/za-salone">Registrujte salon besplatno</a>
+            <p class="t-footnote muted">Prijava Google nalogom, a stranicu postavljate sami za par minuta. Ne stignete? Ostavite nam broj i postavićemo je za vas.</p>
           </div>
           <form class="lead-form stack" (ngSubmit)="sendLead()" #leadForm="ngForm">
             <div class="field">
@@ -212,7 +214,7 @@ const CATEGORIES = [
                 <span class="error">Unesite broj telefona (npr. +387 61 123 456).</span>
               }
             </div>
-            <button type="submit" class="btn btn-primary btn-block" [disabled]="leadForm.invalid">Pošaljite upit</button>
+            <button type="submit" class="btn btn-block" [disabled]="leadForm.invalid">Postavite salon za mene</button>
             <p class="t-caption subtle">Javljamo se u roku od jednog radnog dana.</p>
           </form>
         </div>

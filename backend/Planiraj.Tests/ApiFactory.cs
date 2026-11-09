@@ -21,6 +21,9 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
+    /// <summary>Privremeni folder za uploadovane slike; briše se na kraju.</summary>
+    public string UploadRoot { get; } = Path.Combine(Path.GetTempPath(), "planiraj-test-" + Guid.NewGuid().ToString("N"));
+
     /// <summary>Ograničenje zahtjeva je u testovima isključeno; RateLimitTests ga uključuje sa malim brojevima.</summary>
     protected virtual Dictionary<string, string?> Settings => new()
     {
@@ -49,6 +52,7 @@ public class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Key", "testni-kljuc-koji-ima-vise-od-32-znaka-0123456789");
         builder.UseSetting("Google:ClientId", FakeGoogle.ClientIdValue);
         builder.UseSetting("Seed:Enabled", "true");
+        builder.UseSetting("Uploads:Root", UploadRoot);
         foreach (var (k, v) in Settings) builder.UseSetting(k, v);
 
         builder.ConfigureServices(s =>
@@ -74,6 +78,17 @@ public class ApiFactory : WebApplicationFactory<Program>
         return (client, auth);
     }
 
+    /// <summary>Prijava salona preko (lažnog) Googlea, na stranici za salone.</summary>
+    public async Task<(HttpClient Client, JsonElement Auth)> GoogleSalonAsync(string credential)
+    {
+        var client = CreateClient();
+        var res = await client.PostAsJsonAsync("/api/auth/google/salon", new { credential });
+        res.EnsureSuccessStatusCode();
+        var auth = await res.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.GetProperty("token").GetString());
+        return (client, auth);
+    }
+
     /// <summary>Prijava seed naloga korisničkim imenom i lozinkom.</summary>
     public async Task<HttpClient> LoginAsync(string login, string password)
     {
@@ -88,7 +103,11 @@ public class ApiFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing) _connection.Dispose();
+        if (disposing)
+        {
+            _connection.Dispose();
+            if (Directory.Exists(UploadRoot)) Directory.Delete(UploadRoot, recursive: true);
+        }
     }
 }
 

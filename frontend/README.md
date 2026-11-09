@@ -46,6 +46,16 @@ pa prerender treba pokretati pri svakom deployu (sitemap sa servera ih ima odmah
 
 Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
 
+## Saloni
+
+Saloni imaju svoju stranicu za prijavu i registraciju, `/za-salone` (Google, poseban endpoint). Novi salon ide na
+`/salon/postavljanje` (naziv, grad, adresa, opis, kontakt), salon se odmah objavljuje, a zatim na uređivanju dodaje
+usluge, cijene, radno vrijeme, logo i fotografije. Fotografije se biraju sa uređaja (više odjednom), smanjuju u
+pregledniku (fotografije JPEG do 1600 px, logo PNG do 512 px) i šalju na server (`core/upload.ts`).
+Administrator koristi isti ekran za uređivanje (`/admin/ponudjaci/:id`), pa može sve što i salon.
+Na početnoj je dugme "Registrujte salon besplatno", a forma ispod ("Postavite salon za mene") je za salone koji
+žele da im stranicu postavimo mi.
+
 ## Prijava mladenaca preko Googlea
 
 Registracija (`/registracija`) i prijava (`/prijava`) za mladence imaju samo Googleovo dugme

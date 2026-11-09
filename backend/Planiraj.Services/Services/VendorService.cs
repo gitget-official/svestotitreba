@@ -14,7 +14,8 @@ using Planiraj.Services.Security;
 namespace Planiraj.Services.Services;
 
 /// <summary>
-/// Ponuđači (saloni). Kreira i briše administrator (FR-29); stranicu uređuje administrator ili vlasnik (FR-12).
+/// Ponuđači (saloni). Kreira administrator ili salon sam, za sebe (jedan salon po nalogu); briše administrator.
+/// Stranicu uređuje administrator ili vlasnik (FR-12).
 /// Pretraga podržava filtere iz FR-6, a istaknuti ponuđači (aktivna pretplata) idu prvi (FR-33).
 /// </summary>
 public class VendorService
@@ -130,13 +131,32 @@ public class VendorService
 
     protected override async Task BeforeInsertAsync(VendorInsertRequest request, Vendor entity)
     {
-        CurrentUser.EnsureAdmin();
         await AccessRules.EnsureCityExistsAsync(Context, request.CityId);
-        await EnsureValidOwnerAsync(request.OwnerUserId);
+
+        if (CurrentUser.IsAdmin())
+        {
+            await EnsureValidOwnerAsync(request.OwnerUserId);
+            entity.IsActive = true;
+        }
+        else if (CurrentUser.Role == UserRole.Vendor)
+        {
+            // Salon postavlja svoju stranicu sam: uvijek za sebe, jedan salon po nalogu (dodatni preko administratora).
+            // Objavljuje se odmah, bez odobrenja; administrator ga može isključiti kao i svaki drugi salon.
+            var userId = CurrentUser.RequireUserId();
+            if (await Context.Vendors.AnyAsync(v => v.OwnerUserId == userId))
+                throw new UserException("Vaš nalog već ima salon. Za dodatni salon javite se administratoru.");
+            entity.OwnerUserId = userId;
+            entity.IsActive = true;
+            entity.SubscriptionPlanId = null;
+            entity.SubscriptionExpiresAt = null;
+        }
+        else
+        {
+            throw new ForbiddenException("Salon može napraviti samo nalog salona ili administrator.");
+        }
 
         entity.Name = request.Name.Trim();
         entity.Slug = await CreateUniqueSlugAsync(entity.Name);
-        entity.IsActive = true;
         entity.CreatedAt = DateTime.UtcNow;
         NormalizeBookingSettings(entity);
     }

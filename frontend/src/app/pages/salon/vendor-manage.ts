@@ -3,8 +3,9 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { FieldError } from '../../shared/ui/field-error';
 import { AppValidators as V } from '../../core/validators';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { firstValueFrom, forkJoin } from 'rxjs';
 import { OfferingApi, VendorApi, VendorImageApi, WorkingHourApi } from '../../core/api';
+import { UploadApi } from '../../core/upload';
 import { AuthService } from '../../core/auth';
 import { DAYS, formatPriceRange, formatTime, toTimeOnly } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
@@ -73,10 +74,23 @@ interface HourRow {
                     <textarea id="description" class="textarea" rows="5" formControlName="description"></textarea>
 <app-field-error [control]="form.controls.description" />
                   </div>
-                  <div class="field">
-                    <label for="logo">Logo (URL)</label>
-                    <input id="logo" class="input" formControlName="logoUrl" placeholder="https://" />
-<app-field-error [control]="form.controls.logoUrl" />
+                  <div class="field logo-field">
+                    <span class="label">Logo</span>
+                    <div class="row-wrap logo-row">
+                      @if (form.controls.logoUrl.value; as logo) {
+                        <img class="logo-preview" [src]="logo" alt="Logo" />
+                      } @else {
+                        <span class="logo-preview empty"><app-icon name="image" /></span>
+                      }
+                      <label class="btn btn-sm" [class.is-busy]="logoBusy()">
+                        @if (logoBusy()) { <span class="spinner"></span> } {{ form.controls.logoUrl.value ? 'Promijeni' : 'Dodaj logo' }}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="uploadLogo($event)" [disabled]="logoBusy()" />
+                      </label>
+                      @if (form.controls.logoUrl.value) {
+                        <button type="button" class="btn btn-plain btn-sm" (click)="removeLogo()">Ukloni</button>
+                      }
+                    </div>
+                    <span class="hint">PNG sa prozirnom pozadinom izgleda najbolje. Sačuvajte promjene ispod.</span>
                   </div>
                 </div>
               </section>
@@ -198,7 +212,13 @@ interface HourRow {
             <section class="stack enter">
               <div class="section-head">
                 <p class="muted">Naslovna slika se prikazuje u rezultatima pretrage.</p>
-                <button type="button" class="btn btn-primary btn-sm" (click)="imageOpen.set(true)"><app-icon name="plus" /> Dodaj sliku</button>
+                <div class="row-wrap upload-actions">
+                <label class="btn btn-primary btn-sm" [class.is-busy]="uploading()">
+                  @if (uploading(); as u) { <span class="spinner"></span> {{ u }} } @else { <app-icon name="plus" /> Dodaj fotografije }
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" (change)="uploadImages($event)" [disabled]="!!uploading()" />
+                </label>
+                <button type="button" class="btn btn-plain btn-sm" (click)="imageOpen.set(true)">Dodaj link</button>
+                </div>
               </div>
               <div class="images">
                 @for (img of images(); track img.id) {
@@ -292,7 +312,7 @@ interface HourRow {
             <label for="i-url">Adresa slike (URL)</label>
             <input id="i-url" class="input" formControlName="url" placeholder="https://" />
 <app-field-error [control]="imageForm.controls.url" />
-            <span class="hint">Upload fajlova dolazi uskoro; za sada zalijepite link do slike.</span>
+            <span class="hint">Za sliku koja je već na internetu. Fotografije sa uređaja dodajte dugmetom "Dodaj fotografije".</span>
           </div>
           @if (imageForm.controls.url.valid && imageForm.controls.url.value) {
             <img class="preview" [src]="imageForm.controls.url.value" alt="Pregled" />
@@ -323,6 +343,12 @@ interface HourRow {
       border-radius: var(--radius-full); box-shadow: var(--shadow-md), inset 0 1px 0 var(--material-edge);
     }
     @media (min-width: 48rem) { .save-bar { bottom: var(--space-4); } }
+    .logo-row { align-items: center; gap: var(--space-3); }
+    .logo-preview { width: 4rem; height: 4rem; border-radius: var(--radius-md); object-fit: contain; background: var(--fill); }
+    .logo-preview.empty { display: grid; place-items: center; color: var(--text-tertiary, inherit); }
+    label.btn { cursor: pointer; }
+    .upload-actions { gap: var(--space-2); align-items: center; }
+    label.btn.is-busy { pointer-events: none; opacity: 0.8; }
     .images { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
     .image { position: relative; margin: 0; overflow: hidden; }
     .image img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
@@ -370,6 +396,10 @@ export class VendorManage implements OnInit {
   protected readonly offeringOpen = signal(false);
   protected readonly editingOffering = signal<Offering | null>(null);
   protected readonly imageOpen = signal(false);
+  /** Tekst napretka dok se fotografije uploaduju ("2 od 5"), null kad se ništa ne uploaduje. */
+  protected readonly uploading = signal<string | null>(null);
+  protected readonly logoBusy = signal(false);
+  private readonly uploads = inject(UploadApi);
 
   private readonly offeringSheet = viewChild<Sheet>('offeringSheet');
   private readonly imageSheet = viewChild<Sheet>('imageSheet');
@@ -392,7 +422,8 @@ export class VendorManage implements OnInit {
     instagramUrl: this.fb.control<string | null>(null, V.social('instagram.com')),
     facebookUrl: this.fb.control<string | null>(null, V.social('facebook.com')),
     tikTokUrl: this.fb.control<string | null>(null, V.social('tiktok.com')),
-    logoUrl: this.fb.control<string | null>(null, V.url),
+    // postavlja se uploadom (adresa na našem serveru) ili, kod starih salona, punim linkom
+    logoUrl: this.fb.control<string | null>(null, Validators.maxLength(500)),
     bookingEnabled: this.fb.nonNullable.control(false),
     autoConfirmBookings: this.fb.nonNullable.control(false),
     requiresDeposit: this.fb.nonNullable.control(false),
@@ -506,6 +537,62 @@ export class VendorManage implements OnInit {
       this.toasts.success('Usluga je obrisana.');
       this.loadOfferings(offering.vendorId);
     });
+  }
+
+  /** Više fotografija odjednom: svaka se smanji, uploaduje i doda u galeriju (prva postaje naslovna ako je nema). */
+  protected async uploadImages(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const v = this.vendor();
+    if (!v || !files.length) return;
+
+    let done = 0;
+    let failed = 0;
+    let hasCover = this.images().some((i) => i.isCover);
+    let order = this.images().length;
+    for (const file of files) {
+      this.uploading.set(files.length > 1 ? `${done + failed + 1} od ${files.length}` : 'Učitavanje…');
+      try {
+        const url = await firstValueFrom(this.uploads.vendorImage(v.id, file));
+        await firstValueFrom(
+          this.imageApi.create({ vendorId: v.id, url, caption: null, isCover: !hasCover, sortOrder: ++order }),
+        );
+        hasCover = true;
+        done++;
+      } catch {
+        failed++;
+      }
+    }
+    this.uploading.set(null);
+    this.loadImages(v.id);
+    if (done) this.toasts.success(done === 1 ? 'Fotografija je dodana.' : `Dodano fotografija: ${done}.`);
+    if (failed) this.toasts.error(`${failed === 1 ? 'Jedna fotografija nije dodana' : `${failed} fotografija nije dodano`}. Dozvoljene su JPG, PNG i WebP do 5 MB.`);
+  }
+
+  protected uploadLogo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    const v = this.vendor();
+    if (!v || !file) return;
+    this.logoBusy.set(true);
+    this.uploads.vendorImage(v.id, file, 'logo').subscribe({
+      next: (url) => {
+        this.logoBusy.set(false);
+        this.form.controls.logoUrl.setValue(url);
+        this.form.markAsDirty();
+      },
+      error: () => {
+        this.logoBusy.set(false);
+        this.toasts.error('Logo nije dodan. Dozvoljene su JPG, PNG i WebP do 5 MB.');
+      },
+    });
+  }
+
+  protected removeLogo(): void {
+    this.form.controls.logoUrl.setValue(null);
+    this.form.markAsDirty();
   }
 
   protected addImage(): void {

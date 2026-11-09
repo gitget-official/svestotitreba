@@ -45,9 +45,11 @@ export class AuthService {
   }
 
   /** Prijava ili registracija mladenaca: ID token sa Googleovog dugmeta u zamjenu za našu sesiju. */
-  loginWithGoogle(credential: string): Observable<AuthResponse> {
+  /** Google prijava: mladenci (zadano) ili salon (posebna stranica /za-salone, novi nalog dobija ulogu Vendor). */
+  loginWithGoogle(credential: string, as: 'mladenci' | 'salon' = 'mladenci'): Observable<AuthResponse> {
     const context = new HttpContext().set(SKIP_ERROR_TOAST, true);
-    return this.http.post<AuthResponse>(`${this.url}/google`, { credential }, { context }).pipe(tap((r) => this.store(r)));
+    const url = as === 'salon' ? `${this.url}/google/salon` : `${this.url}/google`;
+    return this.http.post<AuthResponse>(url, { credential }, { context }).pipe(tap((r) => this.store(r)));
   }
 
   private config$?: Observable<AuthConfig>;
