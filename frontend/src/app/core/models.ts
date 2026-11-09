@@ -39,6 +39,8 @@ export interface User {
   cityName: string | null;
   createdAt: string;
   lastLoginAt: string | null;
+  /** Korisnik je sam obrisao profil (podaci su anonimizirani). */
+  deletedAt: string | null;
 }
 
 export interface AuthResponse {
@@ -86,6 +88,8 @@ export interface ChangePasswordRequest {
 export interface UserSearch extends BaseSearch {
   role?: UserRole | null;
   isActive?: boolean | null;
+  /** true = samo obrisani profili, false = bez obrisanih. */
+  isDeleted?: boolean | null;
 }
 
 export interface UserInsertRequest {

@@ -33,6 +33,15 @@ public class DeleteAccountTests(ApiFactory api) : IClassFixture<ApiFactory>
         Assert.EndsWith("@obrisano.invalid", user.GetProperty("email").GetString());
         Assert.Equal(JsonValueKind.Null, user.GetProperty("phoneNumber").ValueKind);
         Assert.False(user.GetProperty("isActive").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null, user.GetProperty("deletedAt").ValueKind);
+
+        // admin filter: obrisani su odvojeni od neaktivnih
+        var deleted = await admin.GetFromJsonAsync<JsonElement>("/api/users?isDeleted=true&pageSize=100");
+        Assert.Contains(deleted.GetProperty("items").EnumerateArray(), u => u.GetProperty("id").GetInt32() == userId);
+        Assert.All(deleted.GetProperty("items").EnumerateArray(), u => Assert.NotEqual(JsonValueKind.Null, u.GetProperty("deletedAt").ValueKind));
+        var inactive = await admin.GetFromJsonAsync<JsonElement>("/api/users?isActive=false&isDeleted=false&pageSize=100");
+        Assert.DoesNotContain(inactive.GetProperty("items").EnumerateArray(), u => u.GetProperty("id").GetInt32() == userId);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.DeleteAsync($"/api/users/{userId}")).StatusCode);
 
         // buduće rezervacije su otkazane i bez napomene; salon vidi da je profil obrisan
         var bookings = (await admin.GetFromJsonAsync<JsonElement>("/api/bookings?pageSize=100")).GetProperty("items")

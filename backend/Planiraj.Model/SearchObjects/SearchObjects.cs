@@ -14,6 +14,8 @@ public class UserSearchObject : BaseSearchObject
 {
     public UserRole? Role { get; set; }
     public bool? IsActive { get; set; }
+    /// <summary>true = samo obrisani profili, false = bez obrisanih, null = svi.</summary>
+    public bool? IsDeleted { get; set; }
 }
 
 public class CitySearchObject : BaseSearchObject
