@@ -22,6 +22,8 @@ public class UserDto
     public string? CityName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    /// <summary>Kad je korisnik sam obrisao profil; null za postojeće naloge.</summary>
+    public DateTime? DeletedAt { get; set; }
 }
 
 public class CityDto
@@ -208,3 +210,6 @@ public class AuthConfigDto
 
 /// <summary>Podaci o osobi iz provjerenog Google ID tokena.</summary>
 public record GoogleIdentity(string Subject, string Email, bool EmailVerified, string? GivenName, string? FamilyName, string? Name);
+
+/// <summary>Jedna adresa u sitemap.xml: putanja na frontendu i datum zadnje izmjene.</summary>
+public record SitemapEntry(string Path, DateTime? LastModified, string Priority);

@@ -43,6 +43,9 @@ public class UserService
             query = query.Where(u => u.IsActive == isActive);
         }
 
+        if (search.IsDeleted.HasValue)
+            query = search.IsDeleted.Value ? query.Where(u => u.DeletedAt != null) : query.Where(u => u.DeletedAt == null);
+
         if (!string.IsNullOrWhiteSpace(search.Fts))
         {
             var term = search.Fts.Trim();
@@ -110,6 +113,8 @@ public class UserService
     {
         if (entity.Id == CurrentUser.UserId)
             throw new UserException("Ne možete obrisati vlastiti nalog.");
+        if (entity.DeletedAt != null)
+            throw new UserException("Korisnik je već obrisao profil; podaci su anonimizirani, a red ostaje zbog recenzija i rezervacija.");
         return Task.CompletedTask;
     }
 }

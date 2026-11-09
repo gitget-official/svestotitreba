@@ -104,3 +104,8 @@ public interface IPlanService
     Task DeleteAsync();
 }
 
+/// <summary>Javne adrese za sitemap.xml: opće stranice i svi aktivni ponuđači.</summary>
+public interface ISitemapService
+{
+    Task<IReadOnlyList<SitemapEntry>> GetEntriesAsync();
+}

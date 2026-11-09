@@ -36,9 +36,13 @@ SITE_URL=https://prava-domena.ba API_URL=http://localhost:5080/api npm run prere
 - Isto za `/istrazi`, `/planiranje`, `/uslovi` i `/privatnost`.
 - `sitemap.xml` sa svim tim adresama i `robots.txt` (lične stranice, prijava i admin nisu za indeksiranje).
 
+Ako hosting ne prosljeđuje `/sitemap.xml` na API, postavite `SITEMAP_URL` na adresu serverskog sitemapa
+(npr. `https://api.domena.ba/sitemap.xml`): tada `robots.txt` pokazuje na njega, a on je uvijek svjež. Statični
+`sitemap.xml` se i dalje pravi kao rezerva.
+
 Ime i opis se čitaju iz `core/brand.ts`. Bez `SITE_URL` adrese su relativne (samo za lokalnu provjeru). Ako API nije
-dostupan, prave se samo opće stranice, sitemap i robots.txt. Novi ponuđači ulaze u sitemap pri sljedećem buildu, pa
-prerender treba pokretati pri svakom deployu. U aplikaciji isto radi `core/seo.ts` (stranica ponuđača).
+dostupan, prave se samo opće stranice, sitemap i robots.txt. Statične stranice novih ponuđača nastaju pri sljedećem buildu,
+pa prerender treba pokretati pri svakom deployu (sitemap sa servera ih ima odmah). U aplikaciji isto radi `core/seo.ts` (stranica ponuđača).
 
 Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
 

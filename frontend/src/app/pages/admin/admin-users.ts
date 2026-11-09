@@ -13,6 +13,8 @@ import { Icon } from '../../shared/ui/icon';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
 
+type UserStatus = 'all' | 'active' | 'inactive' | 'deleted';
+
 /** Korisnici: administrator kreira naloge za salone (FR-29) i upravlja postojećim nalozima. */
 @Component({
   selector: 'app-admin-users',
@@ -36,6 +38,11 @@ import { ToastService } from '../../shared/ui/toast';
             <button type="button" [class.is-active]="role() === r.value" (click)="role.set(r.value); load()">{{ r.label }}</button>
           }
         </div>
+        <div class="segmented" role="group" aria-label="Status">
+          @for (s of statusFilters; track s.value) {
+            <button type="button" [class.is-active]="status() === s.value" (click)="status.set(s.value); load()">{{ s.label }}</button>
+          }
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -45,19 +52,26 @@ import { ToastService } from '../../shared/ui/toast';
           </thead>
           <tbody>
             @for (u of users(); track u.id) {
-              <tr>
+              <tr [class.deleted]="u.deletedAt">
                 <td><strong>{{ u.firstName }} {{ u.lastName }}</strong></td>
                 <td>{{ u.username }}</td>
                 <td>{{ u.email }}</td>
                 <td><span class="badge" [class.badge-accent]="u.role === 'Vendor'">{{ roleLabel[u.role] }}</span></td>
                 <td>
-                  <span class="badge" [class.badge-success]="u.isActive">{{ u.isActive ? 'Aktivan' : 'Neaktivan' }}</span>
-                  @if (u.mustChangePassword) { <span class="badge badge-warning">Nova lozinka</span> }
+                  @if (u.deletedAt) {
+                    <span class="badge badge-danger" [title]="'Korisnik je obrisao profil ' + date(u.deletedAt)">Obrisan profil</span>
+                    <span class="t-caption muted deleted-on">{{ date(u.deletedAt) }}</span>
+                  } @else {
+                    <span class="badge" [class.badge-success]="u.isActive">{{ u.isActive ? 'Aktivan' : 'Neaktivan' }}</span>
+                    @if (u.mustChangePassword) { <span class="badge badge-warning">Nova lozinka</span> }
+                  }
                 </td>
                 <td class="t-footnote muted">{{ date(u.createdAt) }}</td>
                 <td class="actions">
+                  @if (!u.deletedAt) {
                   <button type="button" class="icon-btn" (click)="openEdit(u)" aria-label="Uredi"><app-icon name="edit" /></button>
-                  @if (u.id !== me()) {
+                  }
+                  @if (u.id !== me() && !u.deletedAt) {
                     <button type="button" class="icon-btn" (click)="remove(u)" aria-label="Obriši"><app-icon name="trash" /></button>
                   }
                 </td>
@@ -127,6 +141,9 @@ import { ToastService } from '../../shared/ui/toast';
     .actions .icon-btn { width: 2.125rem; height: 2.125rem; }
     .toggle { cursor: pointer; }
     .grow { flex: 1; }
+    tr.deleted td { color: var(--text-secondary); }
+    tr.deleted strong { font-weight: 500; }
+    .deleted-on { display: block; margin-top: 0.125rem; }
   `,
 })
 export class AdminUsers implements OnInit {
@@ -145,6 +162,14 @@ export class AdminUsers implements OnInit {
     { label: 'Mladenci', value: 'Couple' },
     { label: 'Admini', value: 'Admin' },
   ];
+  /** Obrisani profili su odvojeni od neaktivnih (njih je isključio admin, a obrisane ne može vratiti). */
+  protected readonly statusFilters: { label: string; value: UserStatus }[] = [
+    { label: 'Svi', value: 'all' },
+    { label: 'Aktivni', value: 'active' },
+    { label: 'Neaktivni', value: 'inactive' },
+    { label: 'Obrisani', value: 'deleted' },
+  ];
+  protected readonly status = signal<UserStatus>('all');
   protected readonly users = signal<User[]>([]);
   protected readonly role = signal<UserRole | null>(null);
   protected readonly editing = signal<User | null>(null);
@@ -177,7 +202,16 @@ export class AdminUsers implements OnInit {
   }
 
   protected load(): void {
-    this.api.list({ role: this.role(), fts: this.fts || null, pageSize: 100 }).subscribe((r) => this.users.set(r.items));
+    const status = this.status();
+    const filter =
+      status === 'active'
+        ? { isActive: true }
+        : status === 'inactive'
+          ? { isActive: false, isDeleted: false }
+          : status === 'deleted'
+            ? { isDeleted: true }
+            : {};
+    this.api.list({ role: this.role(), fts: this.fts || null, pageSize: 100, ...filter }).subscribe((r) => this.users.set(r.items));
   }
 
   protected openEdit(user: User | null): void {

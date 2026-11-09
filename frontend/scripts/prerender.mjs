@@ -7,6 +7,9 @@
 //
 // Pokretanje:  SITE_URL=https://domena.ba API_URL=http://localhost:5080/api npm run prerender
 // Ako API nije dostupan, prave se samo stranice bez ponuđača, sitemap i robots.txt (build ne pada).
+//
+// SITEMAP_URL (opciono): adresa sitemapa sa servera (API: /sitemap.xml ili /api/sitemap.xml), koji je uvijek svjež.
+// Tada robots.txt pokazuje na nju; statični sitemap.xml se i dalje pravi kao rezerva.
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -16,6 +19,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = process.env.DIST_DIR ?? join(root, 'dist/frontend/browser');
 const SITE = (process.env.SITE_URL ?? '').replace(/\/+$/, '');
 const API = (process.env.API_URL ?? 'http://localhost:5080/api').replace(/\/+$/, '');
+const SITEMAP_URL = process.env.SITEMAP_URL ?? '';
 
 // Ime i opis se čitaju iz core/brand.ts, da postoje samo na jednom mjestu.
 const brandSrc = await readFile(join(root, 'src/app/core/brand.ts'), 'utf8');
@@ -223,7 +227,7 @@ await writeFile(
 );
 await writeFile(
   join(DIST, 'robots.txt'),
-  `User-agent: *\n${PRIVATE.map((p) => `Disallow: ${p}`).join('\n')}\n\nSitemap: ${abs('/sitemap.xml')}\n`,
+  `User-agent: *\n${PRIVATE.map((p) => `Disallow: ${p}`).join('\n')}\n\nSitemap: ${SITEMAP_URL || abs('/sitemap.xml')}\n`,
 );
 
 console.log(

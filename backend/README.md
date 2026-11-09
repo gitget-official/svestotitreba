@@ -125,12 +125,23 @@ Sortiranje: istaknuti (aktivna pretplata) prvi, zatim po prosječnoj ocjeni, pa 
 - Zakazivanje je opciono po ponuđaču; ako je uključena automatska potvrda, rezervacija odmah dobija status `Confirmed`
 - Isti ponuđač ne može imati dvije potvrđene rezervacije za isti datum i isto vrijeme
 - Recenzija: jedna po paru za jednog ponuđača; nova ili izmijenjena recenzija ide na moderaciju
+- Admin lista korisnika odvaja obrisane profile (`isDeleted=true`, oznaka "Obrisan profil") od neaktivnih
+  (`isActive=false&isDeleted=false`); obrisan profil se ne može urediti ni obrisati iz admina
 - Token važi samo dok je nalog aktivan: isključen ili obrisan nalog odmah dobija 401, i prije isteka tokena
 - Brisanje profila (`DELETE /api/auth/me`, samo mladenci): brišu se plan i Sačuvano, buduće rezervacije na čekanju ili
   potvrđene se otkazuju, napomene uz rezervacije se brišu, a ime, e-mail, telefon, slika, grad i veza sa Googleom se
   uklanjaju (`Obrisan korisnik`, `obrisan-{id}@obrisano.invalid`). Red korisnika ostaje zbog recenzija i rezervacija
   salona; `DeletedAt` je popunjen i admin takav nalog ne može ponovo uključiti. Saloni i admini se brišu preko admina.
 - Greške se vraćaju kao `{ "status": 400, "message": "..." }` (400, 403, 404, 409)
+
+## Sitemap za pretraživače
+
+`GET /sitemap.xml` (i isto na `/api/sitemap.xml`) vraća sitemap uvijek svjež iz baze: opće stranice i sve aktivne
+ponuđače. Novi ili isključen ponuđač se vidi odmah, bez novog builda frontenda. Adrese vode na frontend:
+`Seo:SiteUrl` (npr. `https://domena.ba`), a ako nije postavljen, prvi `Cors:Origins`. Odgovor se kešira sat vremena.
+
+Hosting treba `domena.ba/sitemap.xml` proslijediti na API, ili se u `robots.txt` (vidi `SITEMAP_URL` u
+frontend README-u) navede adresa API-ja.
 
 ## Ograničenje broja zahtjeva
 
