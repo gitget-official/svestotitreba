@@ -8,6 +8,7 @@ using Planiraj.Services.Base;
 using Planiraj.Services.Database;
 using Planiraj.Services.Helpers;
 using Planiraj.Services.Interfaces;
+using Planiraj.Services.Notifications;
 using Planiraj.Services.Security;
 
 namespace Planiraj.Services.Services;
@@ -15,12 +16,31 @@ namespace Planiraj.Services.Services;
 /// <summary>
 /// Rezervacije termina (FR-19 – FR-23). Samo kod ponuđača koji imaju uključeno zakazivanje.
 /// Potvrda je automatska ili ručna, po izboru ponuđača. Avans je za sada samo informativan (@TODO odluka #5).
+/// Svaka promjena dodaje e-mail obavijesti u red u istoj transakciji (FR-15, vidi BookingNotifier).
 /// </summary>
 public class BookingService
     : BaseCRUDService<BookingDto, BookingSearchObject, Booking, BookingInsertRequest, BookingUpdateRequest>, IBookingService
 {
-    public BookingService(PlanirajDbContext context, ICurrentUserService currentUser) : base(context, currentUser)
+    private readonly IBookingNotifier _notifier;
+
+    public BookingService(PlanirajDbContext context, ICurrentUserService currentUser, IBookingNotifier notifier)
+        : base(context, currentUser)
     {
+        _notifier = notifier;
+    }
+
+    /// <summary>
+    /// Rezervacija i obavijesti u jednoj transakciji: obavijestima treba Id rezervacije (link, kalendar),
+    /// pa se snima dvaput, ali ili se snimi oboje ili ništa.
+    /// </summary>
+    public override async Task<BookingDto> InsertAsync(BookingInsertRequest request)
+    {
+        await using var transaction = await Context.Database.BeginTransactionAsync();
+        var result = await base.InsertAsync(request);
+        await _notifier.QueueAsync(result.Id, BookingEmailEvent.Created);
+        await Context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return result;
     }
 
     protected override string EntityName => "Rezervacija";
@@ -124,6 +144,7 @@ public class BookingService
         await EnsureSlotAvailableAsync(entity.VendorId, request.EventDate, request.StartTime, entity.Id);
 
         entity.UpdatedAt = DateTime.UtcNow;
+        await _notifier.QueueAsync(entity.Id, BookingEmailEvent.Updated);
     }
 
     /// <summary>Brisanje samo administrator; ostali koriste otkazivanje.</summary>
@@ -145,6 +166,7 @@ public class BookingService
 
         booking.Status = BookingStatus.Confirmed;
         booking.UpdatedAt = DateTime.UtcNow;
+        await _notifier.QueueAsync(booking.Id, BookingEmailEvent.Confirmed);
         await Context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
@@ -160,6 +182,7 @@ public class BookingService
         booking.Status = BookingStatus.Rejected;
         booking.StatusNote = request.Note;
         booking.UpdatedAt = DateTime.UtcNow;
+        await _notifier.QueueAsync(booking.Id, BookingEmailEvent.Rejected);
         await Context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
@@ -178,6 +201,7 @@ public class BookingService
         booking.Status = BookingStatus.Cancelled;
         booking.StatusNote = request.Note;
         booking.UpdatedAt = DateTime.UtcNow;
+        await _notifier.QueueAsync(booking.Id, BookingEmailEvent.Cancelled);
         await Context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }

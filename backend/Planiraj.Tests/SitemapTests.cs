@@ -11,6 +11,7 @@ public class SiteApiFactory : ApiFactory
     {
         ["RateLimit:Enabled"] = "false",
         ["Seo:SiteUrl"] = "https://primjer.ba/",
+        ["Email:DispatcherEnabled"] = "false",
     };
 }
 

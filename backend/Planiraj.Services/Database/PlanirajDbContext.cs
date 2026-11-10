@@ -16,6 +16,7 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
     public DbSet<WorkingHour> WorkingHours => Set<WorkingHour>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +138,23 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
             e.HasOne(x => x.User).WithMany(u => u.Bookings).HasForeignKey(x => x.UserId);
             e.HasOne(x => x.Offering).WithMany().HasForeignKey(x => x.OfferingId);
             e.HasIndex(x => new { x.VendorId, x.EventDate });
+        });
+
+        modelBuilder.Entity<EmailMessage>(e =>
+        {
+            e.Property(x => x.Type).HasMaxLength(50).IsRequired();
+            e.Property(x => x.ToAddress).HasMaxLength(256).IsRequired();
+            e.Property(x => x.ToName).HasMaxLength(200);
+            e.Property(x => x.ReplyTo).HasMaxLength(256);
+            e.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+            e.Property(x => x.HtmlBody).IsRequired();
+            e.Property(x => x.TextBody).IsRequired();
+            e.Property(x => x.AttachmentFileName).HasMaxLength(100);
+            e.Property(x => x.AttachmentContentType).HasMaxLength(100);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.SentTo).HasMaxLength(256);
+            e.Property(x => x.LastError).HasMaxLength(1000);
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
         });
 
         // SQL Server ne dozvoljava više kaskadnih putanja, pa je zadano Restrict,

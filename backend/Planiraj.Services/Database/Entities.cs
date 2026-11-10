@@ -237,3 +237,51 @@ public class SavedPlan : BaseEntity
     public DateTime UpdatedAt { get; set; }
 }
 
+
+/// <summary>Stanje e-maila u redu za slanje (outbox).</summary>
+public enum EmailStatus
+{
+    /// <summary>Čeka slanje (ili ponovni pokušaj u NextAttemptAt).</summary>
+    Pending,
+    Sent,
+    /// <summary>Svi pokušaji slanja nisu uspjeli.</summary>
+    Failed,
+    /// <summary>Primalac nije dozvoljen (npr. rezervisana domena ili nije na listi dozvoljenih).</summary>
+    Skipped,
+    /// <summary>Poruka je predugo čekala; stara obavijest se više ne šalje.</summary>
+    Expired
+}
+
+/// <summary>
+/// E-mail u redu za slanje (outbox). Upisuje se u istoj transakciji kao i promjena koja ga je izazvala
+/// (npr. nova rezervacija), a šalje ga pozadinski servis. Tako se obavijest ne gubi, a greška kod slanja
+/// ne ruši rezervaciju.
+/// </summary>
+public class EmailMessage : BaseEntity
+{
+    /// <summary>Vrsta poruke, npr. "booking.created.vendor" (za pregled i testove).</summary>
+    public string Type { get; set; } = string.Empty;
+    /// <summary>Stvarni primalac. Preusmjeravanje (Email:RedirectAllTo) se primjenjuje tek pri slanju.</summary>
+    public string ToAddress { get; set; } = string.Empty;
+    public string? ToName { get; set; }
+    public string? ReplyTo { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string HtmlBody { get; set; } = string.Empty;
+    public string TextBody { get; set; } = string.Empty;
+
+    public string? AttachmentFileName { get; set; }
+    public string? AttachmentContentType { get; set; }
+    public string? AttachmentContent { get; set; }
+
+    /// <summary>Id zapisa na koji se poruka odnosi (npr. rezervacija); bez stranog ključa.</summary>
+    public int? RelatedId { get; set; }
+
+    public EmailStatus Status { get; set; } = EmailStatus.Pending;
+    public int Attempts { get; set; }
+    public DateTime NextAttemptAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? SentAt { get; set; }
+    /// <summary>Adresa na koju je poruka stvarno otišla (razlikuje se od ToAddress kad je uključeno preusmjeravanje).</summary>
+    public string? SentTo { get; set; }
+    public string? LastError { get; set; }
+}

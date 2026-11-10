@@ -11,6 +11,7 @@ public class LimitedApiFactory : ApiFactory
         ["RateLimit:Enabled"] = "true",
         ["RateLimit:PermitPerMinute"] = "5",
         ["RateLimit:AuthPermitPerMinute"] = "3",
+        ["Email:DispatcherEnabled"] = "false",
     };
 }
 
