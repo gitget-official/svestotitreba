@@ -293,7 +293,7 @@
     const uloga = d.uloga || role(), pon = uloga === 'ponudjac';
     $('#gotovo-p').textContent = d.vec
       ? 'Ova adresa je već na listi. Javit ćemo vam se čim Svadbeno bude dostupno.'
-      : (pon ? 'Hvala! Javit ćemo vam se prije pokretanja.' : 'Javit ćemo vam se čim Svadbeno bude dostupno.');
+      : (pon ? 'Hvala! Javit ćemo vam se prije nego Svadbeno bude dostupno.' : 'Javit ćemo vam se čim Svadbeno bude dostupno.');
     $('#gotovo-sh').textContent = pon
       ? 'Pošaljite link drugim salonima i ponuđačima koje poznajete.'
       : 'Pošaljite link nekome za koga mislite da mu je došlo vrijeme za svadbu.';
