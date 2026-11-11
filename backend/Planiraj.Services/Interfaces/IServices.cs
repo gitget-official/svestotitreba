@@ -114,3 +114,9 @@ public interface ISitemapService
 {
     Task<IReadOnlyList<SitemapEntry>> GetEntriesAsync();
 }
+
+/// <summary>Tačke za javnu mapu ponuđača: svi aktivni ponuđači koji imaju lokaciju ili grad sa centrom.</summary>
+public interface IVendorMapService
+{
+    Task<IReadOnlyList<VendorMapPointDto>> GetPointsAsync();
+}

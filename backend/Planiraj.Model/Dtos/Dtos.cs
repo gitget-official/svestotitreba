@@ -215,3 +215,19 @@ public record GoogleIdentity(string Subject, string Email, bool EmailVerified, s
 
 /// <summary>Jedna adresa u sitemap.xml: putanja na frontendu i datum zadnje izmjene.</summary>
 public record SitemapEntry(string Path, DateTime? LastModified, string Priority);
+
+/// <summary>
+/// Jedna tačka na mapi ponuđača (početna). Samo javni podaci: bez kontakata i adrese.
+/// Koordinate su ponuđačeve, a ako ih nema, centar njegovog grada (<see cref="IsApproximate"/>).
+/// </summary>
+public record VendorMapPointDto(
+    int Id,
+    string Name,
+    string Slug,
+    int CityId,
+    string CityName,
+    IReadOnlyList<string> Categories,
+    double Latitude,
+    double Longitude,
+    bool IsApproximate,
+    string? ImageUrl);
