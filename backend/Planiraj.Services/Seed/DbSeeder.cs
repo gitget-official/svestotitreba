@@ -228,7 +228,7 @@ public static class DbSeeder
         var now = DateTime.UtcNow;
 
         // ---------- Šifarnici ----------
-        var cities = Cities.ToDictionary(c => c.Name, c => new City { Name = c.Name });
+        var cities = Cities.ToDictionary(c => c.Name, c => new City { Name = c.Name, Latitude = c.Latitude, Longitude = c.Longitude });
         db.Cities.AddRange(cities.Values);
 
         var categories = Categories.ToDictionary(c => c.Slug, c => new ServiceCategory

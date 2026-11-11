@@ -44,6 +44,7 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISitemapService, SitemapService>();
+builder.Services.AddScoped<IVendorMapService, VendorMapService>();
 
 // ---------- JWT autentifikacija ----------
 var jwtSection = builder.Configuration.GetSection("Jwt");

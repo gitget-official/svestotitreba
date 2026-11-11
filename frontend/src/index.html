@@ -2,21 +2,24 @@
 <html lang="bs">
 <head>
   <meta charset="utf-8">
-  <title>Planiraj — planiranje vjenčanja</title>
+  <title>Svadbeno: planiranje vjenčanja</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Sve usluge za vjenčanje na jednom mjestu: saloni, fotografi, dekoracije, frizeri i još mnogo toga.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Planiraj">
-  <meta property="og:title" content="Planiraj: sve za vaše vjenčanje, na jednom mjestu">
+  <meta property="og:site_name" content="Svadbeno">
+  <meta property="og:title" content="Svadbeno: sve za vaše vjenčanje, na jednom mjestu">
   <meta property="og:description" content="Sale, vjenčanice, fotografi, dekoracije i ostalo za vjenčanje u BiH. Uporedite cijene i rezervišite termin.">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#141211" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- uvodna animacija loga jednom po posjeti (ne uz "smanji pokrete"); ekran #uvod je tu od prvog iscrtavanja -->
+  <script>try{if(!sessionStorage.getItem('sv-uvod')&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('uvod')}catch(e){}</script>
 </head>
 <body>
+  <div id="uvod" aria-hidden="true"></div>
   <app-root></app-root>
 </body>
 </html>

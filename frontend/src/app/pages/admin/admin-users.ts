@@ -12,13 +12,14 @@ import { ConfirmService } from '../../shared/ui/confirm';
 import { Icon } from '../../shared/ui/icon';
 import { Sheet } from '../../shared/ui/sheet';
 import { ToastService } from '../../shared/ui/toast';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 type UserStatus = 'all' | 'active' | 'inactive' | 'deleted';
 
 /** Korisnici: administrator kreira naloge za salone (FR-29) i upravlja postojećim nalozima. */
 @Component({
   selector: 'app-admin-users',
-  imports: [FormsModule, ReactiveFormsModule, Icon, Sheet, FieldError],
+  imports: [FormsModule, ReactiveFormsModule, Icon, Sheet, FieldError, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page">
@@ -102,18 +103,18 @@ type UserStatus = 'all' | 'active' | 'inactive' | 'deleted';
 <app-field-error [control]="form.controls.phoneNumber" /></div>
             <div class="field">
               <label for="u-city">Grad</label>
-              <select id="u-city" class="select" formControlName="cityId">
-                <option [ngValue]="null">—</option>
-                @for (c of lookups.cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-              </select>
+              <app-select inputId="u-city" formControlName="cityId">
+                <app-option [value]="null">—</app-option>
+                @for (c of lookups.cities(); track c.id) { <app-option [value]="c.id">{{ c.name }}</app-option> }
+              </app-select>
             </div>
             <div class="field">
               <label for="u-role">Uloga</label>
-              <select id="u-role" class="select" formControlName="role">
-                <option value="Vendor">Salon</option>
-                <option value="Couple">Mladenci</option>
-                <option value="Admin">Administrator</option>
-              </select>
+              <app-select inputId="u-role" formControlName="role">
+                <app-option value="Vendor">Salon</app-option>
+                <app-option value="Couple">Mladenci</app-option>
+                <app-option value="Admin">Administrator</app-option>
+              </app-select>
             </div>
             <div class="field">
               <label for="u-pass">{{ editing() ? 'Nova lozinka (opciono)' : 'Početna lozinka' }}</label>

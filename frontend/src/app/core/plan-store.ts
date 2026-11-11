@@ -19,6 +19,8 @@ export interface PlanItem {
   offeringTitle: string;
   priceFrom: number;
   priceTo: number;
+  /** Prima li ponuđač online rezervacije (stariji sačuvani planovi ovo nemaju). */
+  bookingEnabled?: boolean;
 }
 
 export interface PlanState {
@@ -28,6 +30,28 @@ export interface PlanState {
   savedAt: string | null;
   /** Kad se plan zadnji put promijenio (automatsko čuvanje). */
   updatedAt: string | null;
+  /** Sadržaj plana pri zadnjem "Sačuvaj" (vidi snapshotOf); stariji sačuvani planovi ga nemaju. */
+  savedSnapshot?: string | null;
+}
+
+/**
+ * Sadržaj plana koji je bitan za "Sačuvaj": odgovori i izabrani ponuđači, bez vremena i redoslijeda klikova.
+ * Isti plan uvijek daje isti tekst, pa vraćanje na sačuvano stanje opet znači "nema izmjena".
+ */
+export function snapshotOf(state: Pick<PlanState, 'answers' | 'items'>): string {
+  const { answers, items } = state;
+  const ranges = Object.entries(answers.priceRanges ?? {})
+    .filter(([, r]) => r.min !== null || r.max !== null)
+    .sort(([a], [b]) => Number(a) - Number(b));
+  return JSON.stringify({
+    categoryIds: [...answers.categoryIds].sort((a, b) => a - b),
+    budget: answers.budget,
+    cityId: answers.cityId,
+    date: answers.date,
+    guests: answers.guests,
+    ranges,
+    items: items.map((i) => [i.categoryId, i.vendorId, i.offeringTitle]).sort((a, b) => Number(a[0]) - Number(b[0])),
+  });
 }
 
 export type SyncState = 'local' | 'saving' | 'server' | 'offline';
@@ -38,6 +62,7 @@ const EMPTY: PlanState = {
   items: [],
   savedAt: null,
   updatedAt: null,
+  savedSnapshot: null,
 };
 
 /**
@@ -65,6 +90,8 @@ export class PlanStore {
   readonly totalTo = computed(() => this.items().reduce((s, i) => s + i.priceTo, 0));
   readonly budget = computed(() => this.answers().budget);
   readonly overBy = computed(() => Math.max(0, this.totalFrom() - this.budget()));
+  /** Ima li izmjena od zadnjeg "Sačuvaj" (dugme je aktivno samo tada). */
+  readonly dirty = computed(() => snapshotOf(this.state()) !== (this.state().savedSnapshot ?? null));
 
   private key = PREFIX + 'gost';
   private writeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -118,9 +145,13 @@ export class PlanStore {
     this.update(() => ({ ...EMPTY, answers: { ...EMPTY.answers } }));
   }
 
-  /** Ručno čuvanje: odmah na server ako je korisnik prijavljen, inače ostaje u pregledniku. */
-  save(): Promise<SyncState> {
-    this.update((s) => ({ ...s, savedAt: new Date().toISOString() }));
+  /**
+   * Ručno čuvanje: odmah na server ako je korisnik prijavljen, inače ostaje u pregledniku.
+   * Bez izmjena od zadnjeg čuvanja ne radi ništa (i dvostruki klik), jer je snimak postavljen odmah.
+   */
+  save(): Promise<SyncState | null> {
+    if (!this.dirty() || this.sync() === 'saving') return Promise.resolve(null);
+    this.update((s) => ({ ...s, savedAt: new Date().toISOString(), savedSnapshot: snapshotOf(s) }));
     if (!this.auth.isLoggedIn()) {
       this.sync.set('local');
       return Promise.resolve('local');
@@ -140,6 +171,8 @@ export class PlanStore {
           resolve('server');
         },
         error: () => {
+          // Server nije dostupan: plan je ipak sačuvan u pregledniku, pa se računa kao sačuvan
+          // (dugme se gasi do sljedeće izmjene, a toast kaže gdje je plan).
           if (this.auth.user()?.id === userId) this.sync.set('offline');
           resolve('offline');
         },
@@ -164,6 +197,7 @@ export class PlanStore {
       offeringTitle: cheapest.title,
       priceFrom: cheapest.priceFrom,
       priceTo: cheapest.priceTo,
+      bookingEnabled: vendor.bookingEnabled,
     };
   }
 
@@ -213,7 +247,8 @@ export class PlanStore {
           return;
         }
         if (!local.updatedAt || (remote.updatedAt && remote.updatedAt > local.updatedAt)) {
-          this.state.set({ ...EMPTY, ...remote } as PlanState);
+          const next = { ...EMPTY, ...remote } as PlanState;
+          this.state.set({ ...next, savedSnapshot: snapshotOf(next) });
           write(this.key, this.state());
           this.sync.set('server');
         } else if (remote.updatedAt !== local.updatedAt) {

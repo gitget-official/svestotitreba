@@ -81,6 +81,15 @@ type Section = 'kategorije' | 'gradovi' | 'planovi';
         <form class="stack" [formGroup]="form" (ngSubmit)="save()">
           <div class="field"><label for="l-name">Naziv</label><input id="l-name" class="input" formControlName="name" />
 <app-field-error [control]="form.controls.name" /></div>
+          @if (section() === 'gradovi') {
+            <div class="form-grid">
+              <div class="field"><label for="l-lat">Geografska širina</label><input id="l-lat" class="input" type="number" step="any" formControlName="latitude" />
+<app-field-error [control]="form.controls.latitude" /></div>
+              <div class="field"><label for="l-lon">Geografska dužina</label><input id="l-lon" class="input" type="number" step="any" formControlName="longitude" />
+<app-field-error [control]="form.controls.longitude" /></div>
+            </div>
+            <p class="t-footnote muted">Centar grada, npr. 43.8563 i 18.4131 za Sarajevo. Na mapi početne se tu prikazuju ponuđači bez vlastite lokacije.</p>
+          }
           @if (section() !== 'gradovi') {
             <div class="field"><label for="l-desc">Opis</label><textarea id="l-desc" class="textarea" formControlName="description"></textarea>
 <app-field-error [control]="form.controls.description" /></div>
@@ -149,6 +158,8 @@ export class AdminLookups implements OnInit {
     durationDays: this.fb.nonNullable.control(30, V.integer(1, 3650)),
     priorityWeight: this.fb.nonNullable.control(1, V.integer(0, 100)),
     isActive: this.fb.nonNullable.control(true),
+    latitude: this.fb.control<number | null>(null, V.latitude),
+    longitude: this.fb.control<number | null>(null, V.longitude),
   });
 
   protected title(): string {
@@ -165,7 +176,7 @@ export class AdminLookups implements OnInit {
   }
 
   protected open(item: ServiceCategory | City | SubscriptionPlan | null): void {
-    const any = item as Partial<ServiceCategory & SubscriptionPlan> | null;
+    const any = item as Partial<ServiceCategory & SubscriptionPlan & City> | null;
     this.editing.set(item ? { id: item.id } : null);
     this.form.reset({
       name: any?.name ?? '',
@@ -175,6 +186,8 @@ export class AdminLookups implements OnInit {
       durationDays: any?.durationDays ?? 30,
       priorityWeight: any?.priorityWeight ?? 1,
       isActive: any?.isActive ?? true,
+      latitude: any?.latitude ?? null,
+      longitude: any?.longitude ?? null,
     });
     this.editOpen.set(true);
   }
@@ -189,9 +202,11 @@ export class AdminLookups implements OnInit {
         request$ = id ? this.categoryApi.update(id, { ...body, isActive: v.isActive }) : this.categoryApi.create(body);
         break;
       }
-      case 'gradovi':
-        request$ = id ? this.cityApi.update(id, { name: v.name }) : this.cityApi.create({ name: v.name });
+      case 'gradovi': {
+        const body = { name: v.name, latitude: v.latitude ?? null, longitude: v.longitude ?? null };
+        request$ = id ? this.cityApi.update(id, body) : this.cityApi.create(body);
         break;
+      }
       default: {
         const body = {
           name: v.name,

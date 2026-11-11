@@ -37,6 +37,7 @@ import {
   VendorImageSearch,
   VendorImageUpdateRequest,
   VendorInsertRequest,
+  VendorMapPoint,
   VendorSearch,
   VendorUpdateRequest,
   WorkingHour,
@@ -152,6 +153,11 @@ export class VendorApi extends CrudApi<Vendor, VendorSearch, VendorInsertRequest
 
   adminUpdate(id: number, request: VendorAdminUpdateRequest): Observable<Vendor> {
     return this.http.put<Vendor>(`${this.url}/${id}/admin`, request);
+  }
+
+  /** Javne tačke za mapu na početnoj: svi aktivni ponuđači odjednom (server kešira 5 minuta). */
+  map(context?: HttpContext): Observable<VendorMapPoint[]> {
+    return this.http.get<VendorMapPoint[]>(`${this.url}/map`, { context });
   }
 }
 

@@ -1,5 +1,5 @@
 import { ServiceCategory, Vendor } from './models';
-import { allocate, buildPlan, smoothedRating } from './planner';
+import { allocate, buildPlan, inRange, smoothedRating } from './planner';
 
 const category = (id: number, slug: string): ServiceCategory => ({
   id,
@@ -63,5 +63,26 @@ describe('planer', () => {
     const plan = buildPlan([photo], 5000, new Map());
     expect(plan.lines[0].choice).toBeNull();
     expect(plan.totalFrom).toBe(0);
+  });
+
+  it('gornja granica cijene iz upitnika zamjenjuje udio u budžetu', () => {
+    const shares = allocate([hall, photo], 5800, { 2: { min: null, max: 500 } });
+    expect(shares.get(2)).toBe(500);
+    expect(Math.round(shares.get(1)!)).toBe(4500);
+  });
+
+  it('bira samo ponude u rasponu cijene (preklapanje kao na serveru)', () => {
+    expect(inRange(900, 1800, { min: 1000, max: null })).toBe(true);
+    expect(inRange(900, 1800, { min: 2000, max: null })).toBe(false);
+    expect(inRange(900, 1800, { min: null, max: 800 })).toBe(false);
+    const plan = buildPlan(
+      [hall],
+      20000,
+      new Map([[1, [vendor(1, 1, 12000, 5), vendor(2, 1, 4000, 4)]]]),
+      {},
+      { 1: { min: null, max: 5000 } },
+    );
+    expect(plan.lines[0].choice?.vendor.id).toBe(2);
+    expect(plan.lines[0].alternatives.length).toBe(0);
   });
 });

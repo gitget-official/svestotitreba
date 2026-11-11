@@ -7,12 +7,20 @@ import { ServiceCategory, Vendor } from './models';
  * AI sloj (faza 4) kasnije može objasniti ili doraditi prijedlog, ali ovaj algoritam ostaje osnova.
  */
 
+/** Raspon cijene koji mladenci žele za jednu uslugu (prazna strana = bez granice). */
+export interface PriceRange {
+  min: number | null;
+  max: number | null;
+}
+
 export interface PlanAnswers {
   categoryIds: number[];
   budget: number;
   cityId: number | null;
   date: string | null;
   guests: number | null;
+  /** Cijena po usluzi iz upitnika (categoryId -> raspon); stariji sačuvani planovi je nemaju. */
+  priceRanges?: Record<number, PriceRange>;
 }
 
 export interface PlanOption {
@@ -57,15 +65,31 @@ export function smoothedRating(average: number | null, count: number): number {
   return ((average ?? prior) * count + prior * weight) / (count + weight);
 }
 
-export function allocate(categories: ServiceCategory[], budget: number): Map<number, number> {
+/**
+ * Dio budžeta po kategoriji. Gornja granica cijene iz upitnika (ako je unesena) zamjenjuje udio:
+ * mladenci su rekli koliko žele dati za tu uslugu.
+ */
+export function allocate(
+  categories: ServiceCategory[],
+  budget: number,
+  ranges: Record<number, PriceRange> = {},
+): Map<number, number> {
   const shares = categories.map((c) => SHARE[c.slug] ?? DEFAULT_SHARE);
   const sum = shares.reduce((a, b) => a + b, 0) || 1;
-  return new Map(categories.map((c, i) => [c.id, (budget * shares[i]) / sum]));
+  return new Map(categories.map((c, i) => [c.id, ranges[c.id]?.max ?? (budget * shares[i]) / sum]));
 }
 
-/** Najjeftinija aktivna usluga ponuđača u datoj kategoriji. */
-export function optionFor(vendor: Vendor, categoryId: number, allocation: number): PlanOption | null {
-  const offers = vendor.offerings.filter((o) => o.isActive && o.serviceCategoryId === categoryId);
+/** Da li se raspon usluge (od–do) preklapa sa željenim rasponom (isto pravilo kao filter cijene na serveru). */
+export function inRange(priceFrom: number, priceTo: number, range: PriceRange | undefined): boolean {
+  if (!range) return true;
+  return (range.min === null || priceTo >= range.min) && (range.max === null || priceFrom <= range.max);
+}
+
+/** Najjeftinija aktivna usluga ponuđača u datoj kategoriji (u željenom rasponu cijene, ako je zadan). */
+export function optionFor(vendor: Vendor, categoryId: number, allocation: number, range?: PriceRange): PlanOption | null {
+  const offers = vendor.offerings.filter(
+    (o) => o.isActive && o.serviceCategoryId === categoryId && inRange(o.priceFrom, o.priceTo, range),
+  );
   if (!offers.length) return null;
   const cheapest = offers.reduce((a, b) => (b.priceFrom < a.priceFrom ? b : a));
   return {
@@ -91,21 +115,23 @@ export function rankOptions(options: PlanOption[]): PlanOption[] {
 
 /**
  * Sastavi plan. `vendorsByCategory` su kandidati iz pretrage (već filtrirani po gradu/datumu),
- * `picks` su ručni izbori mladenaca (categoryId -> vendorId) koji imaju prednost.
+ * `picks` su ručni izbori mladenaca (categoryId -> vendorId) koji imaju prednost, a `ranges` cijena po
+ * usluzi iz upitnika (bira se samo iz ponuda u tom rasponu).
  */
 export function buildPlan(
   categories: ServiceCategory[],
   budget: number,
   vendorsByCategory: Map<number, Vendor[]>,
   picks: Record<number, number> = {},
+  ranges: Record<number, PriceRange> = {},
 ): Plan {
-  const allocations = allocate(categories, budget);
+  const allocations = allocate(categories, budget, ranges);
 
   const lines: PlanLine[] = categories.map((category) => {
     const allocation = allocations.get(category.id) ?? 0;
     const options = rankOptions(
       (vendorsByCategory.get(category.id) ?? [])
-        .map((v) => optionFor(v, category.id, allocation))
+        .map((v) => optionFor(v, category.id, allocation, ranges[category.id]))
         .filter((o): o is PlanOption => o !== null),
     );
     const picked = options.find((o) => o.vendor.id === picks[category.id]);

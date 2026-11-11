@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, booleanAttribute, computed, input, output } from '@angular/core';
 import { Icon } from './icon';
 
 type Slot = { kind: 'page'; page: number } | { kind: 'gap'; key: string };
@@ -6,18 +6,25 @@ type Slot = { kind: 'page'; page: number } | { kind: 'gap'; key: string };
 /**
  * Paginacija: prethodna / brojevi stranica sa "…" / sljedeća, i "Prikazano 13–24 od 40".
  * Na telefonu ostaju samo susjedne stranice, da sve stane u jedan red i da su mete dovoljno velike.
+ *
+ * `floating`: traka pluta pri dnu ekrana (position: sticky) dok se lista skroluje, pa se na drugu stranicu
+ * prelazi bez skrolanja do kraja. Na kraju liste se spusti na svoje mjesto ispod rezultata, pa nikad ne
+ * prekriva podnožje ni zadnji red. Na telefonu je kompaktna ("3 / 12"), da ne udari u dugme "Moj plan".
  */
 @Component({
   selector: 'app-pagination',
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.floating]': 'floating() && pages() > 1' },
   template: `
     @if (pages() > 1) {
-      <nav class="pager" aria-label="Stranice rezultata">
+      <nav class="pager" [class.glass]="floating()" aria-label="Stranice rezultata">
         <button type="button" class="step" (click)="go(page() - 1)" [disabled]="page() === 1" aria-label="Nazad na prethodnu stranicu">
           <app-icon name="chevron-left" />
           <span class="step-label">Nazad</span>
         </button>
+
+        <span class="compact t-footnote" aria-hidden="true">{{ page() }} / {{ pages() }}</span>
 
         <ol class="numbers">
           @for (slot of slots(); track slot.kind === 'page' ? slot.page : slot.key) {
@@ -136,6 +143,51 @@ type Slot = { kind: 'page'; page: number } | { kind: 'gap'; key: string };
       min-height: 1.2rem;
     }
 
+    .compact {
+      display: none;
+      min-width: 3.5rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    :host(.floating) {
+      position: sticky;
+      bottom: calc(var(--space-4) + var(--safe-bottom));
+      z-index: 30;
+      pointer-events: none; // prazan prostor oko trake ne blokira klik na kartice ispod
+    }
+
+    // Stakleni sloj (.glass) preko kartica; vlastita pozadina trake bi ga prekrila.
+    :host(.floating) .pager {
+      pointer-events: auto;
+      border-color: var(--glass-edge);
+      background: var(--glass-tint);
+      box-shadow:
+        inset 0 1px 0 var(--glass-highlight),
+        var(--shadow-lg);
+    }
+
+    // Broj prikazanih je već iznad liste; ispod plutajuće trake bi samo smetao.
+    :host(.floating) .summary {
+      display: none;
+    }
+
+    // Telefon: iznad donje trake sa karticama.
+    @media (max-width: 47.99rem) {
+      :host(.floating) {
+        bottom: calc(4.75rem + var(--safe-bottom));
+      }
+
+      :host(.floating) .numbers {
+        display: none;
+      }
+
+      :host(.floating) .compact {
+        display: inline-block;
+      }
+    }
+
     @media (max-width: 39.99rem) {
       .step-label,
       .far {
@@ -152,6 +204,7 @@ export class Pagination {
   readonly page = input.required<number>();
   readonly pageSize = input.required<number>();
   readonly total = input.required<number>();
+  readonly floating = input(false, { transform: booleanAttribute });
   readonly pageChange = output<number>();
 
   protected readonly pages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
