@@ -434,3 +434,19 @@ export interface BookingUpdateRequest {
 export interface BookingStatusChangeRequest {
   note: string | null;
 }
+
+/** Tačka na javnoj mapi ponuđača (GET /api/vendors/map). Bez kontakata i adrese. */
+export interface VendorMapPoint {
+  id: number;
+  name: string;
+  slug: string;
+  cityId: number;
+  cityName: string;
+  /** Slugovi kategorija aktivnih ponuda. */
+  categories: string[];
+  latitude: number;
+  longitude: number;
+  /** True kad ponuđač nema svoju lokaciju, pa je tačka u centru grada. */
+  isApproximate: boolean;
+  imageUrl: string | null;
+}
