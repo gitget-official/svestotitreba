@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -102,13 +103,15 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
         class="stage"
         [class.zoomed]="zoomed()"
         [class.dragging]="dragging()"
+        [class.full]="full()"
+        [style.--ratio]="ratio"
         (pointerdown)="onDown($event)"
         (pointermove)="onMove($event)"
         (pointerup)="onUp($event)"
         (pointercancel)="onUp($event)"
         (dblclick)="onDouble($event)"
       >
-        <svg [attr.viewBox]="viewBox" role="img" aria-labelledby="mapa-bih">
+        <svg #map [attr.viewBox]="viewBox" role="img" aria-labelledby="mapa-bih">
           <defs>
             <path id="bih-shape" [attr.d]="geo.country" />
             <clipPath id="bih-clip"><use href="#bih-shape" /></clipPath>
@@ -190,53 +193,23 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
           <button type="button" aria-label="Uvećaj mapu" (click)="zoomBy(1.8)"><app-icon name="plus" /></button>
           <span aria-hidden="true"></span>
           <button type="button" aria-label="Umanji mapu" (click)="zoomBy(1 / 1.8)"><app-icon name="minus" /></button>
+          <span aria-hidden="true"></span>
+          <button type="button" [attr.aria-label]="full() ? 'Zatvori prikaz preko cijelog ekrana' : 'Mapa preko cijelog ekrana'"
+            [attr.aria-pressed]="full()" (click)="toggleFull()">
+            <app-icon [name]="full() ? 'close' : 'expand'" />
+          </button>
         </div>
-        <button type="button" class="ctl glass reset" aria-label="Prikaži cijelu BiH" [class.hidden]="!zoomed()" (click)="reset()">
-          <app-icon name="expand" />
+        <button type="button" class="ctl glass reset" aria-label="Početni prikaz: cijela BiH, bez odabira"
+          [class.hidden]="!zoomed() && !selection()" (click)="reset()">
+          <app-icon name="refresh" /> <span>Početni prikaz</span>
         </button>
         <p class="hint" [class.show]="hint()" aria-hidden="true">Za zumiranje držite Ctrl i okrenite kotačić</p>
       </div>
   `,
   styles: `
+    // Boje mape (svijetla i tamna tema) su tokeni --map-* u styles/_tokens.scss.
     :host {
       display: block;
-      --map-top-1: color-mix(in srgb, var(--bg-elevated) 96%, var(--blush));
-      --map-top-2: color-mix(in srgb, var(--bg-elevated) 84%, var(--blush));
-      --map-side-1: color-mix(in srgb, var(--blush) 55%, var(--champagne));
-      --map-side-2: color-mix(in srgb, var(--blush-deep) 80%, var(--taupe));
-      --map-shadow: rgba(140, 47, 57, 0.28);
-      --map-relief: 0.2;
-      --map-ring: rgba(255, 255, 255, 0.85);
-      --map-rim: rgba(255, 255, 255, 0.9);
-      --map-muni: color-mix(in srgb, var(--taupe) 20%, transparent);
-    }
-
-    // Tamna tema: površina mape je osjetno svjetlija od pozadine sekcije (a i dalje tamna), granice općina
-    // su tek naznačene, a markeri ostaju glavni akcenat.
-    :host-context(:root[data-theme='dark']) {
-      --map-top-1: #463b38;
-      --map-top-2: #362d2b;
-      --map-side-1: #4f3a3c;
-      --map-side-2: #241a1b;
-      --map-shadow: rgba(0, 0, 0, 0.6);
-      --map-relief: 0.1;
-      --map-ring: rgba(255, 235, 230, 0.28);
-      --map-rim: rgba(255, 235, 230, 0.24);
-      --map-muni: rgba(255, 235, 225, 0.07);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :host-context(:root:not([data-theme='light'])) {
-        --map-top-1: #463b38;
-        --map-top-2: #362d2b;
-        --map-side-1: #4f3a3c;
-        --map-side-2: #241a1b;
-        --map-shadow: rgba(0, 0, 0, 0.6);
-        --map-relief: 0.1;
-        --map-ring: rgba(255, 235, 230, 0.28);
-        --map-rim: rgba(255, 235, 230, 0.24);
-        --map-muni: rgba(255, 235, 225, 0.07);
-      }
     }
 
     // ---- Mapa ----
@@ -254,6 +227,9 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     .stage.zoomed {
       touch-action: none;
       cursor: grab;
+    }
+
+    .stage.zoomed:not(.full) {
       -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
         linear-gradient(transparent, #000 7%, #000 93%, transparent);
       -webkit-mask-composite: source-in;
@@ -264,6 +240,27 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
 
     .stage.dragging {
       cursor: grabbing;
+    }
+
+    // Preko cijelog prozora: mapa centrirana i što veća.
+    .stage.full {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: grid;
+      place-items: center;
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 1rem;
+      border: 0;
+      border-radius: 0;
+      background: var(--bg);
+      color: inherit;
+    }
+
+    .stage.full > svg {
+      width: min(100%, calc((100dvh - 2rem) * var(--ratio)));
     }
 
     .stage > svg {
@@ -289,10 +286,6 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       fill: #fff;
       opacity: var(--map-relief);
       mix-blend-mode: multiply;
-    }
-
-    .stage.moving .relief {
-      opacity: calc(var(--map-relief) * 0.7);
     }
 
     .munis {
@@ -649,12 +642,12 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     .reset {
       right: 0.75rem;
       bottom: 0.75rem;
-      display: grid;
-      place-items: center;
-      width: 3rem;
-      height: 3rem;
-      padding: 0;
-      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 0.9rem;
+      border-radius: var(--radius-full);
+      font-size: 0.8125rem;
       transition: opacity var(--dur-fast) ease, scale var(--dur-fast) var(--ease-out);
     }
 
@@ -692,7 +685,8 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
         font-size: 0.8125rem;
       }
 
-      .zoom {
+      // Na telefonu se zumira prstima; ostaje samo dugme za prikaz preko cijelog ekrana.
+      .zoom > :not(:last-child) {
         display: none;
       }
 
@@ -726,6 +720,7 @@ export class BihMap {
   private readonly toasts = inject(ToastService);
   private readonly lookups = inject(LookupStore);
   private readonly stage = viewChild.required<ElementRef<HTMLElement>>('stage');
+  private readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('map');
 
   protected readonly geo = BIH_GEO;
   protected readonly viewBox = `${FRAME_X} ${FRAME_Y} ${FRAME_W} ${FRAME_H}`;
@@ -735,7 +730,14 @@ export class BihMap {
   protected readonly view = signal<View>({ k: 1, x: 0, y: 0 });
   /** Zum za grupisanje: mijenja se tek kad se pokret završi, da se markeri ne prespajaju usred animacije. */
   private readonly settledK = signal(1);
+  /** Širina iscrtane mape u pikselima i njen pomak unutar okvira (u prikazu preko cijelog ekrana je centrirana). */
   private readonly width = signal(0);
+  private readonly ox = signal(0);
+  private readonly oy = signal(0);
+  /** Mapa preko cijelog ekrana (prozora): radi isto na svakom uređaju, i na iPhoneu bez Fullscreen API-ja. */
+  protected readonly full = signal(false);
+  readonly fullChange = output<boolean>();
+  protected readonly ratio = FRAME_W / FRAME_H;
   protected readonly dragging = signal(false);
   protected readonly hint = signal(false);
   private readonly selected = signal<{ type: 'city'; cityId: number } | { type: 'vendor'; point: Point } | null>(null);
@@ -830,14 +832,14 @@ export class BihMap {
         const cityName = c.city !== null ? c.members[0].v.cityName : null;
         return {
           ...c,
-          left: (c.x * k + x - FRAME_X) * scale,
-          top: (c.y * k + y - FRAME_Y) * scale,
+          left: this.ox() + (c.x * k + x - FRAME_X) * scale,
+          top: this.oy() + (c.y * k + y - FRAME_Y) * scale,
           size: Math.round((w < 480 ? 30 : 38) + Math.min(Math.log2(n) * (w < 480 ? 3 : 4.2), w < 480 ? 14 : 22)),
           label: cityName ? `${cityName}: ${n} ${plural(n)}` : `${n} ${plural(n)} u ovoj zoni, približi mapu`,
           cityName,
         };
       })
-      .filter((m) => m.left > -30 && m.left < w + 30 && m.top > -30 && m.top < h + 30);
+      .filter((m) => m.left > this.ox() - 30 && m.left < this.ox() + w + 30 && m.top > this.oy() - 30 && m.top < this.oy() + h + 30);
   });
 
   /** Marker iznad kojeg je miš (ili fokus tastature); prikazuje mali opis šta broj znači. */
@@ -914,13 +916,13 @@ export class BihMap {
         params: null,
       };
     }
-    const left = (wx * k + x - FRAME_X) * scale;
-    const top = (wy * k + y - FRAME_Y) * scale;
+    const left = this.ox() + (wx * k + x - FRAME_X) * scale;
+    const top = this.oy() + (wy * k + y - FRAME_Y) * scale;
     // Kartica je centrirana iznad pribadače, ali ne izlazi iz okvira mape.
     const cardW = Math.min(280, this.width() - 16);
-    const cardLeft = Math.min(Math.max(left - cardW / 2, 8), this.width() - cardW - 8);
+    const cardLeft = Math.min(Math.max(left - cardW / 2, this.ox() + 8), this.ox() + this.width() - cardW - 8);
     // Uz sjevernu ivicu kartica ne bi stala iznad pribadače, pa ide ispod nje.
-    const below = top < 150;
+    const below = top - this.oy() < 150;
     const tail = Math.min(Math.max(left - cardLeft, 20), cardW - 20);
     return { ...base, left, top, cardLeft, below, tail };
   });
@@ -947,15 +949,22 @@ export class BihMap {
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const el = this.stage().nativeElement;
-      // Širina odmah, pa praćenje promjena (ResizeObserver ne javlja ništa dok je kartica u pozadini).
-      this.width.set(el.clientWidth);
-      const ro = new ResizeObserver(([entry]) => this.width.set(entry.contentRect.width));
+      // Mjerenje odmah, pa praćenje promjena (ResizeObserver ne javlja ništa dok je kartica u pozadini).
+      this.measure();
+      const ro = new ResizeObserver(() => this.measure());
       ro.observe(el);
+      ro.observe(this.svg().nativeElement);
+      const escape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && this.full()) this.toggleFull();
+      };
+      document.addEventListener('keydown', escape);
       const wheel = (e: WheelEvent) => this.onWheel(e);
       el.addEventListener('wheel', wheel, { passive: false });
       destroyRef.onDestroy(() => {
         ro.disconnect();
         el.removeEventListener('wheel', wheel);
+        document.removeEventListener('keydown', escape);
+        if (this.full()) document.documentElement.style.overflow = '';
         cancelAnimationFrame(this.raf);
         clearTimeout(this.hintTimer);
         clearTimeout(this.settleTimer);
@@ -993,8 +1002,8 @@ export class BihMap {
 
   private selectCity(city: MapCity): void {
     this.selected.set({ type: 'city', cityId: city.id });
-    // Na cijeloj BiH grad se samo označi (kontekst ostaje vidljiv); na uvećanoj mapi mapa dođe do njega.
-    if (this.zoomed()) this.focus(city.x, city.y, this.view().k);
+    // Blago približavanje gradu (kontekst ostaje vidljiv); na već uvećanoj mapi zum ostaje isti.
+    this.focus(city.x, city.y, Math.max(this.view().k, 1.4));
   }
 
   protected onMarker(m: Cluster): void {
@@ -1028,6 +1037,32 @@ export class BihMap {
   protected reset(): void {
     this.selected.set(null);
     this.animateTo({ k: 1, x: 0, y: 0 });
+  }
+
+  protected toggleFull(): void {
+    const full = !this.full();
+    const el = this.stage().nativeElement;
+    this.full.set(full);
+    this.fullChange.emit(full);
+    // Top layer (popover): iznad navigacije i svih slojeva stranice, čak i dok roditelj još animira ulaz.
+    // Stariji preglednici ostaju na position: fixed (+ podignuta sekcija, vidi fullChange).
+    if (full && 'showPopover' in el) {
+      el.setAttribute('popover', 'manual');
+      el.showPopover();
+    } else if (!full && el.hasAttribute('popover')) {
+      if (el.matches(':popover-open')) el.hidePopover();
+      el.removeAttribute('popover');
+    }
+    // Stranica ispod se ne skroluje dok je mapa preko cijelog ekrana.
+    document.documentElement.style.overflow = full ? 'hidden' : '';
+  }
+
+  private measure(): void {
+    const svg = this.svg().nativeElement.getBoundingClientRect();
+    const stage = this.stage().nativeElement.getBoundingClientRect();
+    this.width.set(svg.width);
+    this.ox.set(svg.left - stage.left);
+    this.oy.set(svg.top - stage.top);
   }
 
   protected locate(): void {
@@ -1113,7 +1148,7 @@ export class BihMap {
   }
 
   private toViewBox(clientX: number, clientY: number): [number, number] {
-    const rect = this.stage().nativeElement.getBoundingClientRect();
+    const rect = this.svg().nativeElement.getBoundingClientRect();
     const scale = rect.width / FRAME_W;
     return [(clientX - rect.left) / scale + FRAME_X, (clientY - rect.top) / scale + FRAME_Y];
   }

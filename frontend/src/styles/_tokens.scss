@@ -36,6 +36,17 @@
   --taupe: #b9a594;
   --decor-opacity: 0.8;
 
+  // Mapa ponuđača na početnoj (3D ploča BiH): površina, rub, sjena, reljef i linije općina.
+  --map-top-1: color-mix(in srgb, var(--bg-elevated) 96%, var(--blush));
+  --map-top-2: color-mix(in srgb, var(--bg-elevated) 84%, var(--blush));
+  --map-side-1: color-mix(in srgb, var(--blush) 55%, var(--champagne));
+  --map-side-2: color-mix(in srgb, var(--blush-deep) 80%, var(--taupe));
+  --map-shadow: rgba(140, 47, 57, 0.28);
+  --map-relief: 0.2;
+  --map-ring: rgba(255, 255, 255, 0.85);
+  --map-rim: rgba(255, 255, 255, 0.9);
+  --map-muni: color-mix(in srgb, var(--taupe) 20%, transparent);
+
   --success: var(--sage);
   --success-soft: var(--sage-soft);
   --warning: #93560c;
@@ -130,6 +141,17 @@
   --champagne: #8c7a5c;
   --taupe: #7d6d60;
   --decor-opacity: 0.42;
+
+  // Mapa: površina osjetno svjetlija od pozadine (a i dalje tamna), općine tek naznačene; markeri ostaju akcenat.
+  --map-top-1: #463b38;
+  --map-top-2: #362d2b;
+  --map-side-1: #4f3a3c;
+  --map-side-2: #241a1b;
+  --map-shadow: rgba(0, 0, 0, 0.6);
+  --map-relief: 0.1;
+  --map-ring: rgba(255, 235, 230, 0.28);
+  --map-rim: rgba(255, 235, 230, 0.24);
+  --map-muni: rgba(255, 235, 225, 0.07);
 
   --success: var(--sage);
   --success-soft: var(--sage-soft);

@@ -32,7 +32,7 @@ const normalize = (s: string) =>
   imports: [BihMap, DecimalPipe, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="shell">
+    <div class="shell" [class.raised]="mapFull()">
       <svg class="decor heart" viewBox="0 0 120 100" aria-hidden="true">
         <path d="M60 92C30 70 8 52 8 31 8 16 20 6 33 6c11 0 20 7 27 18C67 13 76 6 87 6c13 0 25 10 25 25 0 21-22 39-52 61z" />
         <path d="M60 92c-6-5-11-9-16-14" />
@@ -101,7 +101,7 @@ const normalize = (s: string) =>
         </a>
       </div>
 
-      <app-bih-map [data]="data()" [category]="category()" />
+      <app-bih-map [data]="data()" [category]="category()" (fullChange)="mapFull.set($event)" />
     </div>
   `,
   styles: `
@@ -124,6 +124,11 @@ const normalize = (s: string) =>
         radial-gradient(30rem 24rem at 0% 100%, color-mix(in srgb, var(--blush) 22%, transparent), transparent 70%),
         linear-gradient(160deg, color-mix(in srgb, var(--bg) 82%, var(--blush)), var(--bg) 70%);
       box-shadow: var(--shadow-lg);
+    }
+
+    // Sekcija pravi svoj sloj (isolation), pa mapa preko cijelog ekrana mora podići cijelu sekciju iznad trake.
+    .shell.raised {
+      z-index: 1000;
     }
 
     .decor {
@@ -389,6 +394,8 @@ export class LandingMap {
   protected readonly categories = MAP_CATEGORIES;
   protected readonly category = signal('');
   protected readonly query = signal('');
+  /** Mapa je preko cijelog ekrana: sekcija ide iznad navigacije (vidi .raised). */
+  protected readonly mapFull = signal(false);
 
   /** Ponuđači u odabranoj kategoriji. */
   private readonly points = computed(() => {
