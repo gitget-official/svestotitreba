@@ -45,6 +45,9 @@ public class User : BaseEntity
 public class City : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
+    /// <summary>Centar grada. Ponuđač bez vlastitih koordinata se na mapi prikazuje ovdje.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 
     public ICollection<Vendor> Vendors { get; set; } = new List<Vendor>();
 }

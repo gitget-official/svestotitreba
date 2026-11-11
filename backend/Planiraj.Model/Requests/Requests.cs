@@ -117,6 +117,9 @@ public class UserUpdateRequest
 public class CityUpsertRequest
 {
     [Required, MaxLength(100)] public string Name { get; set; } = string.Empty;
+    /// <summary>Centar grada (opciono); koristi se na mapi za ponuđače bez vlastitih koordinata.</summary>
+    [Range(-90, 90)] public double? Latitude { get; set; }
+    [Range(-180, 180)] public double? Longitude { get; set; }
 }
 
 public class ServiceCategoryInsertRequest

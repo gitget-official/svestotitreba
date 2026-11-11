@@ -119,10 +119,15 @@ export interface UserUpdateRequest {
 export interface City {
   id: number;
   name: string;
+  /** Centar grada; ponuđač bez vlastitih koordinata se na mapi prikazuje ovdje. */
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface CityUpsertRequest {
   name: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ServiceCategory {
