@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
 import { BRAND } from '../../core/brand';
 import { LookupStore } from '../../core/lookups';
-import { Vendor } from '../../core/models';
+import { Vendor, VendorMapPoint } from '../../core/models';
 import { FadeInImage } from '../../shared/motion/fade-in-image';
 import { Reveal } from '../../shared/motion/reveal';
 import { BrandMark } from '../../shared/ui/brand-mark';
@@ -14,6 +14,7 @@ import { Ink } from '../../shared/ui/ink';
 import { LoveLine } from '../../shared/motion/love-line';
 import { Petals } from '../../shared/motion/petals';
 import { LandingFaq } from './landing-faq';
+import { LandingMap } from './landing-map';
 import { LandingSteps } from './landing-steps';
 import { VendorCard } from '../../shared/ui/vendor-card';
 
@@ -34,7 +35,7 @@ const CATEGORIES = [
  */
 @Component({
   selector: 'app-landing',
-  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingSteps, LoveLine, Petals, Reveal, VendorCard],
+  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingMap, LandingSteps, LoveLine, Petals, Reveal, VendorCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
@@ -130,6 +131,12 @@ const CATEGORIES = [
           }
         </div>
       </section>
+
+      @if (mapPoints().length) {
+        <section class="container section" aria-labelledby="mapa-bih" appReveal>
+          <app-landing-map [data]="mapPoints()" />
+        </section>
+      }
 
       @if (featured().length) {
         <section class="container section" aria-labelledby="istaknuti">
@@ -793,6 +800,8 @@ export class Landing implements OnInit {
   protected readonly year = new Date().getFullYear();
   protected readonly categories = CATEGORIES;
   protected readonly featured = signal<Vendor[]>([]);
+  /** Tačke za mapu "Ponuđači širom BiH"; dok ih nema (ili API ne odgovori), sekcija se ne prikazuje. */
+  protected readonly mapPoints = signal<VendorMapPoint[]>([]);
   protected readonly scrolled = signal(false);
 
   protected category = '';
@@ -817,6 +826,10 @@ export class Landing implements OnInit {
     this.vendorApi.list({ pageSize: 8 }, context).subscribe({
       next: (r) => this.featured.set(r.items),
       error: () => this.featured.set([]),
+    });
+    this.vendorApi.map(context).subscribe({
+      next: (points) => this.mapPoints.set(points),
+      error: () => this.mapPoints.set([]),
     });
   }
 
