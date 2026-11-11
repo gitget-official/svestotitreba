@@ -39,7 +39,8 @@ Testovi (ne trebaju SQL Server ni Google):
 dotnet test Planiraj.sln
 ```
 
-Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profila i ograničenje zahtjeva.
+Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profila, ograničenje zahtjeva i e-mail obavijesti
+(testovi nikad ništa ne šalju: koriste lažni `IEmailSender`).
 
 Za ponovno punjenje baze od nule: `dotnet ef database drop --project Planiraj.Services --startup-project Planiraj.API`, pa ponovo pokreni API.
 
@@ -155,6 +156,73 @@ Sortiranje: istaknuti (aktivna pretplata) prvi, zatim po prosječnoj ocjeni, pa 
   salona; `DeletedAt` je popunjen i admin takav nalog ne može ponovo uključiti. Saloni i admini se brišu preko admina.
 - Greške se vraćaju kao `{ "status": 400, "message": "..." }` (400, 403, 404, 409)
 
+## E-mail obavijesti (FR-15)
+
+Rezervacije šalju e-mail obavijesti. **Zadano je sve isključeno** (`Email:Mode = Disabled` u `appsettings.json`): ništa se
+ne upisuje i ništa se ne šalje, pa deploy ovog koda sam po sebi ne šalje nijednu poruku. U razvoju
+(`appsettings.Development.json`) je `Log`: poruke se samo ispisuju u log.
+
+### Ko dobija koju poruku
+
+Pravilo: obavještavaju se mladenci i vlasnik salona, **osim onoga ko je sam napravio promjenu**.
+
+| Događaj | Salon (vlasnik) | Mladenci |
+|---|---|---|
+| Novi zahtjev (ručna potvrda) | „Novi zahtjev za termin“ sa podacima i napomenom; Reply-To je e-mail mladenaca | „Zahtjev je poslan“ |
+| Novi zahtjev (automatska potvrda) | „Nova rezervacija“ | „Termin je potvrđen“ + `termin.ics` za kalendar |
+| Salon potvrdi | | „Termin je potvrđen“ + `termin.ics` |
+| Salon odbije | | „Zahtjev nije prihvaćen“ + poruka salona |
+| Mladenci izmijene zahtjev | „Zahtjev je izmijenjen“ | |
+| Mladenci otkažu | „Mladenci su otkazali termin“ | |
+| Salon otkaže | | „Termin je otkazan“ + poruka |
+| Admin potvrdi, odbije, izmijeni ili otkaže | dobija | dobija |
+| Mladenci obrišu profil | „Termin je otkazan“, bez imena i kontakta mladenaca | |
+
+Salonu se piše **samo na e-mail korisničkog naloga vlasnika**, nikad na javni kontakt e-mail sa stranice salona
+(`Vendor.Email`, u seedu izmišljeni `info@{slug}.ba`). Ponuđač bez vlasnika ne dobija ništa. Isključeni i obrisani nalozi
+ne dobijaju ništa; brisanjem profila brišu se i poruke koje mu još nisu poslane.
+
+### Kako radi
+
+- **Outbox**: poruka se upisuje u tabelu `EmailMessages` u istoj transakciji kao promjena rezervacije. Ako slanje ne
+  radi, rezervacija svejedno prolazi, a poruka čeka.
+- **Pozadinsko slanje** (`EmailDispatcher`) svakih `PollSeconds` obradi red. Neuspjelo slanje se ponavlja (1, 5, 15, 60
+  min) do `MaxAttempts`, pa dobija status `Failed`. Poruka starija od `MaxAgeHours` (24 h) se više ne šalje (`Expired`),
+  da poslije dužeg prekida ne ode gomila zastarjelih obavijesti. Obrađene poruke se brišu poslije `RetentionDays` (30)
+  jer sadrže lične podatke. Pretpostavka je jedna instanca API-ja.
+- Sav korisnički tekst (napomena, ime) se HTML-enkodira; svaka poruka ima i HTML i čisti tekst.
+
+### Zaštite od slanja pravim ljudima
+
+| Postavka | Značenje |
+|---|---|
+| `Mode` | `Disabled` (zadano), `Log` (samo log) ili `Smtp` (stvarno slanje) |
+| `RedirectAllTo` | Sve poruke idu na ovu adresu; pravi primalac piše u naslovu (`[za: ...]`), Reply-To se izostavlja |
+| `AllowedRecipients` | Šalje se samo na ove adrese ili domene (`"ja@gmail.com"`, `"@firma.ba"`), ostalo se preskače |
+| `BlockedDomains` | Domene na koje se nikad ne šalje |
+
+Uvijek se preskaču rezervisane domene (`.invalid`, `.test`, `.example`, `.local`, `example.com`...), pa i obrisani profili
+(`obrisan-{id}@obrisano.invalid`). **Van produkcije `Smtp` neće ni da se pokrene** bez `RedirectAllTo` ili
+`AllowedRecipients`. Provjera primaoca se radi i pri upisu i neposredno prije slanja.
+
+### Uključivanje u produkciji
+
+1. Kod provajdera (Brevo, Mailjet, Postmark, Amazon SES...) potvrdi domenu i podesi **SPF, DKIM i DMARC**, inače poruke
+   idu u spam.
+2. Prvo proba sa preusmjeravanjem, npr. varijable okruženja:
+   ```
+   Email__Mode=Smtp
+   Email__FromAddress=noreply@domena.ba
+   Email__RedirectAllTo=tvoja@adresa.ba
+   Email__Smtp__Host=smtp.provajder.com
+   Email__Smtp__Username=...
+   Email__Smtp__Password=...   (tajna: samo varijabla okruženja, nikad appsettings)
+   ```
+3. Kad sve izgleda kako treba, ukloni `Email__RedirectAllTo`. Poruke idu samo za događaje poslije uključivanja; ništa se
+   ne šalje unazad.
+
+Linkovi u porukama vode na `Email:SiteUrl`, a ako nije postavljen, na `Seo:SiteUrl` ili prvi `Cors:Origins`.
+
 ## Sitemap za pretraživače
 
 `GET /sitemap.xml` (i isto na `/api/sitemap.xml`) vraća sitemap uvijek svjež iz baze: opće stranice i sve aktivne
@@ -183,4 +251,6 @@ Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. I
 - Odluke #3 (filter dostupnosti) i #4 (ko smije ostaviti recenziju) implementirane su privremeno, uz `@TODO` u kodu
 - Brisanje uploadovanog fajla sa diska kad se slika ukloni iz galerije (sada ostaje na disku)
 - Interni chat (faza 2), AI planiranje (faza 4), naplata pretplata (faza 5)
+- E-mail: reset zaboravljene lozinke i pozivnica za salon, podsjetnici (zahtjev bez odgovora, termin za 7 dana),
+  obavijesti o recenzijama, postavke obavijesti po korisniku
 - Produkcija: `Jwt:Key` i connection string preko varijabli okruženja, ne u `appsettings`

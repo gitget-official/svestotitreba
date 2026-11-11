@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Planiraj.Model.Dtos;
 using Planiraj.Services.Database;
+using Planiraj.Services.Email;
 using Planiraj.Services.Interfaces;
 
 namespace Planiraj.Tests;
@@ -24,10 +25,17 @@ public class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Privremeni folder za uploadovane slike; briše se na kraju.</summary>
     public string UploadRoot { get; } = Path.Combine(Path.GetTempPath(), "planiraj-test-" + Guid.NewGuid().ToString("N"));
 
-    /// <summary>Ograničenje zahtjeva je u testovima isključeno; RateLimitTests ga uključuje sa malim brojevima.</summary>
+    /// <summary>Lažno slanje e-maila: testovi nikad ništa ne šalju, samo provjeravaju šta bi bilo poslano.</summary>
+    public FakeEmailSender Emails { get; } = new();
+
+    /// <summary>
+    /// Ograničenje zahtjeva je u testovima isključeno; RateLimitTests ga uključuje sa malim brojevima.
+    /// E-mail je u Log načinu (appsettings.Development.json), ali bez pozadinskog slanja: testovi red obrađuju sami.
+    /// </summary>
     protected virtual Dictionary<string, string?> Settings => new()
     {
         ["RateLimit:Enabled"] = "false",
+        ["Email:DispatcherEnabled"] = "false",
     };
 
     public ApiFactory()
@@ -64,6 +72,7 @@ public class ApiFactory : WebApplicationFactory<Program>
                 .UseSqlite(_connection)
                 .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
             s.AddSingleton<IGoogleTokenValidator, FakeGoogle>();
+            s.AddSingleton<IEmailSender>(Emails);
         });
     }
 
@@ -108,6 +117,30 @@ public class ApiFactory : WebApplicationFactory<Program>
             _connection.Dispose();
             if (Directory.Exists(UploadRoot)) Directory.Delete(UploadRoot, recursive: true);
         }
+    }
+}
+
+/// <summary>Pamti poruke umjesto slanja; Fail = true simulira nedostupan SMTP server.</summary>
+public class FakeEmailSender : IEmailSender
+{
+    private readonly List<OutgoingEmail> _sent = new();
+    public bool Fail { get; set; }
+
+    public IReadOnlyList<OutgoingEmail> Sent
+    {
+        get { lock (_sent) return _sent.ToList(); }
+    }
+
+    public Task SendAsync(OutgoingEmail email, CancellationToken cancellationToken)
+    {
+        if (Fail) throw new InvalidOperationException("SMTP server nije dostupan (test).");
+        lock (_sent) _sent.Add(email);
+        return Task.CompletedTask;
+    }
+
+    public void Clear()
+    {
+        lock (_sent) _sent.Clear();
     }
 }
 

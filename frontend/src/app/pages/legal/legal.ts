@@ -194,9 +194,18 @@ export class Terms {
         <li>da vas prepoznamo pri prijavi i prikažemo vaš profil,</li>
         <li>da vaš plan i "Sačuvano" budu isti na svakom uređaju,</li>
         <li>da ponuđač dobije vaš zahtjev za termin i može vas kontaktirati,</li>
+        <li>da vam e-mailom javimo šta se desilo sa vašim zahtjevom za termin,</li>
         <li>da recenzije budu povezane sa stvarnim korisnikom.</li>
       </ul>
       <p>Vaše podatke ne prodajemo i ne dijelimo za reklame.</p>
+
+      <h2 class="t-title-3">E-mail obavijesti</h2>
+      <p>
+        Na e-mail adresu profila šaljemo samo obavijesti o vašim rezervacijama: da je zahtjev
+        poslan, potvrđen, odbijen, izmijenjen ili otkazan. Salon na isti način saznaje za nove i
+        otkazane termine. Ne šaljemo reklame. Poruke šalje vanjski servis za slanje e-maila, samo
+        da bi ih isporučio. Kopiju poslane poruke čuvamo najviše 30 dana.
+      </p>
 
       <h2 class="t-title-3">Saloni</h2>
       <p>

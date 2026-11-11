@@ -7,6 +7,7 @@ using Planiraj.Model.Requests;
 using Planiraj.Services.Database;
 using Planiraj.Services.Helpers;
 using Planiraj.Services.Interfaces;
+using Planiraj.Services.Notifications;
 using Planiraj.Services.Security;
 
 namespace Planiraj.Services.Services;
@@ -16,11 +17,13 @@ public class AuthService : IAuthService
 {
     private readonly PlanirajDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IBookingNotifier _bookingNotifier;
 
-    public AuthService(PlanirajDbContext context, ICurrentUserService currentUser)
+    public AuthService(PlanirajDbContext context, ICurrentUserService currentUser, IBookingNotifier bookingNotifier)
     {
         _context = context;
         _currentUser = currentUser;
+        _bookingNotifier = bookingNotifier;
     }
 
     public async Task<UserDto?> ValidateCredentialsAsync(string login, string password)
@@ -235,8 +238,14 @@ public class AuthService : IAuthService
                 b.Status = BookingStatus.Cancelled;
                 b.StatusNote = "Mladenci su obrisali profil.";
                 b.UpdatedAt = now;
+                // Salon saznaje da je termin slobodan (bez imena i kontakta mladenaca).
+                await _bookingNotifier.QueueAsync(b.Id, BookingEmailEvent.CancelledAccountDeleted);
             }
         }
+
+        // E-mailovi koji još čekaju slanje na adresu ovog profila se ne šalju.
+        _context.EmailMessages.RemoveRange(
+            _context.EmailMessages.Where(m => m.Status == EmailStatus.Pending && m.ToAddress == user.Email));
 
         // Red korisnika ostaje zbog recenzija i rezervacija salona, ali bez ičega što ga identifikuje.
         user.FirstName = "Obrisan";

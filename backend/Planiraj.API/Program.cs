@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Planiraj.API.Auth;
+using Planiraj.API.Email;
 using Microsoft.Extensions.FileProviders;
 using Planiraj.API.Middleware;
 using Planiraj.API.Uploads;
@@ -45,6 +46,10 @@ builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISitemapService, SitemapService>();
 builder.Services.AddScoped<IVendorMapService, VendorMapService>();
+
+// ---------- E-mail (FR-15) ----------
+// Zadano isključen (Email:Mode = Disabled). Vidi sekciju "E-mail obavijesti" u README-u.
+builder.Services.AddPlanirajEmail(builder.Configuration, builder.Environment);
 
 // ---------- JWT autentifikacija ----------
 var jwtSection = builder.Configuration.GetSection("Jwt");
