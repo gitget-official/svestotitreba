@@ -180,26 +180,6 @@ const AUTH_STYLES = `
     background: var(--separator);
   }
 
-  details.staff summary {
-    cursor: pointer;
-    text-align: center;
-    list-style: none;
-    color: var(--text-secondary, inherit);
-  }
-
-  details.staff summary::-webkit-details-marker {
-    display: none;
-  }
-
-  details.staff[open] summary {
-    margin-bottom: var(--space-4);
-  }
-
-  details.staff .staff-form {
-    display: grid;
-    gap: var(--space-4);
-  }
-
   .legal {
     text-align: center;
   }
@@ -228,16 +208,6 @@ const AUTH_STYLES = `
           <div class="alert" role="alert">{{ error() }}</div>
         }
 
-        <div class="google">
-          <app-google-button text="signin_with" [showMissing]="true" (credential)="google($event)" />
-          @if (googleBusy()) { <p class="t-footnote muted legal"><span class="spinner"></span> Prijavljujemo vas…</p> }
-          @else { <p class="t-footnote muted legal">Prijavom prihvatate <a routerLink="/uslovi">uslove korištenja</a> i <a routerLink="/privatnost">politiku privatnosti</a>.</p> }
-        </div>
-
-        <!-- Saloni i administratori: korisničko ime i lozinka. Mladenci se prijavljuju preko Googlea. -->
-        <details class="staff" [open]="staffOpen()">
-          <summary class="t-footnote muted">Prijava korisničkim imenom i lozinkom</summary>
-          <div class="staff-form">
         <div class="field">
           <label for="login">Korisničko ime ili e-mail</label>
           <input id="login" class="input" formControlName="login" autocomplete="username" autocapitalize="none" />
@@ -257,8 +227,14 @@ const AUTH_STYLES = `
         <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy()">
           @if (busy()) { <span class="spinner"></span> } @else { Prijava <app-icon name="arrow-right" /> }
         </button>
-          </div>
-        </details>
+
+        <p class="or t-footnote muted">ili</p>
+
+        <div class="google">
+          <app-google-button text="signin_with" [showMissing]="true" (credential)="google($event)" />
+          @if (googleBusy()) { <p class="t-footnote muted legal"><span class="spinner"></span> Prijavljujemo vas…</p> }
+          @else { <p class="t-footnote muted legal">Prijavom prihvatate <a routerLink="/uslovi">uslove korištenja</a> i <a routerLink="/privatnost">politiku privatnosti</a>.</p> }
+        </div>
       </form>
 
       <p class="footer t-callout muted">
@@ -284,8 +260,6 @@ export class Login {
   protected readonly error = signal<string | null>(null);
   protected readonly showPassword = signal(false);
   protected readonly googleBusy = signal(false);
-  /** Forma za lozinku je otvorena ako je korisnik već počeo da je koristi (npr. greška u lozinci). */
-  protected readonly staffOpen = signal(false);
 
   protected google(credential: string): void {
     this.googleBusy.set(true);
@@ -300,7 +274,6 @@ export class Login {
   }
 
   protected submit(): void {
-    this.staffOpen.set(true);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set('Unesite korisničko ime i lozinku.');
