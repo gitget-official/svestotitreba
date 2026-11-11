@@ -24,7 +24,7 @@ const SITEMAP_URL = process.env.SITEMAP_URL ?? '';
 // Ime i opis se čitaju iz core/brand.ts, da postoje samo na jednom mjestu.
 const brandSrc = await readFile(join(root, 'src/app/core/brand.ts'), 'utf8');
 const BRAND = {
-  name: /name:\s*'([^']+)'/.exec(brandSrc)?.[1] ?? 'Planiraj',
+  name: /name:\s*'([^']+)'/.exec(brandSrc)?.[1] ?? 'Svadbeno',
   tagline: /tagline:\s*'([^']+)'/.exec(brandSrc)?.[1] ?? '',
 };
 

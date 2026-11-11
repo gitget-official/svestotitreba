@@ -10,6 +10,7 @@ import { FadeInImage } from '../motion/fade-in-image';
 import { Icon, categoryIcon } from './icon';
 import { Sheet } from './sheet';
 import { ToastService } from './toast';
+import { BookingStatus } from './booking-status';
 
 /**
  * "Moj plan": dugme koje prati korisnika u donjem desnom uglu i otvara pregled svega isplaniranog.
@@ -17,7 +18,7 @@ import { ToastService } from './toast';
  */
 @Component({
   selector: 'app-plan-cart',
-  imports: [RouterLink, FadeInImage, Icon, Sheet],
+  imports: [RouterLink, FadeInImage, Icon, Sheet, BookingStatus],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
@@ -69,6 +70,8 @@ import { ToastService } from './toast';
                     <span class="t-caption muted">{{ item.categoryName }}</span>
                     <a class="name" [routerLink]="['/ponudjaci', item.vendorId + '-' + item.vendorSlug]" (click)="close()">{{ item.vendorName }}</a>
                     <span class="t-footnote muted">{{ range(item.priceFrom, item.priceTo) }}</span>
+                    <app-booking-status class="item-status" [vendorId]="item.vendorId" [bookingEnabled]="item.bookingEnabled"
+                      [link]="['/ponudjaci', item.vendorId + '-' + item.vendorSlug]" (navigated)="close()" />
                   </div>
                   <button type="button" class="icon-btn remove" (click)="remove(item)" [attr.aria-label]="'Ukloni ' + item.vendorName">
                     <app-icon name="close" />
@@ -89,7 +92,7 @@ import { ToastService } from './toast';
 
             <div class="actions">
               <a class="btn" routerLink="/planiranje" (click)="close()"><app-icon name="edit" /> Uredi u planeru</a>
-              <button type="button" class="btn btn-primary" (click)="save()" [disabled]="store.sync() === 'saving'">
+              <button type="button" class="btn btn-primary" (click)="save()" [disabled]="store.sync() === 'saving' || !store.dirty()">
                 @if (store.sync() === 'saving') { <span class="spinner"></span> } @else { <app-icon name="check" /> Sačuvaj plan }
               </button>
             </div>
@@ -341,6 +344,11 @@ import { ToastService } from './toast';
       text-overflow: ellipsis;
     }
 
+    .item-status {
+      justify-self: start;
+      margin-top: var(--space-1);
+    }
+
     .remove {
       width: 2.25rem;
       height: 2.25rem;
@@ -471,6 +479,7 @@ export class PlanCart {
 
   protected async save(): Promise<void> {
     const result = await this.store.save();
+    if (result === null) return; // nema izmjena od zadnjeg čuvanja
     if (result === 'server') this.toasts.success('Plan je sačuvan u vašem profilu.');
     else if (result === 'offline') this.toasts.info('Plan je sačuvan na ovom uređaju.');
     else this.toasts.info('Plan je sačuvan u ovom pregledniku. Napravite profil da ga ne izgubite.');

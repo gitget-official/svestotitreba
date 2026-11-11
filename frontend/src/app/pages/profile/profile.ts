@@ -11,11 +11,12 @@ import { ToastService } from '../../shared/ui/toast';
 import { Avatar } from '../../shared/ui/avatar';
 import { AvatarPicker } from '../../shared/ui/avatar-picker';
 import { ConfirmService } from '../../shared/ui/confirm';
+import { Select, SelectOption } from '../../shared/ui/select';
 import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-profile',
-  imports: [ReactiveFormsModule, RouterLink, FieldError, Avatar, AvatarPicker],
+  imports: [ReactiveFormsModule, RouterLink, FieldError, Avatar, AvatarPicker, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="container page enter narrow">
@@ -53,12 +54,12 @@ import { RouterLink } from '@angular/router';
             </div>
             <div class="field">
               <label for="city">Grad</label>
-              <select id="city" class="select" formControlName="cityId">
-                <option [ngValue]="null">Nije odabrano</option>
+              <app-select inputId="city" formControlName="cityId">
+                <app-option [value]="null">Nije odabrano</app-option>
                 @for (city of lookups.cities(); track city.id) {
-                  <option [ngValue]="city.id">{{ city.name }}</option>
+                  <app-option [value]="city.id">{{ city.name }}</app-option>
                 }
-              </select>
+              </app-select>
             </div>
           </div>
           <div class="form-actions">

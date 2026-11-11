@@ -165,13 +165,13 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
           </a>
         }
 
-        <button type="button" class="ctl locate" (click)="locate()"><app-icon name="locate" /> Moja lokacija</button>
-        <div class="ctl zoom">
+        <button type="button" class="ctl glass locate" (click)="locate()"><app-icon name="locate" /> Moja lokacija</button>
+        <div class="ctl glass zoom">
           <button type="button" aria-label="Uvećaj mapu" (click)="zoomBy(1.8)"><app-icon name="plus" /></button>
           <span aria-hidden="true"></span>
           <button type="button" aria-label="Umanji mapu" (click)="zoomBy(1 / 1.8)"><app-icon name="minus" /></button>
         </div>
-        <button type="button" class="ctl reset" aria-label="Prikaži cijelu BiH" [class.hidden]="!zoomed()" (click)="reset()">
+        <button type="button" class="ctl glass reset" aria-label="Prikaži cijelu BiH" [class.hidden]="!zoomed()" (click)="reset()">
           <app-icon name="expand" />
         </button>
         <p class="hint" [class.show]="hint()" aria-hidden="true">Za zumiranje držite Ctrl i okrenite kotačić</p>
@@ -519,14 +519,14 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       color: var(--text-secondary);
     }
 
+    // Kontrole su .glass (isto staklo kao navigacija); ovdje samo položaj i malo dublja sjena.
     .ctl {
       position: absolute;
       z-index: 4;
-      border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-      background: var(--material-thick);
-      -webkit-backdrop-filter: var(--blur-thin);
-      backdrop-filter: var(--blur-thin);
-      box-shadow: var(--shadow-md);
+      box-shadow:
+        inset 0 1px 0 var(--glass-highlight),
+        inset 0 -1px 0 var(--glass-shade),
+        var(--shadow-md);
       color: var(--text);
     }
 

@@ -66,7 +66,7 @@ const normalize = (s: string) =>
             autocomplete="off"
           />
           @if (suggestions().length) {
-            <ul class="suggest" role="listbox">
+            <ul class="suggest dropdown-panel" role="listbox">
               @for (c of suggestions(); track c.id) {
                 <li><button type="button" (click)="selectCity(c)">
                   <app-icon name="map-pin" /> {{ c.name }} <span class="muted">{{ c.count }}</span>
@@ -239,18 +239,13 @@ const normalize = (s: string) =>
       outline: none;
     }
 
+    // Izgled panela je zajednički (.dropdown-panel); ovdje samo položaj ispod polja.
     .suggest {
       position: absolute;
       left: 0;
       right: 0;
       top: calc(100% + 0.4rem);
       z-index: 5;
-      margin: 0;
-      padding: 0.35rem;
-      list-style: none;
-      border-radius: var(--radius-lg);
-      background: var(--bg-elevated);
-      box-shadow: var(--shadow-lg);
     }
 
     .suggest button {

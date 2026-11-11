@@ -17,6 +17,7 @@ import { LandingFaq } from './landing-faq';
 import { LandingMap } from './landing-map';
 import { LandingSteps } from './landing-steps';
 import { VendorCard } from '../../shared/ui/vendor-card';
+import { Select, SelectOption } from '../../shared/ui/select';
 
 const CATEGORIES = [
   { slug: 'saloni-za-vjencanje', name: 'Sale i prostori', icon: 'building', text: 'Restorani, sale i bašte za svako slavlje.' },
@@ -35,13 +36,13 @@ const CATEGORIES = [
  */
 @Component({
   selector: 'app-landing',
-  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingMap, LandingSteps, LoveLine, Petals, Reveal, VendorCard],
+  imports: [FormsModule, RouterLink, BrandMark, FadeInImage, Icon, Ink, LandingFaq, LandingMap, LandingSteps, LoveLine, Petals, Reveal, VendorCard, Select, SelectOption],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
     <app-petals />
 
-    <header class="nav material" [class.scrolled]="scrolled()">
+    <header class="nav glass glass-bar" [class.scrolled]="scrolled()">
       <div class="container bar">
         <a class="brand" routerLink="/"><app-brand-mark /></a>
         <nav class="links" aria-label="Glavna navigacija">
@@ -73,19 +74,19 @@ const CATEGORIES = [
             <form class="search material" (ngSubmit)="search()" role="search" aria-label="Brza pretraga">
               <label class="search-field">
                 <span class="t-caption muted">Šta tražite</span>
-                <select name="category" [(ngModel)]="category">
-                  <option value="">Sve usluge</option>
-                  @for (c of categories; track c.slug) { <option [value]="c.slug">{{ c.name }}</option> }
-                </select>
+                <app-select variant="bare" name="category" [(ngModel)]="category">
+                  <app-option value="">Sve usluge</app-option>
+                  @for (c of categories; track c.slug) { <app-option [value]="c.slug">{{ c.name }}</app-option> }
+                </app-select>
               </label>
               @if (lookups.cities().length) {
                 <span class="divider" aria-hidden="true"></span>
                 <label class="search-field">
                   <span class="t-caption muted">Grad</span>
-                  <select name="city" [(ngModel)]="cityId">
-                    <option [ngValue]="null">Cijela BiH</option>
-                    @for (city of lookups.cities(); track city.id) { <option [ngValue]="city.id">{{ city.name }}</option> }
-                  </select>
+                  <app-select variant="bare" name="city" [(ngModel)]="cityId">
+                    <app-option [value]="null">Cijela BiH</app-option>
+                    @for (city of lookups.cities(); track city.id) { <app-option [value]="city.id">{{ city.name }}</app-option> }
+                  </app-select>
                 </label>
               }
               <button type="submit" class="btn btn-primary search-btn">
@@ -199,10 +200,10 @@ const CATEGORIES = [
             <div class="form-grid">
               <div class="field">
                 <label for="l-cat">Usluga</label>
-                <select id="l-cat" class="select" name="category" [(ngModel)]="lead.category">
-                  @for (c of categories; track c.slug) { <option [value]="c.name">{{ c.name }}</option> }
-                  <option value="Drugo">Drugo</option>
-                </select>
+                <app-select inputId="l-cat" name="category" [(ngModel)]="lead.category">
+                  @for (c of categories; track c.slug) { <app-option [value]="c.name">{{ c.name }}</app-option> }
+                  <app-option value="Drugo">Drugo</app-option>
+                </app-select>
               </div>
               <div class="field">
                 <label for="l-city">Grad</label>
@@ -232,23 +233,6 @@ const CATEGORIES = [
       </section>
     </main>
 
-    <footer class="footer">
-      <div class="container footer-grid">
-        <div class="stack-sm">
-          <app-brand-mark />
-          <p class="t-footnote muted">{{ brand.tagline }}</p>
-        </div>
-        <nav class="footer-links t-footnote" aria-label="Podnožje">
-          <a routerLink="/istrazi">Istraži</a>
-          <a routerLink="/planiranje">Planer</a>
-          <a href="#saloni">Za salone</a>
-          <a routerLink="/uslovi">Uslovi</a>
-          <a routerLink="/privatnost">Privatnost</a>
-          <a [href]="'mailto:' + brand.email">{{ brand.email }}</a>
-        </nav>
-        <p class="t-caption subtle">© {{ year }} {{ brand.name }}</p>
-      </div>
-    </footer>
   `,
   styles: `
     // isolation: latice i linija (z-index −1) ostaju iza sadržaja, a iznad pozadine stranice.
@@ -266,12 +250,6 @@ const CATEGORIES = [
       top: 0;
       z-index: 10;
       height: var(--nav-height);
-      box-shadow: none;
-      transition: box-shadow var(--dur-base) ease;
-    }
-
-    .nav.scrolled {
-      box-shadow: 0 1px 0 var(--separator);
     }
 
     .bar {
@@ -381,17 +359,6 @@ const CATEGORIES = [
     .search-field:hover,
     .search-field:focus-within {
       background: var(--fill);
-    }
-
-    .search-field select {
-      width: 100%;
-      padding: 0;
-      border: 0;
-      background: transparent;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      outline: none;
     }
 
     .divider {
@@ -681,31 +648,6 @@ const CATEGORIES = [
       background: var(--bg-sunken);
     }
 
-    .footer {
-      margin-top: var(--space-6);
-      padding-block: var(--space-6) calc(var(--space-7) + var(--safe-bottom));
-      border-top: 1px solid var(--separator);
-    }
-
-    .footer-grid {
-      display: grid;
-      gap: var(--space-5);
-    }
-
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-5);
-    }
-
-    .footer-links a {
-      color: var(--text-secondary);
-    }
-
-    .footer-links a:hover {
-      color: var(--text);
-    }
-
     @media (min-width: 40rem) {
       .search {
         flex-wrap: nowrap;
@@ -743,11 +685,6 @@ const CATEGORIES = [
       .planner,
       .vendors {
         grid-template-columns: 1.2fr 1fr;
-        align-items: center;
-      }
-
-      .footer-grid {
-        grid-template-columns: 1fr auto;
         align-items: center;
       }
     }
@@ -796,8 +733,6 @@ export class Landing implements OnInit {
   private readonly vendorApi = inject(VendorApi);
   private readonly router = inject(Router);
 
-  protected readonly brand = BRAND;
-  protected readonly year = new Date().getFullYear();
   protected readonly categories = CATEGORIES;
   protected readonly featured = signal<Vendor[]>([]);
   /** Tačke za mapu "Ponuđači širom BiH"; dok ih nema (ili API ne odgovori), sekcija se ne prikazuje. */
