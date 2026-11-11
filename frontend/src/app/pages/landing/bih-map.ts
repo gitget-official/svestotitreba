@@ -111,7 +111,8 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
         (pointercancel)="onUp($event)"
         (dblclick)="onDouble($event)"
       >
-        <svg #map [attr.viewBox]="viewBox" role="img" aria-labelledby="mapa-bih">
+        <div #plane class="plane">
+        <svg [attr.viewBox]="viewBox" role="img" aria-labelledby="mapa-bih" [style.transform]="cssTransform()" [class.moving]="moving()" [class.deep]="view().k > 2">
           <defs>
             <path id="bih-shape" [attr.d]="geo.country" />
             <clipPath id="bih-clip"><use href="#bih-shape" /></clipPath>
@@ -132,7 +133,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
               <feComposite in="light" in2="SourceGraphic" operator="in" />
             </filter>
           </defs>
-          <g [attr.transform]="transform()">
+          <g>
             <use href="#bih-shape" class="shadow" transform="translate(10 38)" filter="url(#bih-shadow)" />
             @for (d of depth; track d) {
               <use href="#bih-shape" class="side" [attr.transform]="'translate(0 ' + d + ')'" />
@@ -143,17 +144,18 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
             <use href="#bih-shape" class="rim" />
           </g>
         </svg>
+        </div>
 
         <!-- Tri stanja: grupa ponuđača (broj), pojedinačna lokacija (obrisana pribadača), aktivni grad (popunjen krug). -->
         @for (m of markers(); track m.key) {
           @if (m.members.length === 1) {
-            <button type="button" class="pin" [class.hover]="hovered() === m.key" [style.left.px]="m.left" [style.top.px]="m.top"
+            <button type="button" class="pin" [class.hover]="hovered() === m.key" [style.translate]="m.left + 'px ' + m.top + 'px'"
               [attr.aria-label]="m.members[0].v.name" (click)="onMarker(m)"
               (mouseenter)="hovered.set(m.key)" (mouseleave)="hovered.set(null)" (focus)="hovered.set(m.key)" (blur)="hovered.set(null)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6-7-11.8a7 7 0 0 1 14 0c0 5.8-7 11.8-7 11.8z" /><circle cx="12" cy="9.7" r="2.6" /></svg>
             </button>
           } @else {
-            <button type="button" class="cluster" [class.hover]="hovered() === m.key" [style.left.px]="m.left" [style.top.px]="m.top"
+            <button type="button" class="cluster" [class.hover]="hovered() === m.key" [style.translate]="m.left + 'px ' + m.top + 'px'"
               [style.--size.px]="m.size" [attr.aria-label]="m.label" (click)="onMarker(m)"
               (mouseenter)="hovered.set(m.key)" (mouseleave)="hovered.set(null)" (focus)="hovered.set(m.key)" (blur)="hovered.set(null)">
               <span class="serif">{{ m.members.length }}</span>
@@ -166,7 +168,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
         }
 
         @if (selection(); as s) {
-          <div class="chosen" [style.left.px]="s.left" [style.top.px]="s.top" aria-hidden="true">
+          <div class="chosen" [style.translate]="s.left + 'px ' + s.top + 'px'" aria-hidden="true">
             <span class="halo"></span>
             <span class="active"><app-icon name="map-pin" /></span>
           </div>
@@ -259,15 +261,25 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       color: inherit;
     }
 
-    .stage.full > svg {
+    .stage.full > .plane {
       width: min(100%, calc((100dvh - 2rem) * var(--ratio)));
     }
 
-    .stage > svg {
+    .plane svg {
       display: block;
       width: 100%;
       height: auto;
       overflow: visible;
+      transform-origin: 0 0;
+    }
+
+    .plane svg.moving {
+      will-change: transform;
+    }
+
+    // Na velikom zumu reljef se jedva vidi, a filter bi se crtao preko višestruko veće površine.
+    .deep .relief {
+      display: none;
     }
 
     .shadow {
@@ -305,9 +317,12 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     }
 
     // Markeri su HTML iznad SVG-a: iste veličine na svakom zumu i oštri na svakom ekranu.
+    // Položaj markera je CSS translate (bez layouta pri pomjeranju), a centriranje marginama.
     .cluster,
     .pin {
       position: absolute;
+      top: 0;
+      left: 0;
       z-index: 1;
       padding: 0;
       border: 0;
@@ -320,7 +335,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       place-items: center;
       width: var(--size);
       height: var(--size);
-      translate: -50% -50%;
+      margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
       border-radius: 50%;
       background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--blush) 45%, var(--bg-elevated)), color-mix(in srgb, var(--blush) 70%, var(--bg-elevated)));
       box-shadow:
@@ -347,7 +362,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     .pin {
       width: 1.75rem;
       height: 1.75rem;
-      translate: -50% -92%;
+      margin: -1.6rem 0 0 -0.875rem;
       background: none;
       filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.25));
       transition: scale var(--dur-fast) var(--ease-out);
@@ -388,6 +403,8 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     // Aktivni grad: popunjen roze krug sa pribadačom i blagim pulsom; uvijek iznad ostalih markera.
     .chosen {
       position: absolute;
+      top: 0;
+      left: 0;
       z-index: 2;
       width: 0;
       height: 0;
@@ -720,7 +737,7 @@ export class BihMap {
   private readonly toasts = inject(ToastService);
   private readonly lookups = inject(LookupStore);
   private readonly stage = viewChild.required<ElementRef<HTMLElement>>('stage');
-  private readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('map');
+  private readonly plane = viewChild.required<ElementRef<HTMLElement>>('plane');
 
   protected readonly geo = BIH_GEO;
   protected readonly viewBox = `${FRAME_X} ${FRAME_Y} ${FRAME_W} ${FRAME_H}`;
@@ -743,10 +760,21 @@ export class BihMap {
   private readonly selected = signal<{ type: 'city'; cityId: number } | { type: 'vendor'; point: Point } | null>(null);
 
   protected readonly zoomed = computed(() => this.view().k > 1.01);
-  protected readonly transform = computed(() => {
+  /**
+   * Zum i pomak kao CSS transform cijelog SVG-a (ne SVG atribut na grupi): dok se mapa pomjera, preglednik
+   * samo pomjera već iscrtan sloj na grafičkoj, umjesto da 60 puta u sekundi ponovo crta 3D rub, općine,
+   * reljef i sjenu. viewBox transform translate(x y) scale(k) preveden je u piksele, sa originom u uglu SVG-a.
+   */
+  protected readonly cssTransform = computed(() => {
     const { k, x, y } = this.view();
-    return `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${k.toFixed(4)})`;
+    const s = this.width() / FRAME_W;
+    const tx = (x + FRAME_X * (k - 1)) * s;
+    const ty = (y + FRAME_Y * (k - 1)) * s;
+    return `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${k.toFixed(4)})`;
   });
+
+  /** True dok se mapa pomjera i kratko poslije: tada je SVG zaseban sloj (will-change), a na kraju se iscrta oštro. */
+  protected readonly moving = signal(false);
 
   private readonly allPoints = computed<Point[]>(() =>
     this.data().map((v) => {
@@ -930,6 +958,7 @@ export class BihMap {
   private raf = 0;
   private hintTimer = 0;
   private settleTimer = 0;
+  private idleTimer = 0;
   private readonly pointers = new Map<number, { x: number; y: number }>();
   private drag: { x: number; y: number; view: View; moved: boolean } | null = null;
   private pinch: { dist: number; view: View; cx: number; cy: number } | null = null;
@@ -946,6 +975,15 @@ export class BihMap {
       });
     });
 
+    effect(() => {
+      this.view();
+      untracked(() => {
+        if (!this.moving()) this.moving.set(true);
+        clearTimeout(this.idleTimer);
+        this.idleTimer = window.setTimeout(() => this.moving.set(false), 180);
+      });
+    });
+
     const destroyRef = inject(DestroyRef);
     afterNextRender(() => {
       const el = this.stage().nativeElement;
@@ -953,7 +991,7 @@ export class BihMap {
       this.measure();
       const ro = new ResizeObserver(() => this.measure());
       ro.observe(el);
-      ro.observe(this.svg().nativeElement);
+      ro.observe(this.plane().nativeElement);
       const escape = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && this.full()) this.toggleFull();
       };
@@ -968,6 +1006,7 @@ export class BihMap {
         cancelAnimationFrame(this.raf);
         clearTimeout(this.hintTimer);
         clearTimeout(this.settleTimer);
+        clearTimeout(this.idleTimer);
       });
     });
   }
@@ -1058,7 +1097,7 @@ export class BihMap {
   }
 
   private measure(): void {
-    const svg = this.svg().nativeElement.getBoundingClientRect();
+    const svg = this.plane().nativeElement.getBoundingClientRect();
     const stage = this.stage().nativeElement.getBoundingClientRect();
     this.width.set(svg.width);
     this.ox.set(svg.left - stage.left);
@@ -1148,7 +1187,7 @@ export class BihMap {
   }
 
   private toViewBox(clientX: number, clientY: number): [number, number] {
-    const rect = this.svg().nativeElement.getBoundingClientRect();
+    const rect = this.plane().nativeElement.getBoundingClientRect();
     const scale = rect.width / FRAME_W;
     return [(clientX - rect.left) / scale + FRAME_X, (clientY - rect.top) / scale + FRAME_Y];
   }
