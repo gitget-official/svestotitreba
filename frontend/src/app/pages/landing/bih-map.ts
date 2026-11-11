@@ -188,29 +188,34 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       --map-relief: 0.2;
       --map-ring: rgba(255, 255, 255, 0.85);
       --map-rim: rgba(255, 255, 255, 0.9);
+      --map-muni: color-mix(in srgb, var(--taupe) 20%, transparent);
     }
 
+    // Tamna tema: površina mape je osjetno svjetlija od pozadine sekcije (a i dalje tamna), granice općina
+    // su tek naznačene, a markeri ostaju glavni akcenat.
     :host-context(:root[data-theme='dark']) {
-      --map-top-1: #2c2523;
-      --map-top-2: #221c1a;
-      --map-side-1: #3a2a2b;
-      --map-side-2: #1a1212;
-      --map-shadow: rgba(0, 0, 0, 0.7);
-      --map-relief: 0.12;
-      --map-ring: rgba(255, 235, 230, 0.22);
-      --map-rim: rgba(255, 235, 230, 0.14);
+      --map-top-1: #463b38;
+      --map-top-2: #362d2b;
+      --map-side-1: #4f3a3c;
+      --map-side-2: #241a1b;
+      --map-shadow: rgba(0, 0, 0, 0.6);
+      --map-relief: 0.1;
+      --map-ring: rgba(255, 235, 230, 0.28);
+      --map-rim: rgba(255, 235, 230, 0.24);
+      --map-muni: rgba(255, 235, 225, 0.07);
     }
 
     @media (prefers-color-scheme: dark) {
       :host-context(:root:not([data-theme='light'])) {
-        --map-top-1: #2c2523;
-        --map-top-2: #221c1a;
-        --map-side-1: #3a2a2b;
-        --map-side-2: #1a1212;
-        --map-shadow: rgba(0, 0, 0, 0.7);
-        --map-relief: 0.12;
-      --map-ring: rgba(255, 235, 230, 0.22);
-      --map-rim: rgba(255, 235, 230, 0.14);
+        --map-top-1: #463b38;
+        --map-top-2: #362d2b;
+        --map-side-1: #4f3a3c;
+        --map-side-2: #241a1b;
+        --map-shadow: rgba(0, 0, 0, 0.6);
+        --map-relief: 0.1;
+        --map-ring: rgba(255, 235, 230, 0.28);
+        --map-rim: rgba(255, 235, 230, 0.24);
+        --map-muni: rgba(255, 235, 225, 0.07);
       }
     }
 
@@ -272,7 +277,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
 
     .munis {
       fill: none;
-      stroke: color-mix(in srgb, var(--taupe) 26%, transparent);
+      stroke: var(--map-muni);
       stroke-width: 0.8;
       stroke-linejoin: round;
       vector-effect: non-scaling-stroke;
