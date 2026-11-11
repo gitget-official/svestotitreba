@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { VendorMapPoint } from '../../core/models';
 import { springNumber } from '../../shared/motion/spring-number';
 import { Icon } from '../../shared/ui/icon';
-import { Ink } from '../../shared/ui/ink';
+import { plural } from '../../core/format';
 import { BihMap } from './bih-map';
 
 /** Brzi filteri iznad mape; "Sve" je prazan slug. */
@@ -29,7 +29,7 @@ const normalize = (s: string) =>
  */
 @Component({
   selector: 'app-landing-map',
-  imports: [BihMap, DecimalPipe, Icon, Ink, RouterLink],
+  imports: [BihMap, DecimalPipe, Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell">
@@ -50,7 +50,7 @@ const normalize = (s: string) =>
       <div class="copy">
         <p class="eyebrow-pill"><app-icon name="map-pin" /> Ponuđači širom BiH</p>
         <h2 id="mapa-bih" class="title">
-          Od Bihaća do Trebinja, <em><app-ink [delay]="300">pronađite svoje.</app-ink></em>
+          Od Bihaća do Trebinja, <em>pronađite svoje.</em>
         </h2>
         <p class="lead">Svako svjetlo je salon, fotograf ili dekorater koji je već na platformi. Odaberite grad i pogledajte ponudu.</p>
 
@@ -87,12 +87,12 @@ const normalize = (s: string) =>
         <div class="stats">
           <div class="stat">
             <span class="stat-icon"><app-icon name="store" /></span>
-            <span><strong class="serif">{{ vendorCount() | number: '1.0-0' }}</strong><span class="muted">ponuđača</span></span>
+            <span><strong class="serif">{{ vendorCount() | number: '1.0-0' }}</strong><span class="muted">{{ vendorWord() }}</span></span>
           </div>
           <span class="stat-div" aria-hidden="true"></span>
           <div class="stat">
             <span class="stat-icon"><app-icon name="map-pin" /></span>
-            <span><strong class="serif">{{ cityCount() | number: '1.0-0' }}</strong><span class="muted">gradova</span></span>
+            <span><strong class="serif">{{ cityCount() | number: '1.0-0' }}</strong><span class="muted">{{ cityWord() }}</span></span>
           </div>
         </div>
 
@@ -190,8 +190,8 @@ const normalize = (s: string) =>
       margin: 0;
       font-family: var(--font-display);
       font-optical-sizing: auto;
-      font-size: clamp(2.25rem, 4.2vw, 3.5rem);
-      line-height: 1.04;
+      font-size: clamp(2rem, 3.4vw, 2.875rem);
+      line-height: 1.06;
       letter-spacing: -0.028em;
       font-weight: 560;
       text-wrap: balance;
@@ -277,15 +277,17 @@ const normalize = (s: string) =>
       font-size: 0.8125rem;
     }
 
+    // Sva četiri filtera u jednom redu; na uskom telefonu bez ikonica, da i dalje stanu.
     .chips {
       display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
+      flex-wrap: nowrap;
+      gap: 0.375rem;
     }
 
     .chip {
-      min-height: 2.5rem;
-      padding-inline: 0.85rem;
+      min-height: 2.375rem;
+      padding-inline: 0.7rem;
+      font-size: 0.875rem;
       background: var(--material-thick);
       box-shadow: var(--shadow-sm);
     }
@@ -367,6 +369,12 @@ const normalize = (s: string) =>
         gap: var(--space-4);
       }
     }
+
+    @media (max-width: 25.99rem) {
+      .chip app-icon {
+        display: none;
+      }
+    }
   `,
 })
 export class LandingMap {
@@ -390,6 +398,11 @@ export class LandingMap {
 
   protected readonly vendorCount = springNumber(() => this.points().length);
   protected readonly cityCount = springNumber(() => new Set(this.points().map((p) => p.cityId)).size);
+  // Riječ ide uz konačan broj (ne uz brojač usred animacije): 1 grad, 2 grada, 5 gradova.
+  protected readonly vendorWord = computed(() => plural(this.points().length, 'ponuđač', 'ponuđača', 'ponuđača'));
+  protected readonly cityWord = computed(() =>
+    plural(new Set(this.points().map((p) => p.cityId)).size, 'grad', 'grada', 'gradova'),
+  );
 
   /** Gradovi sa ponuđačima (u odabranoj kategoriji), najveći prvi. */
   private readonly cities = computed(() => {
