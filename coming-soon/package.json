@@ -1,0 +1,16 @@
+{
+  "name": "planiraj-uskoro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8788",
+    "db:local": "wrangler d1 migrations apply svadbeno-uskoro --local",
+    "db:remote": "wrangler d1 migrations apply svadbeno-uskoro --remote",
+    "deploy": "wrangler deploy",
+    "test": "node --import ./tests/setup.mjs --test tests/*.test.mjs",
+    "mail:primjer": "node scripts/mail-primjer.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  }
+}
