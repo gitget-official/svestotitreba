@@ -21,6 +21,7 @@ import { prefersReducedMotion } from '../../shared/motion/spring';
 import { Icon, categoryIcon } from '../../shared/ui/icon';
 import { ToastService } from '../../shared/ui/toast';
 import { BIH_GEO } from './bih-geo';
+import { MapTip } from './map-tip';
 
 /** Širina i visina viewBox-a: mapa plus "debljina" ploče (3D rub) i sjena ispod. */
 const VB_W = BIH_GEO.width;
@@ -72,6 +73,17 @@ const project = (lon: number, lat: number): [number, number] => [
   BIH_GEO.pad + (BIH_GEO.lat0 - lat) * BIH_GEO.scaleY,
 ];
 
+/** Kratki nazivi kategorija za opise na mapi (puni nazivi iz šifarnika su predugi za tooltip). */
+const CATEGORY_SHORT: Record<string, string> = {
+  'saloni-za-vjencanje': 'Sale',
+  'vjencanice-i-odijela': 'Vjenčanice',
+  fotografi: 'Fotografi',
+  dekoracije: 'Dekoracije',
+  'svecani-automobili': 'Automobili',
+  frizeri: 'Frizeri',
+  'beauty-makeup': 'Make-up',
+};
+
 export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđač' : 'ponuđača');
 
 /**
@@ -82,7 +94,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
  */
 @Component({
   selector: 'app-bih-map',
-  imports: [FadeInImage, Icon, RouterLink],
+  imports: [FadeInImage, Icon, MapTip, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
       <div
@@ -129,24 +141,31 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
           </g>
         </svg>
 
+        <!-- Tri stanja: grupa ponuđača (broj), pojedinačna lokacija (obrisana pribadača), aktivni grad (popunjen krug). -->
         @for (m of markers(); track m.key) {
           @if (m.members.length === 1) {
-            <button type="button" class="pin" [style.left.px]="m.left" [style.top.px]="m.top"
-              [attr.aria-label]="m.members[0].v.name" (click)="onMarker(m)">
-              <svg viewBox="0 0 24 30" aria-hidden="true"><path d="M12 29S2 19.5 2 11.5a10 10 0 0 1 20 0C22 19.5 12 29 12 29z" /><circle cx="12" cy="11.5" r="3.6" /></svg>
+            <button type="button" class="pin" [class.hover]="hovered() === m.key" [style.left.px]="m.left" [style.top.px]="m.top"
+              [attr.aria-label]="m.members[0].v.name" (click)="onMarker(m)"
+              (mouseenter)="hovered.set(m.key)" (mouseleave)="hovered.set(null)" (focus)="hovered.set(m.key)" (blur)="hovered.set(null)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.5s-7-6-7-11.8a7 7 0 0 1 14 0c0 5.8-7 11.8-7 11.8z" /><circle cx="12" cy="9.7" r="2.6" /></svg>
             </button>
           } @else {
-            <button type="button" class="cluster" [style.left.px]="m.left" [style.top.px]="m.top"
-              [style.--size.px]="m.size" [attr.aria-label]="m.label" (click)="onMarker(m)">
+            <button type="button" class="cluster" [class.hover]="hovered() === m.key" [style.left.px]="m.left" [style.top.px]="m.top"
+              [style.--size.px]="m.size" [attr.aria-label]="m.label" (click)="onMarker(m)"
+              (mouseenter)="hovered.set(m.key)" (mouseleave)="hovered.set(null)" (focus)="hovered.set(m.key)" (blur)="hovered.set(null)">
               <span class="serif">{{ m.members.length }}</span>
             </button>
           }
         }
 
+        @if (tooltip(); as t) {
+          <app-map-tip [data]="t" [style.left.px]="t.left" [style.top.px]="t.top" />
+        }
+
         @if (selection(); as s) {
-          <div class="chosen" [style.left.px]="s.left" [style.top.px]="s.top">
-            <span class="halo" aria-hidden="true"></span>
-            <svg class="big-pin" viewBox="0 0 24 30" aria-hidden="true"><path d="M12 29S2 19.5 2 11.5a10 10 0 0 1 20 0C22 19.5 12 29 12 29z" /><circle cx="12" cy="11.5" r="3.6" /></svg>
+          <div class="chosen" [style.left.px]="s.left" [style.top.px]="s.top" aria-hidden="true">
+            <span class="halo"></span>
+            <span class="active"><app-icon name="map-pin" /></span>
           </div>
           <a class="card" [class.below]="s.below" [style.left.px]="s.cardLeft" [style.top.px]="s.top" [style.--tail.px]="s.tail"
             [routerLink]="s.link" [queryParams]="s.params">
@@ -160,6 +179,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
             <span class="card-text">
               <strong class="serif">{{ s.title }}</strong>
               <span class="muted">{{ s.subtitle }}</span>
+              @if (s.detail) { <span class="card-detail">{{ s.detail }}</span> }
             </span>
             <app-icon name="chevron-right" class="chev" />
           </a>
@@ -320,39 +340,49 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       transition: scale var(--dur-fast) var(--ease-out);
     }
 
-    .cluster:hover {
+    .cluster:hover,
+    .cluster.hover,
+    .cluster:focus-visible {
       scale: 1.08;
+      box-shadow:
+        0 0 0 3px var(--map-ring),
+        0 0 0 9px color-mix(in srgb, var(--accent) 28%, transparent),
+        0 10px 22px color-mix(in srgb, var(--accent) 30%, transparent);
     }
 
+    // Pojedinačna lokacija: obrisana pribadača (lakša od grupe, ali jasno klikabilna).
     .pin {
-      width: 1.6rem;
-      height: 2rem;
-      translate: -50% -100%;
+      width: 1.75rem;
+      height: 1.75rem;
+      translate: -50% -92%;
       background: none;
-      filter: drop-shadow(0 4px 5px color-mix(in srgb, var(--accent) 35%, transparent));
+      filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.25));
       transition: scale var(--dur-fast) var(--ease-out);
       transform-origin: 50% 100%;
     }
 
-    .pin:hover {
+    .pin:hover,
+    .pin.hover,
+    .pin:focus-visible {
       scale: 1.15;
     }
 
-    .pin svg,
-    .big-pin {
+    .pin svg {
       display: block;
       width: 100%;
       height: 100%;
     }
 
-    .pin path,
-    .big-pin path {
-      fill: var(--accent);
+    .pin path {
+      fill: var(--bg-elevated);
+      stroke: var(--accent);
+      stroke-width: 1.8;
     }
 
-    .pin circle,
-    .big-pin circle {
-      fill: #fff;
+    .pin circle {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1.8;
     }
 
     @keyframes marker-in {
@@ -362,6 +392,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       }
     }
 
+    // Aktivni grad: popunjen roze krug sa pribadačom i blagim pulsom; uvijek iznad ostalih markera.
     .chosen {
       position: absolute;
       z-index: 2;
@@ -370,14 +401,36 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       pointer-events: none;
     }
 
-    .big-pin {
+    .active {
       position: absolute;
-      left: -1.4rem;
-      top: -3.5rem;
-      width: 2.8rem;
-      height: 3.5rem;
-      filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--accent) 40%, transparent));
-      animation: drop 520ms var(--ease-out) both;
+      left: -1.375rem;
+      top: -1.375rem;
+      display: grid;
+      place-items: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--text-on-accent);
+      box-shadow:
+        0 0 0 3px var(--map-ring),
+        0 10px 22px color-mix(in srgb, var(--accent) 45%, transparent);
+      animation: pop-in 420ms var(--ease-out) both;
+    }
+
+    .active app-icon {
+      width: 1.3rem;
+      height: 1.3rem;
+    }
+
+    @keyframes pop-in {
+      from {
+        opacity: 0;
+        scale: 0.4;
+      }
+      60% {
+        scale: 1.08;
+      }
     }
 
     .halo {
@@ -391,12 +444,6 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       animation: pulse 2.2s ease-out infinite;
     }
 
-    @keyframes drop {
-      from {
-        opacity: 0;
-        transform: translateY(-14px);
-      }
-    }
 
     @keyframes pulse {
       0% {
@@ -418,7 +465,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
       width: 17.5rem;
       max-width: calc(100% - 1rem);
       padding: 0.5rem 0.875rem 0.5rem 0.5rem;
-      translate: 0 calc(-100% - 4.4rem);
+      translate: 0 calc(-100% - 2.4rem);
       border-radius: var(--radius-lg);
       background: var(--material-thick);
       -webkit-backdrop-filter: var(--blur-regular);
@@ -442,7 +489,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
     }
 
     .card.below {
-      translate: 0 1.1rem;
+      translate: 0 2.4rem;
     }
 
     .card.below::after {
@@ -516,6 +563,14 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
 
     .card-text .muted {
       font-size: 0.875rem;
+    }
+
+    .card-detail {
+      overflow: hidden;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .chev {
@@ -653,7 +708,7 @@ export const plural = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'ponuđa�
 
     @media (prefers-reduced-motion: reduce) {
       .halo,
-      .big-pin,
+      .active,
       .card,
       .cluster,
       .pin {
@@ -772,15 +827,42 @@ export class BihMap {
     return this.clusters()
       .map((c) => {
         const n = c.members.length;
+        const cityName = c.city !== null ? c.members[0].v.cityName : null;
         return {
           ...c,
           left: (c.x * k + x - FRAME_X) * scale,
           top: (c.y * k + y - FRAME_Y) * scale,
           size: Math.round((w < 480 ? 30 : 38) + Math.min(Math.log2(n) * (w < 480 ? 3 : 4.2), w < 480 ? 14 : 22)),
-          label: c.city ? `${c.members[0].v.cityName}: ${n} ${plural(n)}` : `${n} ${plural(n)} u ovoj zoni, približi mapu`,
+          label: cityName ? `${cityName}: ${n} ${plural(n)}` : `${n} ${plural(n)} u ovoj zoni, približi mapu`,
+          cityName,
         };
       })
       .filter((m) => m.left > -30 && m.left < w + 30 && m.top > -30 && m.top < h + 30);
+  });
+
+  /** Marker iznad kojeg je miš (ili fokus tastature); prikazuje mali opis šta broj znači. */
+  protected readonly hovered = signal<string | null>(null);
+
+  protected readonly tooltip = computed(() => {
+    const key = this.hovered();
+    const m = key && !this.dragging() ? this.markers().find((x) => x.key === key) : undefined;
+    if (!m) return null;
+    const n = m.members.length;
+    let title: string;
+    let detail: string;
+    let hint: string;
+    if (n === 1) {
+      const v = m.members[0].v;
+      title = v.name;
+      detail = this.vendorSubtitle(v);
+      hint = 'Kliknite za detalje.';
+    } else {
+      title = m.cityName ? `${m.cityName} · ${n} ${plural(n)}` : `${n} ${plural(n)}`;
+      detail = this.category() ? '' : this.breakdown(m.members);
+      hint = m.cityName ? 'Kliknite za pregled ponude u gradu.' : 'Više gradova: kliknite da približite mapu.';
+    }
+    // Uz gornju ivicu opis ide ispod markera.
+    return { left: m.left, top: m.top, below: m.top < 120, offset: n === 1 ? 40 : m.size / 2 + 12, count: n, title, detail, hint };
   });
 
   protected readonly selection = computed(() => {
@@ -793,6 +875,7 @@ export class BihMap {
     let base: {
       title: string;
       subtitle: string;
+      detail: string;
       icon: string;
       letter: string;
       image: string | null;
@@ -808,6 +891,7 @@ export class BihMap {
       base = {
         title: city.name,
         subtitle: `${n} ${plural(n)}`,
+        detail: this.category() || n < 2 ? '' : this.breakdown(inCity),
         icon: 'map-pin',
         letter: city.name[0],
         // Fotografija grada je naslovna slika prvog ponuđača iz njega koji je ima.
@@ -819,10 +903,10 @@ export class BihMap {
       ({ x: wx, y: wy } = sel.point);
       const v = sel.point.v;
       const slug = (this.category() || v.categories[0]) ?? null;
-      const category = this.lookups.categories().find((c) => c.slug === slug)?.name;
       base = {
         title: v.name,
-        subtitle: category ? `${category} · ${v.cityName}` : v.cityName,
+        subtitle: this.vendorSubtitle(v),
+        detail: '',
         icon: categoryIcon(slug),
         letter: v.name[0],
         image: v.imageUrl,
@@ -877,6 +961,24 @@ export class BihMap {
         clearTimeout(this.settleTimer);
       });
     });
+  }
+
+  /** "Fotograf · Sarajevo": kategorija (odabrana ili prva) i grad ponuđača. */
+  private vendorSubtitle(v: VendorMapPoint): string {
+    const slug = this.category() || v.categories[0];
+    const name = slug ? (CATEGORY_SHORT[slug] ?? this.lookups.categories().find((c) => c.slug === slug)?.name) : null;
+    return name ? `${name} · ${v.cityName}` : v.cityName;
+  }
+
+  /** Najzastupljenije kategorije u grupi: "Sale 3 · Fotografi 2 · Dekoracije 2". */
+  private breakdown(points: Point[]): string {
+    const counts = new Map<string, number>();
+    for (const p of points) for (const c of p.v.categories) counts.set(c, (counts.get(c) ?? 0) + 1);
+    return [...counts]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([slug, n]) => `${CATEGORY_SHORT[slug] ?? this.lookups.categories().find((c) => c.slug === slug)?.name ?? slug} ${n}`)
+      .join(' · ');
   }
 
   private countIn(cityId: number): number {
