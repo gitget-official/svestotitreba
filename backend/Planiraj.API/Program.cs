@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.SignalR;
 using Planiraj.API.Auth;
+using Planiraj.API.Chat;
 using Planiraj.API.Email;
 using Microsoft.Extensions.FileProviders;
 using Planiraj.API.Middleware;
@@ -13,6 +15,7 @@ using Planiraj.API.Uploads;
 using Planiraj.Services.Database;
 using Planiraj.Services.Interfaces;
 using Planiraj.Services.Mapping;
+using Planiraj.Services.Notifications;
 using Planiraj.Services.Security;
 using Planiraj.Services.Seed;
 using Planiraj.Services.Services;
@@ -46,6 +49,12 @@ builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISitemapService, SitemapService>();
 builder.Services.AddScoped<IVendorMapService, VendorMapService>();
+
+// ---------- Poruke (FR-13): REST za slanje, SignalR za događaje u stvarnom vremenu ----------
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
+builder.Services.AddSingleton<IChatRealtime, SignalRChatRealtime>();
+builder.Services.AddScoped<IChatService, ChatService>();
 
 // ---------- E-mail (FR-15) ----------
 // Zadano isključen (Email:Mode = Disabled). Vidi sekciju "E-mail obavijesti" u README-u.
@@ -84,6 +93,14 @@ builder.Services
         // Token važi samo dok nalog postoji i aktivan je: obrisan ili isključen nalog odmah gubi pristup.
         options.Events = new JwtBearerEvents
         {
+            // WebSocket ne može poslati zaglavlje Authorization, pa SignalR šalje token u adresi (samo za hubove).
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/api/hubs"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async ctx =>
             {
                 var sub = ctx.Principal?.FindFirst(AppClaims.UserId)?.Value;
@@ -170,6 +187,7 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ChatHub>(ChatHub.Path);
 
 app.Run();
 

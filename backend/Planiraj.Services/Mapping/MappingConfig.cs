@@ -25,6 +25,7 @@ public static class MappingConfig
         config.NewConfig<Vendor, VendorDto>()
             .Map(d => d.CityName, s => s.City != null ? s.City.Name : null)
             .Map(d => d.OwnerFullName, s => s.Owner != null ? s.Owner.FirstName + " " + s.Owner.LastName : null)
+            .Map(d => d.AcceptsMessages, s => s.IsActive && s.Owner != null && s.Owner.IsActive && s.Owner.DeletedAt == null)
             .Map(d => d.SubscriptionPlanName, s => s.SubscriptionPlan != null ? s.SubscriptionPlan.Name : null)
             .Map(d => d.Categories, s => s.Offerings
                 .Where(o => o.IsActive && o.ServiceCategory != null)

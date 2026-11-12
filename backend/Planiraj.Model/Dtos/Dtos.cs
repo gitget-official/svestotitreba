@@ -84,6 +84,8 @@ public class VendorDto
     public bool IsActive { get; set; }
     public int? OwnerUserId { get; set; }
     public string? OwnerFullName { get; set; }
+    /// <summary>Salon ima vlasnika na platformi, pa mu mladenci mogu pisati poruke (FR-13).</summary>
+    public bool AcceptsMessages { get; set; }
 
     public int? SubscriptionPlanId { get; set; }
     public string? SubscriptionPlanName { get; set; }
@@ -201,6 +203,66 @@ public class PlanDto
     public System.Text.Json.JsonElement Items { get; set; }
     public DateTime? SavedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Razgovor mladenaca i salona, viđen sa strane prijavljenog korisnika: nepročitano i "viđeno" se odnose na njega.
+/// </summary>
+public class ConversationDto
+{
+    public int Id { get; set; }
+
+    public int VendorId { get; set; }
+    public string VendorName { get; set; } = string.Empty;
+    public string VendorSlug { get; set; } = string.Empty;
+    public string? VendorLogoUrl { get; set; }
+
+    public int CoupleUserId { get; set; }
+    public string CoupleFirstName { get; set; } = string.Empty;
+    public string CoupleLastName { get; set; } = string.Empty;
+    /// <summary>Samo ilustrovani avatar ("avatar:ključ"); fotografija (data URL do 200 KB) se ne šalje uz svaki razgovor.</summary>
+    public string? CoupleAvatarUrl { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime LastMessageAt { get; set; }
+    public string LastMessagePreview { get; set; } = string.Empty;
+    public bool LastMessageFromVendor { get; set; }
+
+    /// <summary>Poruke druge strane koje prijavljeni korisnik još nije vidio.</summary>
+    public int UnreadCount { get; set; }
+    /// <summary>Zadnja poruka koju je druga strana vidjela (za oznaku "Viđeno").</summary>
+    public int OtherLastReadMessageId { get; set; }
+    /// <summary>Može li prijavljeni korisnik pisati (npr. salon je isključen ili više nema vlasnika).</summary>
+    public bool CanReply { get; set; }
+}
+
+/// <summary>Stranica razgovora i ukupan broj nepročitanih poruka (za značku u navigaciji).</summary>
+public class ConversationListDto : PagedResult<ConversationDto>
+{
+    public int UnreadTotal { get; set; }
+}
+
+public class ChatMessageDto
+{
+    public int Id { get; set; }
+    public int ConversationId { get; set; }
+    public bool FromVendor { get; set; }
+    public string Body { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Poruke od starije prema novijoj; HasMore znači da postoje i starije.</summary>
+public class ChatMessagePageDto
+{
+    public List<ChatMessageDto> Items { get; set; } = new();
+    public bool HasMore { get; set; }
+}
+
+/// <summary>Poslana poruka i razgovor nakon nje (novi ili postojeći).</summary>
+public class ChatSendResultDto
+{
+    public ConversationDto Conversation { get; set; } = new();
+    public ChatMessageDto Message { get; set; } = new();
 }
 
 /// <summary>Javna podešavanja prijave za frontend (Google client id nije tajna).</summary>

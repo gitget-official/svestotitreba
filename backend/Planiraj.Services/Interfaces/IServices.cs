@@ -109,6 +109,23 @@ public interface IPlanService
     Task DeleteAsync();
 }
 
+/// <summary>Poruke mladenaca i salona (FR-13), uvijek sa strane prijavljenog korisnika.</summary>
+public interface IChatService
+{
+    /// <summary>Razgovori, najnoviji prvi, i ukupan broj nepročitanih poruka.</summary>
+    Task<ConversationListDto> ListAsync(ConversationSearchObject search);
+    Task<ConversationDto> GetAsync(int id);
+    /// <summary>Razgovor mladenaca sa salonom, ili null ako mu još nisu pisali.</summary>
+    Task<ConversationDto?> GetWithVendorAsync(int vendorId);
+    /// <summary>Poruke od starije prema novijoj; beforeId učitava stariju stranicu.</summary>
+    Task<ChatMessagePageDto> GetMessagesAsync(int conversationId, int? beforeId, int pageSize);
+    /// <summary>Prva poruka salonu (mladenci); postojeći razgovor se nastavlja.</summary>
+    Task<ChatSendResultDto> StartAsync(ConversationStartRequest request);
+    Task<ChatSendResultDto> SendAsync(int conversationId, ChatMessageSendRequest request);
+    /// <summary>Označava sve poruke u razgovoru kao viđene.</summary>
+    Task<ConversationDto> MarkReadAsync(int conversationId);
+}
+
 /// <summary>Javne adrese za sitemap.xml: opće stranice i svi aktivni ponuđači.</summary>
 public interface ISitemapService
 {

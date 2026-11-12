@@ -9,7 +9,7 @@ Potrebno: **Node.js 24** (vidi `.nvmrc`; Angular CLI 22 traži najmanje 22.22.3 
 ```bash
 npm install
 npm start          # http://localhost:4200
-npm test           # unit testovi (Vitest): planer, linkovi, množina, Sačuvano, plan
+npm test           # unit testovi (Vitest): planer, linkovi, množina, Sačuvano, plan, poruke
 ```
 
 `ng serve` prosljeđuje sve `/api` pozive na backend `http://localhost:5080` (vidi `proxy.conf.json`),
@@ -75,6 +75,7 @@ src/app/
   layout/        okvir aplikacije (prozirna gornja traka, donja traka sa karticama na telefonu)
   shared/motion  spring animacije, projekcija zamaha, rubber-band, praćenje brzine
   shared/ui      ikone, sheet, toast, potvrda, ocjena, kartica ponuđača, galerija
+  shared/chat    poruke: lista sa pretragom, razgovor, traka "Poruke" u uglu (desktop)
   pages/         landing, auth, istraži, ponuđač, sačuvano, planer, moje rezervacije/recenzije, salon,
                  admin, profil, 404
 src/styles/      dizajn tokeni, tipografija, zajedničke komponente
@@ -111,6 +112,27 @@ Pri prijavi se gostova lista Sačuvanog spaja sa profilom (`POST /api/favorites/
 profil ako profil još nema plan. Bez mreže plan ostaje u pregledniku i ide na server pri sljedećoj promjeni ili prijavi.
 
 Upit salona sa početne još otvara e-mail sa popunjenim podacima (backend nema endpoint za upite).
+
+### Poruke (FR-13)
+
+- **Desktop:** traka "Poruke" zakačena za donji desni ugao (kao na Facebooku) otvara listu razgovora sa pretragom,
+  a razgovori se otvaraju u prozorima lijevo od nje (do 3, zavisno od širine). Dugme "Moj plan" je tada iznad trake
+  i sklanja se dok je razgovor otvoren.
+- **Pretraga (mladenci):** prvo traži u razgovorima; tek ako tu nema pogotka, nudi salone kojima se može pisati, pod
+  naslovom "Novi saloni" i uz napomenu da im korisnik još nije pisao. Salon traži samo po svojim razgovorima.
+- **Sanduče:** `/poruke` (mladenci) i `/salon/poruke` (salon): lista i razgovor jedno pored drugog na desktopu, jedno
+  po jedno na telefonu. Na telefonu mladenci otvaraju poruke ikonom u gornjoj traci, salon karticom "Poruke".
+- **Stranica salona:** "Pošalji poruku" / "Nastavi razgovor" (samo saloni koji primaju poruke; gost ide na prijavu).
+- Stanje je u `core/chat-store.ts`: lista, poruke po razgovoru, veza uživo (`@microsoft/signalr`, `proxy.conf.json`
+  ima `ws: true`) i prozori. Poruka se prikaže odmah i ostaje sa "Pošalji ponovo" ako slanje ne uspije.
+- **Bez treptanja pogrešnog prikaza** (skill `no-ui-flash`): lista i značka se iscrtavaju odmah iz nagovještaja u
+  pregledniku (`planiraj.chat.{id}`: zaglavlja razgovora, bez historije poruka), a server ih zamijeni čim odgovori.
+  Bez nagovještaja prikaz je neutralan dok server ne odgovori; "nemate poruka", "Novi saloni" i "napišite prvu poruku"
+  se pokazuju samo kad je to potvrđeno. Nagovještaj se briše pri odjavi, isteku sesije i brisanju profila. Testovi
+  u `core/chat-store.spec.ts` drže zahtjev otvorenim i provjeravaju šta je prikazano u međuvremenu.
+
+Node 25+ ima vlastiti `localStorage` koji zaklanja jsdom-ov; `src/test-setup.ts` ga vraća, pa testovi rade i na
+novijem Node-u (CI koristi verziju iz `.nvmrc`).
 
 ## Dizajn i pokret
 

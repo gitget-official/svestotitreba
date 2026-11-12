@@ -1,5 +1,21 @@
-import { Routes } from '@angular/router';
+import { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
 import { authGuard, guestGuard, passwordGuard, roleGuard } from './core/auth';
+
+/**
+ * Sanduče je jedna ruta za "poruke", "poruke/:id" i (za mladence) "poruke/salon/:vendorId", pa se stranica
+ * ne pravi iznova pri prelasku između razgovora (lista ostaje gdje je bila).
+ */
+function inboxMatcher(withVendorTarget: boolean) {
+  return (segments: UrlSegment[]): UrlMatchResult | null => {
+    const [root, a, b] = segments.map((s) => s.path);
+    if (root !== 'poruke') return null;
+    if (segments.length === 1) return { consumed: segments };
+    if (segments.length === 2 && /^\d+$/.test(a)) return { consumed: segments, posParams: { id: segments[1] } };
+    if (withVendorTarget && segments.length === 3 && a === 'salon' && /^\d+$/.test(b))
+      return { consumed: segments, posParams: { vendorId: segments[2] } };
+    return null;
+  };
+}
 
 // Naslovi su kratki; brend dodaje BrandTitleStrategy (core/brand.ts).
 export const routes: Routes = [
@@ -91,6 +107,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/my/my-pages').then((m) => m.MyReviews),
       },
       {
+        matcher: inboxMatcher(true),
+        canActivate: [roleGuard('Couple')],
+        title: 'Poruke',
+        loadComponent: () => import('./pages/messages/messages').then((m) => m.Messages),
+      },
+      {
         path: 'salon',
         canActivate: [roleGuard('Vendor')],
         children: [
@@ -108,6 +130,12 @@ export const routes: Routes = [
             path: 'rezervacije',
             title: 'Rezervacije',
             loadComponent: () => import('./pages/salon/salon-bookings').then((m) => m.SalonBookings),
+          },
+          {
+            // prije ':id', da "poruke" ne bude Id salona
+            matcher: inboxMatcher(false),
+            title: 'Poruke',
+            loadComponent: () => import('./pages/messages/messages').then((m) => m.Messages),
           },
           {
             path: ':id',

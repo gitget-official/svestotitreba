@@ -114,3 +114,37 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
 }
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** Lokalno vrijeme poruke: "14:05". */
+export function formatClock(value: string): string {
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Vrijeme u listi razgovora: danas "14:05", jučer "jučer", u zadnjih 6 dana "uto", inače "12.11." (ili "12.11.2025."). */
+export function formatChatTime(value: string, now = new Date()): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  if (sameDay(d, now)) return formatClock(value);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (sameDay(d, yesterday)) return 'jučer';
+  const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  if (d >= weekAgo && d < now) return DAYS.find((x) => x.key === DAY_KEYS[d.getDay()])!.short.toLowerCase();
+  return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear() === now.getFullYear() ? '' : d.getFullYear() + '.'}`;
+}
+
+/** Razdjelnik dana u razgovoru: "Danas", "Jučer", "subota, 8. novembar" (godina samo ako nije ova). */
+export function formatChatDay(value: string, now = new Date()): string {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  if (sameDay(d, now)) return 'Danas';
+  if (sameDay(d, new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) return 'Jučer';
+  const text = formatDate(value, { weekday: 'long', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+const DAY_KEYS: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

@@ -46,6 +46,7 @@ public static class EmailSetup
         services.AddSingleton<EmailRecipientPolicy>();
         services.AddScoped<IEmailOutbox, EmailOutbox>();
         services.AddScoped<IBookingNotifier, BookingNotifier>();
+        services.AddScoped<IChatEmailNotifier, ChatEmailNotifier>();
         services.AddScoped<EmailOutboxProcessor>();
 
         if (settings.Mode == EmailMode.Smtp)

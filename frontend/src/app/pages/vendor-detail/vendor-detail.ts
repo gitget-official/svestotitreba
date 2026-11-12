@@ -27,6 +27,7 @@ import { BOOKING_STATUS, DAYS, formatDate, formatPriceRange, formatTime, plural,
 import { vendorIdFromParam, vendorLink } from '../../core/links';
 import { Booking, Offering, Review, Vendor } from '../../core/models';
 import { BookingsStore, isOpen } from '../../core/my-bookings';
+import { ChatStore } from '../../core/chat-store';
 import { Reveal } from '../../shared/motion/reveal';
 import { Gallery } from '../../shared/ui/gallery';
 import { LookupStore } from '../../core/lookups';
@@ -229,6 +230,13 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
               }
 
               <div class="contacts">
+                @if (v.acceptsMessages && auth.hasRole('Couple')) {
+                  <button type="button" class="btn btn-block" [class.btn-primary]="!v.bookingEnabled" (click)="message(v)">
+                    <app-icon name="chat" /> {{ chatLabel() }}
+                  </button>
+                } @else if (v.acceptsMessages && !auth.isLoggedIn()) {
+                  <a class="btn btn-block" routerLink="/prijava" [queryParams]="{ povratak: here() }"><app-icon name="chat" /> Pišite mi direktno</a>
+                }
                 @if (v.phoneNumber) {
                   <a class="btn btn-block" [href]="'tel:' + v.phoneNumber"><app-icon name="phone" /> {{ v.phoneNumber }}</a>
                 }
@@ -280,8 +288,8 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
         </div>
 
         <!-- Telefon: glavna akcija je uvijek pri ruci, iznad donje trake. -->
-        <div class="mobile-cta material">
-          <div>
+        <div class="mobile-cta material" [class.above-chat]="chat.enabled()">
+          <div class="cta-info">
             @if (myBooking(); as b) {
               <p class="t-caption muted">Vaš zahtjev · {{ shortDate(b.eventDate) }}</p>
               <span class="badge" [class]="status[b.status].badge">{{ status[b.status].label }}</span>
@@ -290,6 +298,9 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
               <strong>{{ priceRange(v.priceFrom, v.priceTo) }}</strong>
             }
           </div>
+          @if (v.acceptsMessages && auth.hasRole('Couple')) {
+            <button type="button" class="icon-btn" (click)="message(v)" [attr.aria-label]="chatLabel()"><app-icon name="chat" /></button>
+          }
           @if (v.bookingEnabled && auth.hasRole('Couple')) {
             @if (myBooking()) {
               <a class="btn" routerLink="/moje-rezervacije">Pogledaj</a>
@@ -925,9 +936,19 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
       box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
     }
 
+    .cta-info {
+      flex: 1;
+      min-width: 0;
+    }
+
     @media (min-width: 48rem) {
       .mobile-cta {
         bottom: var(--space-4);
+      }
+
+      // Na tabletu je u uglu i traka "Poruke" (chat-dock).
+      .mobile-cta.above-chat {
+        bottom: calc(3rem + var(--space-3));
       }
     }
 
@@ -977,8 +998,14 @@ export class VendorDetail {
   private readonly destroyRef = inject(DestroyRef);
   private readonly plan = inject(PlanStore);
   private readonly lookups = inject(LookupStore);
+  protected readonly chat = inject(ChatStore);
 
   protected readonly vendor = signal<Vendor | null>(null);
+  /** Mladenci su ovom salonu već pisali (iz liste razgovora). */
+  protected readonly chatLabel = computed(() => {
+    const id = this.vendor()?.id;
+    return this.chat.conversations().some((c) => c.vendorId === id) ? 'Nastavi razgovor' : 'Pišite mi direktno';
+  });
   protected readonly reviews = signal<Review[]>([]);
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
@@ -1140,6 +1167,11 @@ export class VendorDetail {
 
   protected here(): string {
     return this.router.url;
+  }
+
+  /** "Pišite mi direktno": na desktopu prozor razgovora u uglu, na telefonu sanduče. */
+  protected message(v: Vendor): void {
+    this.chat.open({ vendor: { id: v.id, name: v.name, slug: v.slug, logoUrl: v.logoUrl } });
   }
 
   /** Nazad tamo odakle se došlo (filteri u pretrazi ostaju), a sa direktnog linka na pretragu. */

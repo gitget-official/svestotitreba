@@ -50,6 +50,8 @@ const ICONS: Record<string, string> = {
   'arrow-left': '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   inbox: '<path d="M3.5 13.5 6 5.5h12l2.5 8v5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/><path d="M3.5 13.5h5l1 2h5l1-2h5"/>',
   rings: '<circle cx="9" cy="14" r="5.5"/><circle cx="15" cy="14" r="5.5"/><path d="m10.5 4.5 1.5-1.5 1.5 1.5-1.5 1.5z"/>',
+  chat: '<path d="M12 4c4.7 0 8.5 3.2 8.5 7.2s-3.8 7.2-8.5 7.2c-1 0-2-.1-2.9-.4L5 20l1.1-3.6C4.5 15.1 3.5 13.2 3.5 11.2 3.5 7.2 7.3 4 12 4z"/>',
+  send: '<path d="M4.5 12 3.5 4.5 20.5 12 3.5 19.5z"/><path d="M4.5 12h8"/>',
   // Kategorije
   dress: '<path d="M9.5 3.5h5l-1 4 3.5 4.5-1.5 2 2.5 6.5h-12l2.5-6.5-1.5-2L10.5 7.5z"/>',
   building: '<path d="M4.5 20.5v-12l7.5-5 7.5 5v12"/><path d="M3 20.5h18M9.5 20.5v-5h5v5M8.5 11h1M14.5 11h1"/>',

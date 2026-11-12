@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../core/auth';
+import { ChatStore } from '../../core/chat-store';
 import { formatPrice, formatPriceRange, plural } from '../../core/format';
 import { LookupStore } from '../../core/lookups';
 import { PlanItem, PlanStore } from '../../core/plan-store';
@@ -22,7 +23,8 @@ import { BookingStatus } from './booking-status';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
-      <button type="button" class="fab plan-fab" [class.on-vendor]="onVendor()" [class.has-items]="store.count()" [class.bump]="bump()" (animationend)="bump.set(false)"
+      <button type="button" class="fab plan-fab" [class.on-vendor]="onVendor()" [class.above-chat]="chat.enabled()" [class.behind-chat]="chat.expanded()"
+        [class.has-items]="store.count()" [class.bump]="bump()" (animationend)="bump.set(false)"
         (click)="open.set(true)" aria-haspopup="dialog">
         <span class="fab-icon">
           <app-icon name="rings" [strokeWidth]="1.8" />
@@ -230,6 +232,22 @@ import { BookingStatus } from './booking-status';
       .fab {
         right: max(var(--space-6), env(safe-area-inset-right));
         bottom: calc(var(--space-6) + var(--safe-bottom));
+        transition:
+          transform var(--dur-press) ease-out,
+          box-shadow var(--dur-base) var(--ease-out),
+          opacity var(--dur-base) var(--ease-out),
+          visibility var(--dur-base);
+      }
+
+      // Traka "Poruke" je u uglu (vidi chat-dock), pa dugme stoji iznad nje, a dok je razgovor otvoren, sklanja se.
+      .fab.above-chat {
+        bottom: calc(3rem + var(--space-4) + var(--safe-bottom));
+      }
+
+      .fab.behind-chat {
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(0.75rem);
       }
 
       .fab-text {
@@ -403,6 +421,7 @@ import { BookingStatus } from './booking-status';
 })
 export class PlanCart {
   protected readonly store = inject(PlanStore);
+  protected readonly chat = inject(ChatStore);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly lookups = inject(LookupStore);
@@ -424,10 +443,11 @@ export class PlanCart {
     { initialValue: this.router.url },
   );
 
-  /** Za mladence i goste; ne na samom planeru (tamo je plan već na ekranu). */
+  /** Za mladence i goste; ne na samom planeru (tamo je plan već na ekranu) ni u porukama (prekrivalo bi polje za pisanje). */
   protected readonly visible = computed(() => {
     const role = this.auth.role();
-    return (role === null || role === 'Couple') && !this.url().startsWith('/planiranje');
+    const url = this.url();
+    return (role === null || role === 'Couple') && !url.startsWith('/planiranje') && !url.startsWith('/poruke');
   });
 
   /** Stranica ponuđača ima svoju traku "Rezerviši" i dugme "Dodaj u plan", pa se dugme ne slaže preko njih. */

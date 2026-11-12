@@ -58,6 +58,9 @@ public class VendorService
             query = query.Where(v => v.BookingEnabled == bookingEnabled);
         }
 
+        if (search.AcceptsMessages == true)
+            query = query.Where(v => v.Owner != null && v.Owner.IsActive && v.Owner.DeletedAt == null);
+
         // Kategorija i cijena se gledaju na istoj ponudi: "fotograf do 1500 KM".
         if (search.CategoryId.HasValue || search.PriceMin.HasValue || search.PriceMax.HasValue)
         {

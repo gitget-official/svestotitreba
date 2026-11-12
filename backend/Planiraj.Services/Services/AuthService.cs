@@ -228,6 +228,8 @@ public class AuthService : IAuthService
 
         _context.Favorites.RemoveRange(_context.Favorites.Where(f => f.UserId == user.Id));
         _context.SavedPlans.RemoveRange(_context.SavedPlans.Where(p => p.UserId == user.Id));
+        // Razgovori sa salonima se brišu zajedno sa porukama (kaskadno).
+        _context.Conversations.RemoveRange(_context.Conversations.Where(c => c.CoupleUserId == user.Id));
 
         var bookings = await _context.Bookings.Where(b => b.UserId == user.Id).ToListAsync();
         foreach (var b in bookings)

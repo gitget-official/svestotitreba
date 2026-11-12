@@ -48,6 +48,8 @@ public class VendorSearchObject : BaseSearchObject
     public DateOnly? AvailableOn { get; set; }
     public bool? BookingEnabled { get; set; }
     public int? OwnerUserId { get; set; }
+    /// <summary>true = samo saloni kojima se može pisati poruka (imaju vlasnika na platformi).</summary>
+    public bool? AcceptsMessages { get; set; }
     /// <summary>Samo za administratora: prikaži i neaktivne ponuđače.</summary>
     public bool IncludeInactive { get; set; }
 }
@@ -86,4 +88,11 @@ public class BookingSearchObject : BaseSearchObject
     public BookingStatus? Status { get; set; }
     public DateOnly? DateFrom { get; set; }
     public DateOnly? DateTo { get; set; }
+}
+
+/// <summary>Razgovori prijavljenog korisnika. Fts traži po nazivu salona (mladenci) ili imenu mladenaca (salon).</summary>
+public class ConversationSearchObject : BaseSearchObject
+{
+    /// <summary>Za vlasnika više salona: samo razgovori jednog salona.</summary>
+    public int? VendorId { get; set; }
 }

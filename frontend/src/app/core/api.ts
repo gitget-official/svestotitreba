@@ -9,7 +9,12 @@ import {
   BookingSearch,
   BookingStatusChangeRequest,
   BookingUpdateRequest,
+  ChatMessagePage,
+  ChatSendResult,
   City,
+  Conversation,
+  ConversationList,
+  ConversationSearch,
   CityUpsertRequest,
   Offering,
   OfferingInsertRequest,
@@ -223,5 +228,45 @@ export class BookingApi extends CrudApi<Booking, BookingSearch, BookingInsertReq
 
   cancel(id: number, request: BookingStatusChangeRequest): Observable<Booking> {
     return this.http.put<Booking>(`${this.url}/${id}/cancel`, request);
+  }
+}
+
+/** /api/conversations: poruke mladenaca i salona. Nove poruke stižu i uživo (ChatStore, SignalR). */
+@Injectable({ providedIn: 'root' })
+export class ChatApi {
+  private readonly http = inject(HttpClient);
+  private readonly url = `${environment.apiUrl}/conversations`;
+
+  list(search: ConversationSearch = {}, context?: HttpContext): Observable<ConversationList> {
+    return this.http.get<ConversationList>(this.url, { params: toParams(search), context });
+  }
+
+  get(id: number, context?: HttpContext): Observable<Conversation> {
+    return this.http.get<Conversation>(`${this.url}/${id}`, { context });
+  }
+
+  /** Razgovor sa salonom, ili null (204) kad mu mladenci još nisu pisali. */
+  withVendor(vendorId: number, context?: HttpContext): Observable<Conversation | null> {
+    return this.http.get<Conversation | null>(`${this.url}/vendor/${vendorId}`, { context });
+  }
+
+  messages(id: number, beforeId: number | null, pageSize = 30, context?: HttpContext): Observable<ChatMessagePage> {
+    return this.http.get<ChatMessagePage>(`${this.url}/${id}/messages`, {
+      params: toParams({ beforeId, pageSize }),
+      context,
+    });
+  }
+
+  /** Prva poruka salonu; ako razgovor već postoji, poruka ide u njega. */
+  start(vendorId: number, body: string, context?: HttpContext): Observable<ChatSendResult> {
+    return this.http.post<ChatSendResult>(this.url, { vendorId, body }, { context });
+  }
+
+  send(id: number, body: string, context?: HttpContext): Observable<ChatSendResult> {
+    return this.http.post<ChatSendResult>(`${this.url}/${id}/messages`, { body }, { context });
+  }
+
+  markRead(id: number, context?: HttpContext): Observable<Conversation> {
+    return this.http.put<Conversation>(`${this.url}/${id}/read`, {}, { context });
   }
 }
