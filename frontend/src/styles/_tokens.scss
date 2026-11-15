@@ -95,6 +95,8 @@
 
   --page-max: 72rem;
   --nav-height: 3.5rem;
+  // Visina plutajućeg dugmeta (.fab): krug ikone 2.75rem + unutrašnji razmak + ivica. Za slaganje dugmadi i panel iznad njih.
+  --fab-height: calc(3.5rem + 2px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   // ---- Tipografija ----

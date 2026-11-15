@@ -33,7 +33,7 @@ interface Item {
 }
 
 /**
- * Poruke jednog razgovora i polje za pisanje (prozor na desktopu i sanduče). Zaglavlje crta roditelj.
+ * Poruke jednog razgovora i polje za pisanje (panel na desktopu i sanduče). Zaglavlje crta roditelj.
  *
  * Bez treptanja: dok se ne zna postoji li razgovor sa salonom, ili dok prve poruke nisu stigle, prikaz je neutralan.
  * "Napišite prvu poruku" se pokazuje samo kad je sigurno da razgovor ne postoji.
@@ -355,10 +355,10 @@ export class ChatThread {
   private readonly toasts = inject(ToastService);
 
   readonly target = input.required<ChatTarget>();
-  /** Razgovor je vidljiv korisniku (nije umanjen): tada se nove poruke odmah označavaju kao pročitane. */
+  /** Razgovor je vidljiv korisniku: tada se nove poruke odmah označavaju kao pročitane. */
   readonly active = input(true);
   readonly autofocus = input(false);
-  /** Prozor sa salonom je dobio razgovor (postojeći ili napravljen prvom porukom). */
+  /** Razgovor sa salonom je dobio razgovor (postojeći ili napravljen prvom porukom). */
   readonly bound = output<Conversation>();
 
   protected readonly maxLength = MAX_LENGTH;
@@ -563,7 +563,7 @@ export class ChatThread {
   }
 
   private resolve(target: ChatTarget): void {
-    // Salon je dobio svoj razgovor (isti prozor): započeta poruka ostaje. Drugi razgovor počinje sa praznim poljem.
+    // Salon je dobio svoj razgovor (isti prikaz): započeta poruka ostaje. Drugi razgovor počinje sa praznim poljem.
     const binding = this.lastTarget !== null && 'vendor' in this.lastTarget && 'conversationId' in target;
     this.lastTarget = target;
     this.anchor = null;

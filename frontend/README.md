@@ -44,7 +44,8 @@ Ime i opis se čitaju iz `core/brand.ts`. Bez `SITE_URL` adrese su relativne (sa
 dostupan, prave se samo opće stranice, sitemap i robots.txt. Statične stranice novih ponuđača nastaju pri sljedećem buildu,
 pa prerender treba pokretati pri svakom deployu (sitemap sa servera ih ima odmah). U aplikaciji isto radi `core/seo.ts` (stranica ponuđača).
 
-Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`.
+Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`, a svaki drugi salon osim
+„Sala Panorama“ ima vlasnika `salon-{slug} / Salon123!` (npr. `salon-foto-trenutak`; vidi backend README).
 
 ## Saloni
 
@@ -75,7 +76,7 @@ src/app/
   layout/        okvir aplikacije (prozirna gornja traka, donja traka sa karticama na telefonu)
   shared/motion  spring animacije, projekcija zamaha, rubber-band, praćenje brzine
   shared/ui      ikone, sheet, toast, potvrda, ocjena, kartica ponuđača, galerija
-  shared/chat    poruke: lista sa pretragom, razgovor, traka "Poruke" u uglu (desktop)
+  shared/chat    poruke: lista sa pretragom, razgovor, plutajuće dugme i panel "Poruke" (desktop)
   pages/         landing, auth, istraži, ponuđač, sačuvano, planer, moje rezervacije/recenzije, salon,
                  admin, profil, 404
 src/styles/      dizajn tokeni, tipografija, zajedničke komponente
@@ -115,9 +116,11 @@ Upit salona sa početne još otvara e-mail sa popunjenim podacima (backend nema 
 
 ### Poruke (FR-13)
 
-- **Desktop:** traka "Poruke" zakačena za donji desni ugao (kao na Facebooku) otvara listu razgovora sa pretragom,
-  a razgovori se otvaraju u prozorima lijevo od nje (do 3, zavisno od širine). Dugme "Moj plan" je tada iznad trake
-  i sklanja se dok je razgovor otvoren.
+- **Desktop i tablet:** plutajuće dugme "Poruke" u donjem desnom uglu, istog izgleda kao "Moj plan" (zajednički `.fab` u
+  `styles/_components.scss`; mladenci imaju oba, jedno iznad drugog). Otvara panel iznad sebe: lista razgovora sa
+  pretragom, a izabrani razgovor zamjenjuje listu (strelica nazad vraća na nju). Jedan razgovor u isto vrijeme; Escape
+  zatvara panel. "Moj plan" se sklanja dok je panel otvoren. Na stranici salona ispod 60rem dugme se ne prikazuje
+  (traka "Rezerviši" ima svoje dugme za poruku).
 - **Pretraga (mladenci):** prvo traži u razgovorima; tek ako tu nema pogotka, nudi salone kojima se može pisati, pod
   naslovom "Novi saloni" i uz napomenu da im korisnik još nije pisao. Salon traži samo po svojim razgovorima.
 - **Sanduče:** `/poruke` (mladenci) i `/salon/poruke` (salon): lista i razgovor jedno pored drugog na desktopu, jedno

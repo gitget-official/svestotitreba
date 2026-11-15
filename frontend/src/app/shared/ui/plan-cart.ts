@@ -28,7 +28,7 @@ import { BookingStatus } from './booking-status';
         (click)="open.set(true)" aria-haspopup="dialog">
         <span class="fab-icon">
           <app-icon name="rings" [strokeWidth]="1.8" />
-          @if (store.count()) { <span class="count">{{ store.count() }}</span> }
+          @if (store.count()) { <span class="fab-count">{{ store.count() }}</span> }
         </span>
         <span class="fab-text">
           <span class="fab-title">Moj plan</span>
@@ -112,106 +112,15 @@ import { BookingStatus } from './booking-status';
     }
   `,
   styles: `
-    // Plutajuće dugme: iznad donje trake na telefonu, u uglu na desktopu.
-    .fab {
-      position: fixed;
-      right: max(var(--space-4), env(safe-area-inset-right));
-      bottom: calc(5rem + var(--safe-bottom));
-      z-index: 60;
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-3);
-      padding: 0.375rem;
-      border: 1px solid var(--separator);
-      border-radius: var(--radius-full);
-      background: var(--material-thick);
-      -webkit-backdrop-filter: var(--blur-regular);
-      backdrop-filter: var(--blur-regular);
-      box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
-      color: var(--text);
-      cursor: pointer;
-      touch-action: manipulation;
-      animation: fab-in 420ms var(--ease-out) both;
-      transition: transform var(--dur-press) ease-out, box-shadow var(--dur-base) var(--ease-out);
-    }
-
-    .fab:hover {
-      box-shadow: var(--shadow-lg), 0 0 0 4px var(--accent-soft), inset 0 1px 0 var(--material-edge);
-    }
-
-    .fab:active {
-      transform: scale(0.95);
-    }
-
+    // Izgled plutajućeg dugmeta je zajednički (.fab u styles/_components.scss, isto kao "Poruke").
     // Kad se nešto doda u plan, dugme kratko "primi" stavku.
     .fab.bump .fab-icon {
       animation: bump 420ms var(--ease-out);
     }
 
-    .fab-icon {
-      position: relative;
-      display: grid;
-      place-items: center;
-      width: 2.75rem;
-      height: 2.75rem;
-      border-radius: 50%;
-      background: var(--accent);
-      color: var(--text-on-accent);
-    }
-
-    .fab-icon app-icon {
-      width: 1.375rem;
-      height: 1.375rem;
-    }
-
-    .count {
-      position: absolute;
-      top: -0.25rem;
-      right: -0.25rem;
-      display: grid;
-      place-items: center;
-      min-width: 1.25rem;
-      height: 1.25rem;
-      padding: 0 0.3rem;
-      border-radius: var(--radius-full);
-      background: var(--gold);
-      color: #fff;
-      font-size: 0.6875rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      box-shadow: 0 0 0 2px var(--bg-elevated);
-    }
-
-    // Na telefonu se tekst ne vidi (samo ikona), ali ga čitač ekrana i dalje čita kao natpis dugmeta.
-    .fab-text {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-      padding-right: var(--space-3);
-      text-align: left;
-    }
-
-    .fab-title {
-      display: block;
-      font-weight: 650;
-      font-size: 0.9375rem;
-      line-height: 1.2;
-    }
-
-    .fab-sub {
-      display: block;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      font-variant-numeric: tabular-nums;
-    }
-
-    @keyframes fab-in {
-      from {
-        opacity: 0;
-        transform: translateY(16px) scale(0.9);
+    @keyframes bump {
+      35% {
+        transform: scale(1.18);
       }
     }
 
@@ -222,41 +131,16 @@ import { BookingStatus } from './booking-status';
       }
     }
 
-    @keyframes bump {
-      35% {
-        transform: scale(1.18);
-      }
-    }
-
     @media (min-width: 48rem) {
-      .fab {
-        right: max(var(--space-6), env(safe-area-inset-right));
-        bottom: calc(var(--space-6) + var(--safe-bottom));
-        transition:
-          transform var(--dur-press) ease-out,
-          box-shadow var(--dur-base) var(--ease-out),
-          opacity var(--dur-base) var(--ease-out),
-          visibility var(--dur-base);
-      }
-
-      // Traka "Poruke" je u uglu (vidi chat-dock), pa dugme stoji iznad nje, a dok je razgovor otvoren, sklanja se.
+      // Dugme "Poruke" je u uglu (chat-dock), pa "Moj plan" stoji iznad njega, a dok je panel poruka otvoren, sklanja se.
       .fab.above-chat {
-        bottom: calc(3rem + var(--space-4) + var(--safe-bottom));
+        bottom: calc(var(--space-6) + var(--fab-height) + var(--space-3) + var(--safe-bottom));
       }
 
       .fab.behind-chat {
         opacity: 0;
         visibility: hidden;
         transform: translateY(0.75rem);
-      }
-
-      .fab-text {
-        position: static;
-        width: auto;
-        height: auto;
-        overflow: visible;
-        clip-path: none;
-        display: block;
       }
     }
 
@@ -408,7 +292,6 @@ import { BookingStatus } from './booking-status';
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .fab,
       .fab.bump .fab-icon {
         animation: none;
       }

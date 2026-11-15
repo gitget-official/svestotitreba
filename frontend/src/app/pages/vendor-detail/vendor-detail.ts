@@ -288,7 +288,7 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
         </div>
 
         <!-- Telefon: glavna akcija je uvijek pri ruci, iznad donje trake. -->
-        <div class="mobile-cta material" [class.above-chat]="chat.enabled()">
+        <div class="mobile-cta material">
           <div class="cta-info">
             @if (myBooking(); as b) {
               <p class="t-caption muted">Vaš zahtjev · {{ shortDate(b.eventDate) }}</p>
@@ -945,11 +945,6 @@ type Availability = 'idle' | 'checking' | 'free' | 'taken' | 'mine' | 'unknown';
       .mobile-cta {
         bottom: var(--space-4);
       }
-
-      // Na tabletu je u uglu i traka "Poruke" (chat-dock).
-      .mobile-cta.above-chat {
-        bottom: calc(3rem + var(--space-3));
-      }
     }
 
     // Prostor ispod sadržaja da plutajuća traka ne prekrije zadnju recenziju.
@@ -1169,7 +1164,7 @@ export class VendorDetail {
     return this.router.url;
   }
 
-  /** "Pišite mi direktno": na desktopu prozor razgovora u uglu, na telefonu sanduče. */
+  /** "Pišite mi direktno": na desktopu panel poruka sa tim razgovorom, na telefonu sanduče. */
   protected message(v: Vendor): void {
     this.chat.open({ vendor: { id: v.id, name: v.name, slug: v.slug, logoUrl: v.logoUrl } });
   }

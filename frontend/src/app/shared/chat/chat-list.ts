@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { Observable, catchError, debounceTime, distinctUntilChanged, map, of, switchMap, tap } from 'rxjs';
 import { ChatApi, SKIP_AUTH_REDIRECT, SKIP_ERROR_TOAST, VendorApi } from '../../core/api';
 import { ChatStore, ChatTarget, ChatVendorRef } from '../../core/chat-store';
-import { formatChatTime } from '../../core/format';
+import { formatChatTime, plural } from '../../core/format';
 import { Conversation } from '../../core/models';
 import { Icon } from '../ui/icon';
 import { ChatPeerAvatar, peerOf, vendorPeer } from './chat-peer';
@@ -32,8 +32,8 @@ function fold(text: string): string {
 }
 
 /**
- * Lista razgovora sa pretragom (prozor "Poruke" i sanduče). Ne bira sama šta se otvara: javlja `select`,
- * a roditelj otvara prozor (desktop) ili stranicu.
+ * Lista razgovora sa pretragom (panel "Poruke" i sanduče). Ne bira sama šta se otvara: javlja `select`,
+ * a roditelj otvara razgovor u panelu (desktop) ili na stranici.
  *
  * Bez treptanja: dok lista nije poznata, prikaz je neutralan (ni redovi ni "nemate poruka"); dok se novi pojam
  * traži, ostaju rezultati prethodnog; "Novi saloni" se pojavljuju tek kad je sigurno da u razgovorima nema pogotka.
@@ -81,7 +81,7 @@ function fold(text: string): string {
                     @if (multiVendor()) { <span class="salon">{{ r.c.vendorName }}</span> }
                   </span>
                   @if (r.c.unreadCount) {
-                    <span class="count">{{ r.c.unreadCount }}<span class="sr-only"> nepročitanih</span></span>
+                    <span class="count">{{ r.c.unreadCount }}<span class="sr-only"> {{ plural(r.c.unreadCount, 'nepročitana', 'nepročitane', 'nepročitanih') }}</span></span>
                   }
                 </button>
               </li>
@@ -414,6 +414,7 @@ export class ChatList {
   );
 
   protected readonly vendorPeer = vendorPeer;
+  protected readonly plural = plural;
 
   constructor() {
     toObservable(this.term)

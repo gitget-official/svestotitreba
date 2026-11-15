@@ -16,7 +16,7 @@ export interface ChatVendorRef {
   logoUrl: string | null;
 }
 
-/** Šta prozor ili stranica prikazuje: postojeći razgovor ili prvu poruku salonu. */
+/** Šta panel ili stranica prikazuje: postojeći razgovor ili prvu poruku salonu. */
 export type ChatTarget = { conversationId: number } | { vendor: ChatVendorRef };
 
 /** Poruka u prikazu; `pending` dok se šalje, `error` kad slanje nije uspjelo. */
@@ -31,15 +31,6 @@ export interface Thread {
   /** loading: prva stranica još nije stigla (prikaz je neutralan, ne "napišite prvu poruku"). */
   state: 'loading' | 'ready' | 'error';
   loadingOlder: boolean;
-}
-
-/** Prozor razgovora na desktopu (kao na Facebooku). */
-export interface ChatWindow {
-  /** Stalan za cijeli život prozora; `key` se mijenja kad prozor salona dobije razgovor. */
-  id: number;
-  key: string;
-  target: ChatTarget;
-  minimized: boolean;
 }
 
 /** Veza uživo; u testovima se zamjenjuje lažnom. */
@@ -76,7 +67,7 @@ interface Hint {
 }
 
 /**
- * Poruke prijavljenih mladenaca i salona: lista razgovora, poruke po razgovoru, veza uživo i prozori na desktopu.
+ * Poruke prijavljenih mladenaca i salona: lista razgovora, poruke po razgovoru, veza uživo i plutajući panel na desktopu.
  *
  * Bez treptanja pogrešnog prikaza (skill no-ui-flash):
  * - Prijava se čita iz preglednika prije prvog iscrtavanja, pa je odmah poznato ima li korisnik poruke uopšte.
@@ -120,7 +111,6 @@ export class ChatStore {
   private hub: ChatHub | null = null;
   private userId: number | null = null;
   private nextTempId = -1;
-  private nextWindowId = 1;
   private readonly marking = new Set<number>();
 
   constructor() {
@@ -264,7 +254,7 @@ export class ChatStore {
   }
 
   /**
-   * Prva poruka salonu. Razgovor dobija poruku odmah, pa nema praznog trenutka dok se prozor prebacuje na razgovor.
+   * Prva poruka salonu. Razgovor dobija poruku odmah, pa nema praznog trenutka dok se prikaz prebacuje na razgovor.
    * Ako je razgovor već postojao (lista nije bila potpuna), starije poruke se učitavaju skrolanjem.
    */
   start(vendorId: number, body: string): Observable<ChatSendResult> {
@@ -291,14 +281,16 @@ export class ChatStore {
     });
   }
 
-  // ---------------- Prozori na desktopu ----------------
+  // ---------------- Plutajući panel na desktopu ----------------
 
-  readonly dockOpen = signal(false);
-  readonly windows = signal<ChatWindow[]>([]);
-  /** Ima li otvoren prozor ili lista (tada se "Moj plan" sklanja da ne prekriva razgovor). */
-  readonly expanded = computed(() => this.dockOpen() || this.windows().some((w) => !w.minimized));
+  /** Panel "Poruke" iznad plutajućeg dugmeta (chat-dock). */
+  readonly panelOpen = signal(false);
+  /** Razgovor u panelu; null = lista razgovora. Ostaje i dok se panel zatvara (animacija ne mijenja sadržaj). */
+  readonly active = signal<ChatTarget | null>(null);
+  /** Panel je otvoren: "Moj plan" je na istom mjestu, pa se tada sklanja. */
+  readonly expanded = this.panelOpen.asReadonly();
 
-  /** Otvara razgovor: na desktopu u prozoru, na telefonu na stranici sandučeta. */
+  /** Otvara razgovor: na desktopu u panelu (zamjenjuje prethodni), na telefonu na stranici sandučeta. */
   open(target: ChatTarget): void {
     const resolved = this.normalize(target);
     if (!isDesktop()) {
@@ -307,32 +299,35 @@ export class ChatStore {
       );
       return;
     }
-    const key = targetKey(resolved);
-    this.dockOpen.set(false);
-    this.windows.update((list) => {
-      const existing = list.find((w) => w.key === key);
-      if (existing) return [{ ...existing, minimized: false }, ...list.filter((w) => w !== existing)];
-      return [{ id: this.nextWindowId++, key, target: resolved, minimized: false }, ...list].slice(0, maxWindows());
-    });
+    this.active.set(resolved);
+    this.panelOpen.set(true);
   }
 
-  /** Prozor novog razgovora je dobio razgovor (prva poruka ili postojeći razgovor sa salonom). */
-  bindWindow(key: string, conversation: Conversation): void {
-    const target = { conversationId: conversation.id };
-    const newKey = targetKey(target);
-    this.windows.update((list) => {
-      const others = list.filter((w) => w.key !== key && w.key !== newKey);
-      const current = list.find((w) => w.key === key);
-      return current ? [{ ...current, key: newKey, target }, ...others] : list;
-    });
+  /** Dugme "Poruke": otvara panel sa listom razgovora, ili ga zatvara. */
+  togglePanel(): void {
+    if (this.panelOpen()) {
+      this.closePanel();
+      return;
+    }
+    this.active.set(null);
+    this.panelOpen.set(true);
   }
 
-  closeWindow(key: string): void {
-    this.windows.update((list) => list.filter((w) => w.key !== key));
+  closePanel(): void {
+    this.panelOpen.set(false);
   }
 
-  toggleWindow(key: string): void {
-    this.windows.update((list) => list.map((w) => (w.key === key ? { ...w, minimized: !w.minimized } : w)));
+  /** "Nazad" iz razgovora na listu. */
+  showList(): void {
+    this.active.set(null);
+  }
+
+  /**
+   * Razgovor sa salonom je dobio razgovor (prva poruka ili postojeći razgovor). Isti prikaz ostaje (bez ponovnog
+   * pravljenja), pa ni započeta poruka se ne gubi.
+   */
+  bindActive(conversation: Conversation): void {
+    this.active.set({ conversationId: conversation.id });
   }
 
   // ---------------- Interno ----------------
@@ -349,8 +344,8 @@ export class ChatStore {
     this.userId = id;
     this.threadMap.set({});
     this.missing.set(new Set());
-    this.windows.set([]);
-    this.dockOpen.set(false);
+    this.panelOpen.set(false);
+    this.active.set(null);
     this.marking.clear();
     clearHints(id);
 
@@ -455,23 +450,8 @@ function sortByLatest(list: Conversation[]): Conversation[] {
   return [...list].sort((a, b) => Date.parse(b.lastMessageAt) - Date.parse(a.lastMessageAt) || b.id - a.id);
 }
 
-function targetKey(target: ChatTarget): string {
-  return 'conversationId' in target ? `c${target.conversationId}` : `v${target.vendor.id}`;
-}
-
 function isDesktop(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(min-width: 48rem)').matches;
-}
-
-/**
- * Koliko prozora stane lijevo od trake "Poruke" (kao na Facebooku: najstariji se zatvara), najviše 3.
- * Mjere su iz chat-dock: traka 20rem, prozor 21rem, razmak 0.75rem, desna margina 2rem. Širina je bez trake za skrolanje.
- */
-function maxWindows(): number {
-  if (typeof document === 'undefined') return 1;
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const free = document.documentElement.clientWidth - (2 + 20) * rem;
-  return Math.max(1, Math.min(3, Math.floor(free / ((21 + 0.75) * rem))));
 }
 
 /** Briše nagovještaje svih drugih korisnika (i sve, kad niko nije prijavljen). */

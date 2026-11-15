@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { AuthService } from './auth';
 import { CHAT_HUB_FACTORY, ChatHub, ChatStore } from './chat-store';
 import { ChatMessage, Conversation, ConversationList, UserRole } from './models';
@@ -242,5 +242,79 @@ describe('ChatStore', () => {
     expect(store.unreadTotal()).toBe(0);
     http.expectOne('/api/conversations/1/read').flush(conversation(1));
     expect(store.unreadTotal()).toBe(0);
+  });
+});
+
+describe('ChatStore: panel poruka', () => {
+  const desktop = (matches: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches, media: query, addEventListener() {}, removeEventListener() {} }));
+  const amra = { id: 101, name: 'Salon 1', slug: 'salon-1', logoUrl: null };
+  const novi = { id: 777, name: 'Novi salon', slug: 'novi-salon', logoUrl: null };
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('desktop: dugme otvara listu, "Pišite mi direktno" otvara panel pravo u razgovor, novi razgovor zamjenjuje stari', () => {
+    desktop(true);
+    const { store, http, login } = setup();
+    login();
+    http.expectOne(listUrl).flush(list([conversation(1), conversation(2)]));
+
+    store.togglePanel();
+    expect(store.panelOpen()).toBe(true);
+    expect(store.expanded()).toBe(true);
+    expect(store.active()).toBeNull();
+
+    // Salon kojem je već pisano: otvara se postojeći razgovor, ne novi.
+    store.open({ vendor: amra });
+    expect(store.active()).toEqual({ conversationId: 1 });
+    store.open({ conversationId: 2 });
+    expect(store.active()).toEqual({ conversationId: 2 });
+
+    store.showList();
+    expect(store.active()).toBeNull();
+    store.togglePanel();
+    expect(store.panelOpen()).toBe(false);
+    expect(store.expanded()).toBe(false);
+  });
+
+  it('prva poruka novom salonu veže isti prikaz za napravljeni razgovor', () => {
+    desktop(true);
+    const { store, http, login } = setup();
+    login();
+    http.expectOne(listUrl).flush(list([]));
+
+    store.open({ vendor: novi });
+    expect(store.active()).toEqual({ vendor: novi });
+    store.bindActive(conversation(9, { vendorId: novi.id }));
+    expect(store.active()).toEqual({ conversationId: 9 });
+    expect(store.panelOpen()).toBe(true);
+  });
+
+  it('telefon: razgovor se otvara na stranici sandučeta, panel ostaje zatvoren', () => {
+    desktop(false);
+    const { store, http, login } = setup();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    login();
+    http.expectOne(listUrl).flush(list([conversation(1)]));
+
+    store.open({ vendor: novi });
+    expect(navigate).toHaveBeenCalledWith('/poruke/salon/777');
+    store.open({ vendor: amra });
+    expect(navigate).toHaveBeenCalledWith('/poruke/1');
+    expect(store.panelOpen()).toBe(false);
+  });
+
+  it('odjava zatvara panel', () => {
+    desktop(true);
+    const { store, http, user, login } = setup();
+    login();
+    http.expectOne(listUrl).flush(list([conversation(1)]));
+    store.open({ conversationId: 1 });
+
+    user.set(null);
+    TestBed.tick();
+    expect(store.panelOpen()).toBe(false);
+    expect(store.active()).toBeNull();
   });
 });

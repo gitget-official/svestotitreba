@@ -1,17 +1,29 @@
-import { ChangeDetectionStrategy, Component, HostListener, computed, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  HostListener,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
-import { ChatStore, ChatWindow } from '../../core/chat-store';
+import { ChatStore } from '../../core/chat-store';
+import { plural } from '../../core/format';
 import { Icon } from '../ui/icon';
 import { ChatList } from './chat-list';
 import { ChatPeer, ChatPeerAvatar, peerOf, vendorPeer } from './chat-peer';
 import { ChatThread } from './chat-thread';
 
 /**
- * Poruke na desktopu, kao na Facebooku: traka "Poruke" zakačena za donji desni ugao otvara listu razgovora,
- * a razgovori se otvaraju u prozorima lijevo od nje. Na telefonu se ne prikazuje (tamo je sanduče /poruke).
- * Postoji samo za mladence i salone; uloga je poznata od prvog iscrtavanja, pa traka nikad ne "iskoči".
+ * Poruke na desktopu i tabletu: plutajuće dugme "Poruke" (isti izgled kao "Moj plan", zajednički .fab) otvara panel
+ * u svom uglu, sa listom razgovora ili jednim razgovorom; dok je panel otvoren, dugme je sklonjeno.
+ * Na telefonu se ne prikazuje (tamo je sanduče /poruke).
+ * Postoji samo za mladence i salone; uloga je poznata od prvog iscrtavanja, pa dugme nikad ne "iskoči".
  */
 @Component({
   selector: 'app-chat-dock',
@@ -19,179 +31,188 @@ import { ChatThread } from './chat-thread';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (visible()) {
-      <div class="dock">
-        <section class="launcher panel" [class.open]="store.dockOpen()" aria-label="Poruke">
-          <header class="head">
-            <button type="button" class="head-main" (click)="toggleList()" [attr.aria-expanded]="store.dockOpen()">
-              <app-icon name="chat" />
-              <span class="title">Poruke</span>
-              @if (badge(); as n) {
-                <span class="count">{{ n }}<span class="sr-only"> nepročitanih</span></span>
-              }
-            </button>
-            @if (store.dockOpen()) {
-              <a class="icon-btn small" [routerLink]="store.inboxUrl()" (click)="store.dockOpen.set(false)" aria-label="Otvori sve poruke"
-                title="Otvori sve poruke">
-                <app-icon name="expand" />
-              </a>
-            }
-            <button type="button" class="icon-btn small chevron" (click)="toggleList()" [attr.aria-label]="store.dockOpen() ? 'Sakrij listu' : 'Prikaži listu'">
-              <app-icon name="chevron-down" />
-            </button>
-          </header>
-          @if (store.dockOpen()) {
-            <app-chat-list class="body" animate.enter="body-in" animate.leave="body-out" (select)="store.open($event)" />
-          }
-        </section>
+      <!-- Dok je panel otvoren, dugme se sklanja (panel zauzima njegov ugao), ali ostaje u DOM-u: fokus se vraća na njega. -->
+      <button
+        #fab
+        type="button"
+        class="fab chat-fab"
+        [class.on-vendor]="onVendor()"
+        [class.behind-panel]="store.panelOpen()"
+        aria-haspopup="dialog"
+        aria-controls="chat-panel"
+        [attr.aria-expanded]="store.panelOpen()"
+        (click)="openFromFab()"
+      >
+        <span class="fab-icon">
+          <app-icon name="chat" [strokeWidth]="1.8" />
+          @if (badge()) { <span class="fab-count">{{ badge() }}</span> }
+        </span>
+        <span class="fab-text">
+          <span class="fab-title">Poruke</span>
+          <span class="fab-sub">{{ sub() }}</span>
+        </span>
+      </button>
 
-        <!-- Po id-u, ne po key-u: kad prozor salona dobije razgovor, ostaje isti prozor (bez zatvaranja i otvaranja). -->
-        @for (w of store.windows(); track w.id) {
-          <section class="window panel" animate.leave="window-out" [class.open]="!w.minimized" [class.unread]="unread(w)" role="dialog"
-            [attr.aria-label]="'Razgovor: ' + (peer(w)?.name ?? '')">
-            <header class="head">
-              <button type="button" class="head-main" (click)="store.toggleWindow(w.key)" [attr.aria-expanded]="!w.minimized">
-                @if (peer(w); as p) {
+      @if (store.panelOpen()) {
+        <section #panel id="chat-panel" class="chat-panel" [class.on-vendor]="onVendor()" role="dialog" tabindex="-1"
+          [attr.aria-label]="label()" animate.enter="panel-in" animate.leave="panel-out">
+          @if (store.active(); as target) {
+            <div class="view" animate.enter="thread-in" animate.leave="thread-out">
+              <header class="head">
+                <button type="button" class="icon-btn small back" (click)="store.showList()" aria-label="Nazad" title="Nazad">
+                  <app-icon name="arrow-left" />
+                </button>
+                @if (peer(); as p) {
                   <app-chat-peer-avatar class="mini" [peer]="p" />
                   <span class="title">{{ p.name }}</span>
+                  @if (p.link) {
+                    <a class="icon-btn small" [routerLink]="p.link" aria-label="Stranica salona" title="Stranica salona">
+                      <app-icon name="store" />
+                    </a>
+                  }
                 } @else {
                   <span class="title"></span>
                 }
-                @if (unread(w); as n) { <span class="count">{{ n }}</span> }
-              </button>
-              @if (peer(w)?.link; as link) {
-                <a class="icon-btn small" [routerLink]="link" aria-label="Stranica salona" title="Stranica salona">
-                  <app-icon name="store" />
+                <button type="button" class="icon-btn small" (click)="close()" aria-label="Zatvori poruke" title="Zatvori">
+                  <app-icon name="close" />
+                </button>
+              </header>
+              <app-chat-thread class="body" [target]="target" [active]="true" [autofocus]="true" (bound)="store.bindActive($event)" />
+            </div>
+          } @else {
+            <div class="view" animate.enter="list-in" animate.leave="list-out">
+              <header class="head">
+                <h2 class="title">Poruke</h2>
+                <a class="icon-btn small" [routerLink]="store.inboxUrl()" (click)="store.closePanel()" aria-label="Otvori sve poruke"
+                  title="Otvori sve poruke">
+                  <app-icon name="expand" />
                 </a>
-              }
-              <button type="button" class="icon-btn small" (click)="store.toggleWindow(w.key)" [attr.aria-label]="w.minimized ? 'Otvori' : 'Umanji'">
-                <app-icon [name]="w.minimized ? 'chevron-down' : 'minus'" [class.up]="w.minimized" />
-              </button>
-              <button type="button" class="icon-btn small" (click)="store.closeWindow(w.key)" aria-label="Zatvori razgovor">
-                <app-icon name="close" />
-              </button>
-            </header>
-            @if (!w.minimized) {
-              <app-chat-thread class="body" animate.enter="body-in" animate.leave="body-out" [target]="w.target" [active]="true"
-                [autofocus]="true" (bound)="store.bindWindow(w.key, $event)" />
-            }
-          </section>
-        }
-      </div>
+                <button type="button" class="icon-btn small" (click)="close()" aria-label="Zatvori poruke" title="Zatvori">
+                  <app-icon name="close" />
+                </button>
+              </header>
+              <app-chat-list class="body" (select)="store.open($event)" />
+            </div>
+          }
+        </section>
+      }
     }
   `,
   styles: `
-    .dock {
+    // Dugme: izgled je zajednički (.fab u styles/_components.scss). Na telefonu su poruke u gornjoj traci.
+    .chat-fab {
+      display: none;
+    }
+
+    // Panel: u uglu dugmeta, uz desnu ivicu; ista porodica kao padajući paneli i sheet na desktopu.
+    .chat-panel {
       display: none;
     }
 
     @media (min-width: 48rem) {
-      .dock {
+      // Pomak pri sklanjanju je "translate" (ne "transform"), pa vraćanje traje kao i panel, a pritisak ostaje brz.
+      // Vidljivost: pri vraćanju odmah (da fokus može na dugme), pri sklanjanju tek kad dugme izblijedi.
+      .chat-fab {
+        display: inline-flex;
+        transition:
+          transform var(--dur-press) ease-out,
+          box-shadow var(--dur-base) var(--ease-out),
+          opacity var(--dur-base) var(--ease-out),
+          translate var(--dur-base) var(--ease-out),
+          visibility 0s;
+      }
+
+      .chat-fab.behind-panel {
+        opacity: 0;
+        visibility: hidden;
+        translate: 0 0.75rem;
+        pointer-events: none;
+        transition:
+          transform var(--dur-press) ease-out,
+          box-shadow var(--dur-base) var(--ease-out),
+          opacity var(--dur-base) var(--ease-out),
+          translate var(--dur-base) var(--ease-out),
+          visibility 0s linear var(--dur-base);
+      }
+
+      // Panel zauzima ugao dugmeta: raste iz mjesta gdje je dugme bilo i tamo se vraća.
+      .chat-panel {
         position: fixed;
         right: max(var(--space-6), env(safe-area-inset-right));
-        bottom: 0;
+        bottom: calc(var(--space-6) + var(--safe-bottom));
         z-index: 60;
-        display: flex;
-        flex-direction: row-reverse;
-        align-items: flex-end;
-        gap: var(--space-3);
-        pointer-events: none;
+        display: block;
+        width: min(22rem, calc(100vw - var(--space-6) * 2));
+        height: min(34rem, calc(100dvh - var(--nav-height) - var(--space-6) * 2 - var(--safe-bottom)));
+        overflow: hidden;
+        border: 1px solid var(--separator);
+        border-radius: var(--radius-xl);
+        background: var(--bg-elevated);
+        box-shadow: var(--shadow-lg);
+        color: var(--text);
+        transform-origin: bottom right;
       }
     }
 
-    // Visina je uvijek zadana (zatvoreno: traka 3rem + gornja ivica), pa se umanjivanje i otvaranje glatko animiraju.
-    .panel {
+    // Stranica ponuđača ispod 60rem ima traku "Rezerviši" sa dugmetom za poruku (isto pravilo kao "Moj plan"):
+    // dugme se ne prikazuje, a panel (otvoren iz te trake) stoji iznad trake, ne preko nje.
+    @media (min-width: 48rem) and (max-width: 59.99rem) {
+      .chat-fab.on-vendor {
+        display: none;
+      }
+
+      .chat-panel.on-vendor {
+        bottom: calc(var(--space-6) + var(--fab-height) + var(--space-3) + var(--safe-bottom));
+        height: min(
+          34rem,
+          calc(100dvh - var(--nav-height) - var(--space-6) * 2 - var(--fab-height) - var(--space-3) - var(--safe-bottom))
+        );
+      }
+    }
+
+    // Lista i razgovor su jedan iznad drugog, pa pri prelazu jedan izlazi dok drugi ulazi.
+    .view {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
-      width: 20rem;
-      height: calc(3rem + 1px);
-      overflow: hidden;
-      border: 1px solid var(--separator);
-      border-bottom: 0;
-      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-      background: var(--material-thick);
-      -webkit-backdrop-filter: var(--blur-regular);
-      backdrop-filter: var(--blur-regular);
-      box-shadow: var(--shadow-lg), inset 0 1px 0 var(--material-edge);
-      color: var(--text);
-      pointer-events: auto;
-      animation: dock-in 320ms var(--ease-out) both;
-      transition: height var(--dur-base) var(--ease-out);
-    }
-
-    .panel.open {
-      height: min(32rem, calc(100dvh - var(--nav-height) - var(--space-6)));
-      background: var(--bg-elevated);
-    }
-
-    .window {
-      width: 21rem;
     }
 
     .head {
       display: flex;
       align-items: center;
-      gap: 0.125rem;
+      gap: var(--space-1);
       flex: none;
-      height: 3rem;
-      padding: 0 var(--space-2) 0 0;
-    }
-
-    .panel.open .head {
+      min-height: 3.25rem;
+      padding: 0 var(--space-2) 0 var(--space-4);
       border-bottom: 1px solid var(--separator);
     }
 
-    .head-main {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      flex: 1;
-      min-width: 0;
-      height: 100%;
-      padding: 0 var(--space-2) 0 var(--space-4);
-      border: 0;
-      background: transparent;
-      color: inherit;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
+    .head:has(.back) {
+      padding-left: var(--space-2);
     }
 
     .title {
       flex: 1;
       min-width: 0;
+      margin: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 1rem;
       font-weight: 650;
     }
 
-    .window.unread:not(.open) .head {
-      background: var(--accent-soft);
-    }
-
     .mini {
-      width: 1.875rem;
-      height: 1.875rem;
-      margin-left: calc(var(--space-2) * -1);
-    }
-
-    .count {
-      display: inline-grid;
-      place-items: center;
-      min-width: 1.25rem;
-      height: 1.25rem;
-      padding: 0 0.35rem;
-      border-radius: var(--radius-full);
-      background: var(--accent);
-      color: var(--text-on-accent);
-      font-size: 0.6875rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
+      width: 2rem;
+      height: 2rem;
+      margin-right: var(--space-1);
     }
 
     .icon-btn.small {
-      width: 2rem;
-      height: 2rem;
+      flex: none;
+      width: 2.25rem;
+      height: 2.25rem;
       background: transparent;
       color: var(--text-secondary);
     }
@@ -202,18 +223,8 @@ import { ChatThread } from './chat-thread';
     }
 
     .icon-btn.small app-icon {
-      width: 1.125rem;
-      height: 1.125rem;
-    }
-
-    .chevron app-icon,
-    app-icon.up {
-      transition: transform var(--dur-base) var(--ease-out);
-      transform: rotate(180deg);
-    }
-
-    .launcher.open .chevron app-icon {
-      transform: none;
+      width: 1.25rem;
+      height: 1.25rem;
     }
 
     .body {
@@ -221,76 +232,95 @@ import { ChatThread } from './chat-thread';
       min-height: 0;
     }
 
-    // Sadržaj se pojavljuje dok panel raste, a pri umanjivanju ostaje vidljiv (odsječen) dok panel ne spadne na traku.
-    .body.body-in {
-      animation: fade-in var(--dur-base) var(--ease-out) both;
+    // Otvaranje raste iz dugmeta (donji desni ugao), zatvaranje se vraća u njega.
+    .chat-panel.panel-in {
+      animation: panel-in var(--dur-base) var(--ease-out) both;
     }
 
-    .body.body-out {
-      animation: fade-out var(--dur-base) var(--ease-out) both;
-    }
-
-    // Zatvaranje: prozor prvo spadne i izblijedi, pa se suzi, da susjedni prozori kliznu na njegovo mjesto.
-    .window.window-out {
-      animation: window-out 320ms var(--ease-out) both;
+    .chat-panel.panel-out {
+      animation: panel-out var(--dur-base) var(--ease-out) both;
       pointer-events: none;
     }
 
-    @keyframes dock-in {
-      from {
-        transform: translateY(1.5rem);
-        opacity: 0;
-      }
+    // Lista je "lijevo", razgovor "desno": razgovor ulazi zdesna, a "Nazad" ga vraća udesno.
+    .view.list-in {
+      animation: list-in var(--dur-base) var(--ease-out) both;
     }
 
-    @keyframes window-out {
-      0% {
-        width: 21rem;
-        margin-left: 0;
-        opacity: 1;
-        transform: none;
-      }
-      55% {
-        width: 21rem;
-        margin-left: 0;
-        border-inline-width: 1px;
-        opacity: 0;
-        transform: translateY(1.5rem);
-      }
-      // I bočne ivice, inače ostanu 2px i susjed na kraju poskoči.
-      100% {
-        width: 0;
-        margin-left: calc(var(--space-3) * -1);
-        border-inline-width: 0;
-        opacity: 0;
-        transform: translateY(1.5rem);
-      }
+    .view.list-out {
+      animation: list-out var(--dur-base) var(--ease-out) both;
     }
 
-    @keyframes fade-in {
+    .view.thread-in {
+      animation: thread-in var(--dur-base) var(--ease-out) both;
+    }
+
+    .view.thread-out {
+      animation: thread-out var(--dur-base) var(--ease-out) both;
+    }
+
+    // Dok se panel tek otvara, sadržaj se ne pomjera i unutar njega.
+    .chat-panel.panel-in .view {
+      animation: none;
+    }
+
+    @keyframes panel-in {
       from {
         opacity: 0;
+        transform: translateY(0.75rem) scale(0.92);
       }
     }
 
-    @keyframes fade-out {
+    @keyframes panel-out {
       to {
         opacity: 0;
+        transform: translateY(0.75rem) scale(0.92);
       }
     }
 
-    // Bez animacija: Angular tada uklanja zatvoreni prozor i sadržaj odmah (nema animacije na koju bi čekao).
+    @keyframes list-in {
+      from {
+        opacity: 0;
+        transform: translateX(-1.5rem);
+      }
+    }
+
+    @keyframes list-out {
+      to {
+        opacity: 0;
+        transform: translateX(-1.5rem);
+      }
+    }
+
+    @keyframes thread-in {
+      from {
+        opacity: 0;
+        transform: translateX(1.5rem);
+      }
+    }
+
+    @keyframes thread-out {
+      to {
+        opacity: 0;
+        transform: translateX(1.5rem);
+      }
+    }
+
+    // Bez animacija: Angular tada uklanja panel i prikaz odmah (nema animacije na koju bi čekao), a dugme se
+    // sklanja i vraća bez prelaza.
     @media (prefers-reduced-motion: reduce) {
-      .panel,
-      .body.body-in,
-      .body.body-out,
-      .window.window-out {
+      .chat-panel.panel-in,
+      .chat-panel.panel-out,
+      .view.list-in,
+      .view.list-out,
+      .view.thread-in,
+      .view.thread-out {
         animation: none;
-        transition: none;
       }
 
-      .chevron app-icon,
-      app-icon.up {
+      .chat-fab,
+      .chat-fab.behind-panel {
+        translate: none;
         transition: none;
       }
     }
@@ -299,6 +329,9 @@ import { ChatThread } from './chat-thread';
 export class ChatDock {
   protected readonly store = inject(ChatStore);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
+  private readonly fab = viewChild<ElementRef<HTMLButtonElement>>('fab');
+  private readonly panel = viewChild<ElementRef<HTMLElement>>('panel');
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -308,41 +341,55 @@ export class ChatDock {
     { initialValue: this.router.url },
   );
 
-  /** U sandučetu su poruke već na cijelom ekranu, pa se traka sklanja. */
+  /** U sandučetu su poruke već na cijelom ekranu, pa se dugme sklanja. */
   protected readonly visible = computed(() => {
     const url = this.url();
     return this.store.enabled() && !url.startsWith('/poruke') && !url.startsWith('/salon/poruke');
   });
 
+  protected readonly onVendor = computed(() => this.url().startsWith('/ponudjaci/'));
+
   /** Značka tek kad je broj poznat (iz nagovještaja ili sa servera), nikad pogađanje. */
   protected readonly badge = computed(() => (this.store.listState() === 'unknown' ? 0 : this.store.unreadTotal()));
 
-  private readonly peers = computed(() => {
-    const isVendor = this.store.isVendor();
-    const byId = new Map(this.store.conversations().map((c) => [c.id, c]));
-    return new Map<string, ChatPeer | null>(
-      this.store.windows().map((w) => {
-        if ('vendor' in w.target) return [w.key, vendorPeer(w.target.vendor)];
-        const c = byId.get(w.target.conversationId);
-        return [w.key, c ? peerOf(c, isVendor) : null];
-      }),
-    );
+  protected readonly sub = computed(() => {
+    const n = this.badge();
+    return n ? `${n} ${plural(n, 'nepročitana', 'nepročitane', 'nepročitanih')}` : 'Vaši razgovori';
   });
 
-  protected peer(w: ChatWindow): ChatPeer | null {
-    return this.peers().get(w.key) ?? null;
+  protected readonly peer = computed<ChatPeer | null>(() => {
+    const target = this.store.active();
+    if (!target) return null;
+    if ('vendor' in target) return vendorPeer(target.vendor);
+    const c = this.store.conversation(target.conversationId);
+    return c ? peerOf(c, this.store.isVendor()) : null;
+  });
+
+  protected readonly label = computed(() => {
+    const p = this.peer();
+    return this.store.active() && p ? `Razgovor: ${p.name}` : 'Poruke';
+  });
+
+  /**
+   * Dugme otvara listu razgovora. Dugme se tada sklanja (panel zauzima njegov ugao), pa fokus ide u panel,
+   * inače bi pao na stranicu.
+   */
+  protected openFromFab(): void {
+    if (!this.store.panelOpen()) this.store.togglePanel();
+    afterNextRender(() => this.panel()?.nativeElement.focus({ preventScroll: true }), { injector: this.injector });
   }
 
-  protected unread(w: ChatWindow): number {
-    return 'conversationId' in w.target ? (this.store.conversation(w.target.conversationId)?.unreadCount ?? 0) : 0;
-  }
-
-  protected toggleList(): void {
-    this.store.dockOpen.update((open) => !open);
+  /**
+   * Zatvaranje vraća fokus na dugme, odakle je panel i otvoren. Tek poslije iscrtavanja: dok dugme ima
+   * .behind-panel, skriveno je i ne može dobiti fokus.
+   */
+  protected close(): void {
+    this.store.closePanel();
+    afterNextRender(() => this.fab()?.nativeElement.focus({ preventScroll: true }), { injector: this.injector });
   }
 
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
-    this.store.dockOpen.set(false);
+    if (this.store.panelOpen()) this.close();
   }
 }
