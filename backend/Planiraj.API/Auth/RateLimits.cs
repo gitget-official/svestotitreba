@@ -13,6 +13,8 @@ public class RateLimitSettings
     public int PermitPerMinute { get; set; } = 120;
     /// <summary>Pokušaja prijave i registracije u minuti po IP adresi.</summary>
     public int AuthPermitPerMinute { get; set; } = 10;
+    /// <summary>Poslanih poruka u minuti po korisniku (zaštita od slanja neželjenih poruka salonima).</summary>
+    public int ChatPermitPerMinute { get; set; } = 30;
     /// <summary>
     /// True samo kad API stoji iza proxyja (nginx, Cloudflare...) koji postavlja X-Forwarded-For,
     /// a API nije direktno dostupan sa interneta. Inače bi svako mogao lažirati svoju IP adresu.
@@ -27,6 +29,7 @@ public class RateLimitSettings
 public static class RateLimits
 {
     public const string Auth = "auth";
+    public const string Chat = "chat";
 
     public static IServiceCollection AddPlanirajRateLimits(this IServiceCollection services, RateLimitSettings settings)
     {
@@ -44,6 +47,7 @@ public static class RateLimits
             if (!settings.Enabled)
             {
                 o.AddPolicy(Auth, _ => RateLimitPartition.GetNoLimiter("off"));
+                o.AddPolicy(Chat, _ => RateLimitPartition.GetNoLimiter("off"));
                 return;
             }
 
@@ -55,6 +59,8 @@ public static class RateLimits
             });
 
             o.AddPolicy(Auth, http => RateLimitPartition.GetFixedWindowLimiter("auth:" + ClientIp(http), _ => Window(settings.AuthPermitPerMinute)));
+            o.AddPolicy(Chat, http => RateLimitPartition.GetFixedWindowLimiter(
+                "chat:" + (http.User.FindFirst(AppClaims.UserId)?.Value ?? ClientIp(http)), _ => Window(settings.ChatPermitPerMinute)));
         });
 
         if (settings.TrustForwardedHeaders)

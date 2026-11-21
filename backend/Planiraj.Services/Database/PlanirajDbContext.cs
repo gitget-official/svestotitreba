@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Planiraj.Model;
 
 namespace Planiraj.Services.Database;
 
@@ -17,6 +18,8 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,6 +160,23 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
         });
 
+        modelBuilder.Entity<Conversation>(e =>
+        {
+            e.Property(x => x.LastMessagePreview).HasMaxLength(ChatLimits.PreviewLength).IsRequired();
+            e.HasOne(x => x.CoupleUser).WithMany().HasForeignKey(x => x.CoupleUserId);
+            // Jedan razgovor po paru; liste razgovora se sortiraju po zadnjoj poruci.
+            e.HasIndex(x => new { x.VendorId, x.CoupleUserId }).IsUnique();
+            e.HasIndex(x => new { x.CoupleUserId, x.LastMessageAt });
+            e.HasIndex(x => new { x.VendorId, x.LastMessageAt });
+        });
+
+        modelBuilder.Entity<ChatMessage>(e =>
+        {
+            e.Property(x => x.Body).HasMaxLength(ChatLimits.BodyLength).IsRequired();
+            e.HasOne(x => x.Sender).WithMany().HasForeignKey(x => x.SenderUserId);
+            e.HasIndex(x => new { x.ConversationId, x.Id });
+        });
+
         // SQL Server ne dozvoljava više kaskadnih putanja, pa je zadano Restrict,
         // a kaskadno brisanje se uključuje samo za "dijelove" ponuđača.
         foreach (var foreignKey in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
@@ -180,6 +200,13 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
         modelBuilder.Entity<Favorite>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Favorite>().HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SavedPlan>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        // Razgovori su dio stranice ponuđača i brišu se s njom; poruke sa razgovorom. Mladence briše DeleteAccountAsync.
+        modelBuilder.Entity<Conversation>()
+            .HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(x => x.Conversation).WithMany(c => c.Messages).HasForeignKey(x => x.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
         // Rezervacije ostaju Restrict: ponuđač sa rezervacijama se ne može obrisati (samo deaktivirati).
         modelBuilder.Entity<Booking>()
             .HasOne(x => x.Vendor).WithMany(v => v.Bookings).HasForeignKey(x => x.VendorId)

@@ -392,6 +392,36 @@ public static class DbSeeder
             });
 
         await db.SaveChangesAsync();
+
+        // ---------- Poruke ----------
+        // Mladenci i "salon" (Studio ljepote Amra): salon je odgovorio, a zadnja poruka mladenaca čeka odgovor.
+        var conversation = new Conversation { Vendor = demoVendor, CoupleUser = couple, CreatedAt = now.AddDays(-4) };
+        var chat = new[]
+        {
+            (false, "Pozdrav! Da li radite probnu frizuru prije vjenčanja i koliko traje?", now.AddDays(-4)),
+            (true, "Pozdrav, Lejla! Probna frizura traje oko sat i po, a najbolje je doći mjesec dana ranije.", now.AddDays(-4).AddHours(2)),
+            (false, "Super, hvala! Možemo li probu zakazati za subotu ujutro?", now.AddHours(-3))
+        };
+        foreach (var (fromVendor, body, at) in chat)
+        {
+            db.ChatMessages.Add(new ChatMessage
+            {
+                Conversation = conversation,
+                Sender = fromVendor ? vendorOwner : couple,
+                FromVendor = fromVendor,
+                Body = body,
+                CreatedAt = at
+            });
+            conversation.LastMessageAt = at;
+            conversation.LastMessagePreview = body;
+            conversation.LastMessageFromVendor = fromVendor;
+        }
+        await db.SaveChangesAsync();
+
+        var messageIds = conversation.Messages.OrderBy(m => m.Id).Select(m => m.Id).ToList();
+        conversation.CoupleLastReadMessageId = messageIds[^1];
+        conversation.VendorLastReadMessageId = messageIds[0];
+        await db.SaveChangesAsync();
     }
 
     private static User CreateUser(string firstName, string lastName, string email, string username, string password,

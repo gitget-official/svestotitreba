@@ -39,7 +39,8 @@ Testovi (ne trebaju SQL Server ni Google):
 dotnet test Planiraj.sln
 ```
 
-Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profila, ograničenje zahtjeva i e-mail obavijesti
+Pokrivaju javni pregled ponude, Google prijavu, Sačuvano, plan, brisanje profila, ograničenje zahtjeva, e-mail obavijesti
+i poruke (uključujući vezu uživo na `/api/hubs/chat` sa tokenom u adresi, kao u pregledniku)
 (testovi nikad ništa ne šalju: koriste lažni `IEmailSender`).
 
 Za ponovno punjenje baze od nule: `dotnet ef database drop --project Planiraj.Services --startup-project Planiraj.API`, pa ponovo pokreni API.
@@ -103,6 +104,7 @@ U Swaggeru: `POST /api/auth/login` sa `{ "login": "admin", "password": "Admin123
 - **5 usluga u svakoj kategoriji** (35 usluga) kod 34 ponuđača. „Studio ljepote Amra“ je jedan nalog sa dvije kategorije (frizeri + make-up) i njime upravlja korisnik `salon`. Ostali ponuđači još nemaju vlasnika (admin im kasnije dodjeljuje nalog).
 - Svaki ponuđač ima radno vrijeme, 3 slike (placeholder sa picsum.photos), kontakt i društvene mreže
 - 4 recenzije (3 odobrene, 1 čeka moderaciju) i 3 rezervacije mladenaca
+- 1 razgovor mladenaca sa „Studio ljepote Amra“ (salon je odgovorio, zadnja poruka mladenaca čeka odgovor)
 - „Sala Panorama“ (Premium) i „Foto Trenutak“ (Standard) su istaknuti i prikazuju se prvi
 
 Svi nazivi firmi, adrese, telefoni i e-mailovi u seedu su izmišljeni.
@@ -133,6 +135,7 @@ Sačuvano i plan traže prijavu. URL-ovi su malim slovima.
 | Sačuvano | `/api/favorites` (GET), `/{vendorId}` (POST/DELETE), `/sync` (POST) | Svako svoje | Svako svoje; `sync` spaja listu iz preglednika sa profilom |
 | Moj plan | `/api/plans/me` (GET/PUT/DELETE) | Svako svoje (204 kad plana nema) | Svako svoje; `manual: true` bilježi vrijeme ručnog čuvanja |
 | Status rezervacije | `PUT /api/bookings/{id}/confirm`, `/reject`, `/cancel` | | Potvrda/odbijanje: salon ili admin; otkazivanje: mladenci, salon ili admin |
+| Poruke | `/api/conversations` (GET, `{id}`, `vendor/{vendorId}`, `{id}/messages`), `PUT {id}/read`; uživo `/api/hubs/chat` | Mladenci svoje; salon razgovore svojih salona; admin ne | Prvu poruku šalju mladenci (`POST`), salon samo odgovara (`POST {id}/messages`) |
 
 ### Pretraga ponuđača (FR-6)
 
@@ -223,6 +226,34 @@ Uvijek se preskaču rezervisane domene (`.invalid`, `.test`, `.example`, `.local
 
 Linkovi u porukama vode na `Email:SiteUrl`, a ako nije postavljen, na `Seo:SiteUrl` ili prvi `Cors:Origins`.
 
+## Poruke (FR-13)
+
+Mladenci pišu salonu, salon odgovara. Razgovor je jedan po paru mladenci–salon i pripada **stranici salona**
+(`Conversation.VendorId`), a ne korisniku: čita ga trenutni vlasnik (`OwnerUserId`), pa historija ostaje kad se
+vlasnik promijeni, a vlasnik više salona ima posebne razgovore za svaki.
+
+- Pisati se može samo salonu koji je aktivan i ima aktivnog vlasnika (`VendorDto.acceptsMessages`, filter
+  `GET /api/vendors?acceptsMessages=true`). Ostali saloni imaju telefon i e-mail na svojoj stranici.
+- Salon ne može prvi pisati. Administrator ne vidi poruke. Tuđi razgovor je `404` (ne otkriva se ni da postoji).
+- `POST /api/conversations` sa `{ vendorId, body }` pravi razgovor sa prvom porukom (prazni razgovori ne postoje);
+  ako razgovor već postoji, poruka ide u njega.
+- Nepročitano: svaka strana ima Id zadnje viđene poruke (`CoupleLastReadMessageId`, `VendorLastReadMessageId`).
+  Ko pošalje poruku, vidio je i sve prije nje. Druga strana dobija `otherLastReadMessageId` za oznaku "Viđeno".
+- Lista vraća i `unreadTotal` za značku u navigaciji. Fotografija mladenaca (data URL do 200 KB) se ne šalje uz
+  razgovor, samo ilustrovani avatar.
+- Poruka do 2.000 znakova; slanje je ograničeno na `RateLimit:ChatPermitPerMinute` (30) po korisniku.
+- Brisanje profila mladenaca briše i njihove razgovore. Brisanje salona briše njegove razgovore.
+
+**Uživo (SignalR):** preglednik se spaja na `/api/hubs/chat` i samo prima događaje: `message` (nova poruka i razgovor
+viđen sa strane primaoca) i `conversation` (npr. druga strana je pročitala). Slanje ide preko REST-a, pa validacija,
+ograničenje i e-mail rade kao za svaki zahtjev. WebSocket ne može poslati zaglavlje, pa token ide kao `access_token`
+u adresi, samo za `/api/hubs`. Pretpostavka je jedna instanca API-ja; za više instanci treba backplane (Redis ili
+Azure SignalR Service).
+
+**E-mail (FR-15):** primalac dobija e-mail samo za prvu nepročitanu poruku u razgovoru (`chat.message.vendor` /
+`chat.message.couple`), sljedeći tek kad pročita razgovor. Salonu se piše samo na e-mail naloga vlasnika. Ista
+pravila i zaštite kao za rezervacije (vidi iznad).
+
 ## Sitemap za pretraživače
 
 `GET /sitemap.xml` (i isto na `/api/sitemap.xml`) vraća sitemap uvijek svjež iz baze: opće stranice i sve aktivne
@@ -241,6 +272,7 @@ Sekcija `RateLimit` u `appsettings.json`:
 | `Enabled` | `true` | Isključiti samo za testiranje |
 | `PermitPerMinute` | `120` | Zahtjeva u minuti po korisniku (prijavljen) ili po IP adresi (gost) |
 | `AuthPermitPerMinute` | `10` | Pokušaja prijave i registracije (`login`, `register`, `google`) u minuti po IP adresi |
+| `ChatPermitPerMinute` | `30` | Poslanih poruka u minuti po korisniku |
 | `TrustForwardedHeaders` | `false` | `true` samo iza proxyja koji postavlja `X-Forwarded-For` (nginx, Cloudflare) i kad API nije direktno dostupan sa interneta |
 
 Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. Iza proxyja bez
@@ -250,7 +282,8 @@ Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. I
 
 - Odluke #3 (filter dostupnosti) i #4 (ko smije ostaviti recenziju) implementirane su privremeno, uz `@TODO` u kodu
 - Brisanje uploadovanog fajla sa diska kad se slika ukloni iz galerije (sada ostaje na disku)
-- Interni chat (faza 2), AI planiranje (faza 4), naplata pretplata (faza 5)
+- AI planiranje (faza 4), naplata pretplata (faza 5)
+- Poruke: obavijesti kad je preglednik zatvoren (Web Push), prilozi (slike), prijava neželjenih poruka
 - E-mail: reset zaboravljene lozinke i pozivnica za salon, podsjetnici (zahtjev bez odgovora, termin za 7 dana),
   obavijesti o recenzijama, postavke obavijesti po korisniku
 - Produkcija: `Jwt:Key` i connection string preko varijabli okruženja, ne u `appsettings`

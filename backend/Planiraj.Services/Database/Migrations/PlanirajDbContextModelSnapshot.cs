@@ -75,6 +75,40 @@ namespace Planiraj.Services.Database.Migrations
                     b.ToTable("Bookings");
                 });
 
+            modelBuilder.Entity("Planiraj.Services.Database.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("FromVendor")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("SenderUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.HasIndex("ConversationId", "Id");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("Planiraj.Services.Database.City", b =>
                 {
                     b.Property<int>("Id")
@@ -100,6 +134,52 @@ namespace Planiraj.Services.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("Cities");
+                });
+
+            modelBuilder.Entity("Planiraj.Services.Database.Conversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CoupleLastReadMessageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CoupleUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("LastMessageFromVendor")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastMessagePreview")
+                        .IsRequired()
+                        .HasMaxLength(140)
+                        .HasColumnType("nvarchar(140)");
+
+                    b.Property<int>("VendorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VendorLastReadMessageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoupleUserId", "LastMessageAt");
+
+                    b.HasIndex("VendorId", "CoupleUserId")
+                        .IsUnique();
+
+                    b.HasIndex("VendorId", "LastMessageAt");
+
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("Planiraj.Services.Database.EmailMessage", b =>
@@ -711,6 +791,44 @@ namespace Planiraj.Services.Database.Migrations
                     b.Navigation("Vendor");
                 });
 
+            modelBuilder.Entity("Planiraj.Services.Database.ChatMessage", b =>
+                {
+                    b.HasOne("Planiraj.Services.Database.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Planiraj.Services.Database.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("Planiraj.Services.Database.Conversation", b =>
+                {
+                    b.HasOne("Planiraj.Services.Database.User", "CoupleUser")
+                        .WithMany()
+                        .HasForeignKey("CoupleUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Planiraj.Services.Database.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CoupleUser");
+
+                    b.Navigation("Vendor");
+                });
+
             modelBuilder.Entity("Planiraj.Services.Database.Favorite", b =>
                 {
                     b.HasOne("Planiraj.Services.Database.User", "User")
@@ -846,6 +964,11 @@ namespace Planiraj.Services.Database.Migrations
             modelBuilder.Entity("Planiraj.Services.Database.City", b =>
                 {
                     b.Navigation("Vendors");
+                });
+
+            modelBuilder.Entity("Planiraj.Services.Database.Conversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Planiraj.Services.Database.ServiceCategory", b =>

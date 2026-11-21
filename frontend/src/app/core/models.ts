@@ -230,6 +230,8 @@ export interface Vendor {
   isActive: boolean;
   ownerUserId: number | null;
   ownerFullName: string | null;
+  /** Salon ima vlasnika na platformi, pa mu mladenci mogu pisati poruke. */
+  acceptsMessages: boolean;
   subscriptionPlanId: number | null;
   subscriptionPlanName: string | null;
   subscriptionExpiresAt: string | null;
@@ -254,6 +256,8 @@ export interface VendorSearch extends BaseSearch {
   availableOn?: string | null;
   bookingEnabled?: boolean | null;
   ownerUserId?: number | null;
+  /** true = samo saloni kojima se može pisati poruka. */
+  acceptsMessages?: boolean | null;
   includeInactive?: boolean | null;
 }
 
@@ -449,4 +453,56 @@ export interface VendorMapPoint {
   /** True kad ponuđač nema svoju lokaciju, pa je tačka u centru grada. */
   isApproximate: boolean;
   imageUrl: string | null;
+}
+
+// ---------- Poruke (FR-13) ----------
+
+/** Razgovor viđen sa strane prijavljenog korisnika (nepročitano i "viđeno" se odnose na njega). */
+export interface Conversation {
+  id: number;
+  vendorId: number;
+  vendorName: string;
+  vendorSlug: string;
+  vendorLogoUrl: string | null;
+  coupleUserId: number;
+  coupleFirstName: string;
+  coupleLastName: string;
+  /** Samo ilustrovani avatar; fotografija se ne šalje uz razgovor (prikazuju se inicijali). */
+  coupleAvatarUrl: string | null;
+  createdAt: string;
+  lastMessageAt: string;
+  lastMessagePreview: string;
+  lastMessageFromVendor: boolean;
+  unreadCount: number;
+  /** Zadnja poruka koju je druga strana vidjela (oznaka "Viđeno"). */
+  otherLastReadMessageId: number;
+  canReply: boolean;
+}
+
+export interface ConversationList extends PagedResult<Conversation> {
+  unreadTotal: number;
+}
+
+export interface ConversationSearch extends BaseSearch {
+  vendorId?: number | null;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  fromVendor: boolean;
+  body: string;
+  createdAt: string;
+}
+
+/** Poruke od starije prema novijoj; hasMore = postoje i starije. */
+export interface ChatMessagePage {
+  items: ChatMessage[];
+  hasMore: boolean;
+}
+
+/** Poslana poruka i razgovor poslije nje; isti oblik stiže i uživo (događaj "message"). */
+export interface ChatSendResult {
+  conversation: Conversation;
+  message: ChatMessage;
 }

@@ -8,6 +8,9 @@ import { BrandMark } from '../shared/ui/brand-mark';
 import { Icon } from '../shared/ui/icon';
 import { PlanCart } from '../shared/ui/plan-cart';
 import { Avatar } from '../shared/ui/avatar';
+import { ChatStore } from '../core/chat-store';
+import { plural } from '../core/format';
+import { ChatDock } from '../shared/chat/chat-dock';
 
 interface NavItem {
   label: string;
@@ -26,7 +29,7 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark, PlanCart, Avatar],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, BrandMark, PlanCart, Avatar, ChatDock],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
@@ -45,6 +48,13 @@ interface NavItem {
         </nav>
 
         <div class="account">
+          <!-- Telefon: mladenci nemaju mjesta u donjoj traci, pa su poruke ovdje (na desktopu je traka "Poruke" u uglu). -->
+          @if (auth.hasRole('Couple')) {
+            <a class="msg-link" routerLink="/poruke" routerLinkActive="active" [attr.aria-label]="messagesLabel()">
+              <app-icon name="chat" />
+              @if (chatBadge()) { <span class="tab-badge">{{ chatBadge() }}</span> }
+            </a>
+          }
           @if (auth.isLoggedIn()) {
             <button type="button" class="avatar" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()"
               aria-haspopup="menu" aria-label="Moj nalog">
@@ -91,6 +101,7 @@ interface NavItem {
     </main>
 
     <app-plan-cart />
+    <app-chat-dock />
 
     <nav class="tabbar glass glass-bar" aria-label="Kartice">
       @for (item of tabItems(); track item.link) {
@@ -215,7 +226,37 @@ interface NavItem {
 
     .account {
       position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
       margin-left: auto;
+    }
+
+    .msg-link {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      color: var(--text-secondary);
+      transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+    }
+
+    .msg-link:hover,
+    .msg-link.active {
+      background: var(--fill);
+      color: var(--text);
+    }
+
+    .msg-link app-icon {
+      width: 1.375rem;
+      height: 1.375rem;
+    }
+
+    .msg-link .tab-badge {
+      top: -0.125rem;
+      right: -0.375rem;
     }
 
     .avatar {
@@ -352,7 +393,8 @@ interface NavItem {
         display: flex;
       }
 
-      .tabbar {
+      .tabbar,
+      .msg-link {
         display: none;
       }
 
@@ -373,6 +415,7 @@ export class Shell {
   protected readonly theme = inject(ThemeService);
   private readonly favorites = inject(FavoritesService);
   private readonly bookings = inject(BookingsStore);
+  private readonly chat = inject(ChatStore);
   private readonly router = inject(Router);
   protected readonly scrolled = signal(false);
   protected readonly menuOpen = signal(false);
@@ -396,6 +439,7 @@ export class Shell {
       case 'Vendor':
         return [
           { label: 'Moj salon', icon: 'store', link: '/salon', exact: true },
+          { label: 'Poruke', icon: 'chat', link: '/salon/poruke', badge: this.chatBadge() || undefined },
           { label: 'Rezervacije', icon: 'calendar', link: '/salon/rezervacije' },
           { label: 'Istraži', icon: 'grid', link: '/istrazi' },
         ];
@@ -418,6 +462,13 @@ export class Shell {
   });
 
   protected readonly tabItems = computed(() => this.items().filter((i) => !i.desktopOnly));
+
+  /** Nepročitane poruke; dok broj nije poznat (ni iz preglednika ni sa servera), značke nema. */
+  protected readonly chatBadge = computed(() => (this.chat.listState() === 'unknown' ? 0 : this.chat.unreadTotal()));
+  protected readonly messagesLabel = computed(() => {
+    const n = this.chatBadge();
+    return n ? `Poruke, ${n} ${plural(n, 'nepročitana', 'nepročitane', 'nepročitanih')}` : 'Poruke';
+  });
 
   protected readonly themeLabel = computed(() => {
     switch (this.theme.preference()) {

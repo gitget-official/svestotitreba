@@ -295,3 +295,17 @@ public class BookingStatusChangeRequest
 {
     [MaxLength(500)] public string? Note { get; set; }
 }
+
+// ---------- Poruke (FR-13) ----------
+
+/// <summary>Prva poruka salonu (samo mladenci). Ako razgovor već postoji, poruka se dodaje u njega.</summary>
+public class ConversationStartRequest
+{
+    [Required] public int VendorId { get; set; }
+    [Required, MaxLength(ChatLimits.BodyLength)] public string Body { get; set; } = string.Empty;
+}
+
+public class ChatMessageSendRequest
+{
+    [Required, MaxLength(ChatLimits.BodyLength)] public string Body { get; set; } = string.Empty;
+}

@@ -240,6 +240,51 @@ public class SavedPlan : BaseEntity
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// Razgovor mladenaca i ponuđača (FR-13). Jedan razgovor po paru mladenci–ponuđač. Razgovor pripada stranici
+/// ponuđača, a ne korisniku: čita ga trenutni vlasnik (OwnerUserId), pa historija ostaje i kad se vlasnik promijeni.
+/// </summary>
+public class Conversation : BaseEntity
+{
+    public int VendorId { get; set; }
+    public Vendor Vendor { get; set; } = null!;
+
+    /// <summary>Mladenci koji su započeli razgovor (salon ne može prvi pisati).</summary>
+    public int CoupleUserId { get; set; }
+    public User CoupleUser { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
+
+    // Zadnja poruka, da lista razgovora ne mora učitavati poruke.
+    public DateTime LastMessageAt { get; set; }
+    public string LastMessagePreview { get; set; } = string.Empty;
+    public bool LastMessageFromVendor { get; set; }
+
+    /// <summary>Id zadnje poruke koju su mladenci vidjeli; novije poruke salona su za njih nepročitane (0 = nijedna).</summary>
+    public int CoupleLastReadMessageId { get; set; }
+    /// <summary>Id zadnje poruke koju je salon vidio.</summary>
+    public int VendorLastReadMessageId { get; set; }
+
+    public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+}
+
+/// <summary>Jedna poruka u razgovoru.</summary>
+public class ChatMessage : BaseEntity
+{
+    public int ConversationId { get; set; }
+    public Conversation Conversation { get; set; } = null!;
+
+    /// <summary>Ko je napisao poruku (mladenci ili tadašnji vlasnik salona).</summary>
+    public int SenderUserId { get; set; }
+    public User Sender { get; set; } = null!;
+
+    /// <summary>Strana koja je pisala; ne zavisi od toga ko je kasnije vlasnik salona.</summary>
+    public bool FromVendor { get; set; }
+
+    public string Body { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
 
 /// <summary>Stanje e-maila u redu za slanje (outbox).</summary>
 public enum EmailStatus
