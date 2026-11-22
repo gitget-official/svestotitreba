@@ -1,0 +1,743 @@
+[
+  {
+    "verdict": "rejected",
+    "fingerprint": "frontend-missing-frame-ancestors-and-csp",
+    "title": "No Content-Security-Policy, frame-ancestors or HSTS is defined for the SPA; clickjacking of account actions depends on hosting headers",
+    "description": "The repository defines no CSP, X-Frame-Options or frame-ancestors, HSTS, Referrer-Policy or Permissions-Policy for the Angular app or the API (Program.cs has no UseHsts and no header middleware, and there is no hosting config). The candidate claimed that if the frontend host also sends none of these, any site could frame the logged-in SPA and trick a user into confirming account deletion or booking cancellation, and that a future XSS would run without CSP and could read the localStorage JWT.",
+    "claimed_root_cause": "Browser-enforced isolation headers are not part of the application source and are left to an unspecified hosting layer.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "frontend/src/index.html",
+        "line": 1,
+        "scope": "SPA document",
+        "description": "The SPA shell has no framing protection in the repository, so a third-party page could load a route such as /profil in an iframe. A meta CSP cannot set frame-ancestors anyway."
+      },
+      {
+        "kind": "propagation",
+        "file": "frontend/src/app/core/auth.ts",
+        "line": 148,
+        "scope": "AuthService.persist",
+        "description": "The session (a bearer JWT) is written only to localStorage key planiraj.auth."
+      },
+      {
+        "kind": "propagation",
+        "file": "frontend/src/app/core/auth.ts",
+        "line": 157,
+        "scope": "readSession",
+        "description": "At startup the SPA restores its session only from localStorage. There is no cookie or other ambient credential."
+      },
+      {
+        "kind": "propagation",
+        "file": "frontend/src/app/pages/profile/profile.ts",
+        "line": 279,
+        "scope": "Profile.deleteAccount",
+        "description": "Delete account asks for confirmation with the in-page ConfirmService sheet, not native confirm(), so it could be finished by clicks inside a frame if the frame were authenticated."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 101,
+        "scope": "AuthController.DeleteAccount",
+        "description": "DELETE /api/auth/me needs a bearer token, which the interceptor adds only from the stored session."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 170,
+        "description": "Outside development the pipeline adds only UseHttpsRedirection: no UseHsts and no security-header middleware. The only proxy file in the repo is frontend/proxy.conf.json, used by the dev server."
+      },
+      {
+        "file": "frontend/src/index.html",
+        "line": 19,
+        "description": "Inline script: a future CSP will need a hash or nonce for it."
+      },
+      {
+        "file": "frontend/src/app/shared/ui/confirm.ts",
+        "line": 62,
+        "description": "Confirmation is an in-page app-sheet with Odustani/confirm buttons. Booking cancel (frontend/src/app/pages/my/my-pages.ts:181) uses the same dialog."
+      },
+      {
+        "file": "frontend/src/app/core/auth.ts",
+        "line": 179,
+        "description": "authInterceptor adds Authorization: Bearer only from auth.token(), which comes from localStorage. authGuard (line 211) sends a session-less visit to /profil to /prijava."
+      },
+      {
+        "file": "frontend/src/app/core/chat-store.ts",
+        "line": 50,
+        "description": "SignalR uses accessTokenFactory with withCredentials: false. The app has no cookie-based credential that a cross-site frame would carry."
+      }
+    ],
+    "reason": "Source plus a bounded local browser check refute the claimed consequence, so this is a hardening note. The only credential is a bearer JWT in localStorage (auth.ts:148/157, attached by the interceptor at 179); there are no auth cookies. Current browsers partition third-party storage by top-level site (Chrome/Edge 115+, Firefox Total Cookie Protection, Safari), so a cross-site frame of the SPA starts with empty storage, is logged out, and authGuard sends /profil to /prijava. Delete account and booking cancel use an in-page sheet, not native confirm(), so they would be click-completable in a frame, but not with the victim's session. Local observation: in headless Chrome for Testing 153 on loopback only (external DNS blocked), a localStorage value set first-party on http://localhost was visible to a same-origin frame but read as null in the same page framed by cross-site http://127.0.0.1. The remaining routes need the victim to sign in inside the attacker's frame (typing a password, or a Google sign-in with Google's own visible account chooser) and only lead to them deleting their own data, which is not framing of an existing session. No same-site attacker page exists: uploads are magic-byte-checked jpg/png/webp with nosniff. The XSS/CSP part depends on an XSS that has not been found. HSTS, Referrer-Policy and Permissions-Policy have no named consequence. Hardening note: send Content-Security-Policy frame-ancestors 'none' (or X-Frame-Options DENY), HSTS, nosniff and Referrer-Policy from the frontend host, and a CSP with a hash for the index.html:19 inline script."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "google-login-links-unverified-self-registered-account",
+    "title": "Account pre-hijacking: Google sign-in links into a password account created by someone who never proved the e-mail",
+    "description": "POST /api/auth/register is anonymous and accepts any e-mail address without proof of ownership, storing a caller-chosen password on a Couple row. When the real owner of that address later signs in with Google (the only sign-up path the Angular frontend offers), GoogleLoginAsync finds the existing Couple row by the identically normalized e-mail, attaches the Google subject and logs the victim into it with isNew=false. The pre-registered password (usable with the attacker's username or the victim's e-mail) and the attacker's register-time JWT stay valid, so the attacker authenticates as the same user id and can read and change whatever the victim later stores in that account (profile/phone, saved plan, favorites, bookings, vendor chats, reviews) or delete it. The victim cannot evict the attacker: change-password requires the current password and no reset flow exists. Nothing is sent to the victim's address; the only hints are an 'already have a profile' toast on the register page, attacker-chosen profile fields, and a password-change form shown because hasPassword is true.",
+    "root_cause": "GoogleLoginAsync step 2 treats the e-mail column of a self-registered Couple account as proven ownership and links the verified Google identity to it, while leaving the unproven password credential and any JWTs issued from it in place (there is no credential/session version to rotate).",
+    "intended_behavior": "A verified Google identity may be linked only to an account whose existing credentials were set by the proven owner of that e-mail or by an administrator; when linking to a self-registered account whose e-mail was never verified, pre-existing credentials and sessions must be revoked at link time (or the link refused).",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 84,
+        "scope": "AuthController.Register",
+        "description": "[AllowAnonymous] POST /api/auth/register; still mapped although the frontend register page now offers only Google sign-up."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 68,
+        "scope": "AuthService.RegisterCoupleAsync",
+        "description": "Stores the caller-chosen password on a Couple row for a Trim+ToLowerInvariant e-mail the caller never proved; no verification step or flag exists."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 39,
+        "scope": "AuthController.Google",
+        "description": "Victim later signs in with a valid, verified Google ID token on the anonymous Google endpoint."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 103,
+        "scope": "AuthService.GoogleLoginAsync",
+        "description": "No row carries the victim's GoogleId, so it falls back to lookup by the identically normalized e-mail and finds the attacker-created Couple row."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 112,
+        "scope": "AuthService.GoogleLoginAsync",
+        "description": "Roles match (Couple/Couple), so GoogleId is attached; PasswordHash/PasswordSalt are left untouched and no token or credential version is rotated."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 122,
+        "scope": "AuthService.GoogleLoginAsync",
+        "description": "Returns the attacker-created account to the victim with IsNew=false; the victim now works inside an account the attacker can still enter with the pre-registered password."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 89,
+        "description": "Only the Google path requires a verified e-mail; RegisterCoupleAsync has no equivalent check."
+      },
+      {
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 38,
+        "description": "Password login (by username or e-mail) still accepts the pre-registered password after the Google link."
+      },
+      {
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 209,
+        "description": "ChangePasswordAsync requires the current password, so the linked victim cannot replace the attacker's password."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 52,
+        "description": "Password reset and e-mail verification are documented as not yet implemented, so the victim has no recovery path that evicts the attacker."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 108,
+        "description": "OnTokenValidated only checks IsActive; with no credential version, the attacker's register-time JWT (480-minute lifetime) remains valid after the link."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 65,
+        "description": "Same-role same-e-mail linking is intentional; the documented rationale (line 66) is admin-created salon accounts, not self-registered couples."
+      },
+      {
+        "file": "frontend/src/app/pages/auth/auth-pages.ts",
+        "line": 353,
+        "description": "Only visible signal: on the register page a non-new Google login shows 'Već imate profil, prijavljeni ste.'; the login page (line 23) navigates on without any notice."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "data_state",
+        "description": "Attacker registers the victim's e-mail address via /api/auth/register before the victim has any account on the platform."
+      },
+      {
+        "kind": "user_interaction",
+        "description": "Victim later signs in or signs up with Google using that address (the only sign-up path the frontend offers)."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "Google sign-in is configured (Google:ClientId set); otherwise /api/auth/google returns 503."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anonymous attacker who knows or guesses the victim's e-mail address before the victim joins.",
+      "payloads": [
+        "POST /api/auth/register {\"firstName\":\"Napadac\",\"lastName\":\"X\",\"email\":\"Vprh-Zrtva@Gmail.com\",\"username\":\"vprh-napadac\",\"password\":\"NapadacLozinka1\"}",
+        "Victim: POST /api/auth/google {\"credential\":\"vprh-zrtva\"} (FakeGoogle: verified vprh-zrtva@gmail.com)",
+        "Victim: PUT /api/auth/me {\"firstName\":\"Prava\",\"lastName\":\"Vlasnica\",\"phoneNumber\":\"+387 61 000 111\"}",
+        "Attacker: POST /api/auth/login {\"login\":\"vprh-napadac\",\"password\":\"NapadacLozinka1\"}; GET /api/auth/me"
+      ],
+      "instructions": [
+        "In the offline ApiFactory (in-memory SQLite, FakeGoogle), register a Couple account with e-mail Vprh-Zrtva@Gmail.com and a known password.",
+        "Sign in with Google as vprh-zrtva@gmail.com and note isNew and the returned user id.",
+        "As the victim, PUT /api/auth/me with a phone number; try change-password without knowing the attacker's password.",
+        "Log in with the attacker's username and password (and with the victim's e-mail) and GET /api/auth/me; also replay the register-time JWT.",
+        "Control: a Google login with no pre-registered row returns isNew=true and hasPassword=false."
+      ],
+      "observed_result": "Register returned 200 with user id 5 and e-mail normalized to vprh-zrtva@gmail.com. The victim's Google login returned isNew=false, id 5, hasPassword=true, username vprh-napadac. The victim's change-password attempt returned 400. The attacker's password login (username and e-mail) returned id 5 and GET /api/auth/me returned phoneNumber +387 61 000 111; the register-time JWT still returned 200 after the link. Control login returned isNew=true, hasPassword=false. 2/2 tests passed in a network-less namespace (unshare -n, loopback only)."
+    },
+    "remediation": {
+      "strategy": "In AuthService.GoogleLoginAsync step 2, when linking a Google identity to an existing Couple row, set PasswordHash and PasswordSalt to string.Empty (PasswordHasher.Verify already rejects empty values and HasPassword then maps to false, matching the README's passwordless couple model) and invalidate previously issued tokens. Token invalidation needs a new mechanism: add a per-user security stamp/token version column, emit it as a claim in TokenService.CreateToken, compare it in Program.cs OnTokenValidated, and rotate it at link time (this also fixes token survival after password change). Keep same-role linking for admin-created Vendor accounts, whose e-mail and temporary password were set by an administrator, as documented in backend/README.md. Alternatively refuse to link self-registered Couple rows and require a password sign-in first. Longer term, add e-mail verification to /api/auth/register (or remove the endpoint, which the frontend no longer uses) and link only verified accounts. Add a regression test that the pre-registered password and register-time JWT fail after the Google link."
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "The attacker must know the victim's address and register it before the victim joins (auth endpoints are limited to 10 requests/min per IP); once that happens, the victim's Google sign-in is the expected path."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Persistent read/write access as the victim's user id to their PII, bookings, chats, plan and reviews, including account deletion, which the victim cannot revoke."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Complete source trace confirmed line by line and independently reproduced offline with an own test, including the control case."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "jwt-not-revoked-on-password-change",
+    "title": "Password change and admin password reset do not revoke previously issued JWTs (valid up to 8 hours)",
+    "description": "Bearer JWTs live 480 minutes and carry only sub, name, email and role. The per-request hook in Program.cs (OnTokenValidated) calls IsActiveAsync, which only checks that the account exists, is active and is not deleted. AuthService.ChangePasswordAsync and the admin reset in UserService.BeforeUpdateAsync only replace the password hash, so a token issued before the change keeps full read and write access to the account until its original expiry. The owner has no other way to end a stolen session: logout only clears localStorage and there is no server-side logout. Vendors cannot delete their own account. The admin reset, the support recovery path, has the same gap. The app does revoke tokens at once on admin deactivation and self-deletion, but credential change is not covered. OWASP ASVS 4.0.3 V3.3.3 requires that other sessions can be terminated after a password change. This is a real boundary failure with an affected principal and resource, not just hardening.",
+    "root_cause": "Issued JWTs carry no credential or security version, and the only per-request revocation hook (OnTokenValidated -> IsActiveAsync) checks only that the account exists, is active and has no DeletedAt. Password change and admin reset change only PasswordHash/PasswordSalt (and MustChangePassword), so the server cannot tell tokens issued before the change from current ones until their 480-minute exp.",
+    "intended_behavior": "After a user changes their password or an admin resets it, every token issued before the change must be rejected (the session that made the change may get a fresh token). Then the owner or an admin can evict whoever holds a stolen token.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 92,
+        "scope": "AuthController.Me (GET /api/auth/me, [Authorize])",
+        "description": "Someone holding a token issued before the password change calls a bearer-protected endpoint with it. PUT /api/auth/me (line 96), /api/bookings and every other [Authorize] route behave the same."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 88,
+        "scope": "AddJwtBearer TokenValidationParameters",
+        "description": "The framework checks only signature, issuer, audience and lifetime. A 480-minute token issued before the change is still within its lifetime."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 108,
+        "scope": "JwtBearerEvents.OnTokenValidated",
+        "description": "The only per-request account check calls IsActiveAsync(sub). No claim is compared with the account's current credential state."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 270,
+        "scope": "AuthService.IsActiveAsync",
+        "description": "Returns true when the user exists, IsActive is true and DeletedAt is null. Neither password change nor admin reset touches these fields."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 188,
+        "scope": "AuthService.GetCurrentAsync",
+        "description": "Loads and returns the victim's profile (e-mail, phone, city) for the old token's sub after the password has already been changed."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 215,
+        "description": "ChangePasswordAsync only calls PasswordHasher.SetPassword and clears MustChangePassword. It does not invalidate any outstanding token."
+      },
+      {
+        "file": "backend/Planiraj.Services/Services/UserService.cs",
+        "line": 107,
+        "description": "The admin reset in BeforeUpdateAsync only sets a new hash and MustChangePassword = true. The user's outstanding tokens stay valid."
+      },
+      {
+        "file": "backend/Planiraj.Services/Security/PasswordHasher.cs",
+        "line": 30,
+        "description": "SetPassword replaces only hash and salt. The User entity has no security stamp or credential version to rotate."
+      },
+      {
+        "file": "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+        "line": 61,
+        "description": "Token claims are only sub, name, email and role. There is no security stamp, credential version or jti to tell tokens issued before the change apart."
+      },
+      {
+        "file": "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+        "line": 25,
+        "description": "JwtSettings.ExpiresMinutes defaults to 480."
+      },
+      {
+        "file": "backend/Planiraj.API/appsettings.json",
+        "line": 9,
+        "description": "The shipped configuration sets Jwt:ExpiresMinutes to 480 (8 hours)."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 93,
+        "description": "This comment states the intended revocation: a token is valid only while the account exists and is active, and deleted or disabled accounts lose access at once. Credential change is not covered."
+      },
+      {
+        "file": "frontend/src/app/core/auth.ts",
+        "line": 107,
+        "description": "Logout only clears the client session and localStorage. There is no server-side logout or revocation endpoint, so the owner cannot end a stolen session themselves."
+      },
+      {
+        "file": "frontend/src/app/core/auth.ts",
+        "line": 79,
+        "description": "After change-password the client keeps using the same token and only patches mustChangePassword. A fix that revokes old tokens must also issue a new token or force a new sign-in."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 100,
+        "description": "The SignalR hub accepts the same JWT from the access_token query string and authenticates it only when the connection opens. No source closes existing hub connections when credentials change (not separately tested)."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "data_state",
+        "description": "The attacker already holds a bearer token issued to the victim before the change, for example from a shared or stolen device's localStorage, from XSS, or from a log that captured the SignalR access_token query parameter."
+      },
+      {
+        "kind": "data_state",
+        "description": "The victim account stays active and not deleted. Admin deactivation and couple self-deletion do revoke the token immediately."
+      },
+      {
+        "kind": "timing_dependency",
+        "description": "Access lasts only until that token's original exp: 480 minutes after it was issued plus 1 minute of clock skew. There is no refresh endpoint, so the attacker cannot extend it."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "Jwt:ExpiresMinutes is left at the shipped 480. A deployment that overrides it changes the length of the window but not the defect."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Someone holding a bearer JWT issued to the victim account before the victim (or an admin) changed its password, without knowing the new password.",
+      "payloads": [
+        "POST /api/auth/login {\"login\":\"mladenci\",\"password\":\"Mladenci123!\"} sent twice: token A (earlier/stolen) and token B (owner)",
+        "POST /api/auth/change-password with Authorization: Bearer B {\"currentPassword\":\"Mladenci123!\",\"newPassword\":\"Verifier-Nova-2026\"}",
+        "GET /api/auth/me with Authorization: Bearer A",
+        "PUT /api/auth/me with Authorization: Bearer A {\"firstName\":\"Promijenjeno\",\"lastName\":\"Starim\",\"phoneNumber\":\"+387 61 000 111\"}",
+        "PUT /api/users/2 with an admin token {\"firstName\":...,\"lastName\":...,\"email\":...,\"role\":\"Vendor\",\"isActive\":true,\"newPassword\":\"Verifier-Reset-2026\"} after an earlier salon token was obtained",
+        "GET /api/auth/me and GET /api/bookings with the earlier salon token"
+      ],
+      "instructions": [
+        "Start the API in memory with seed dummy users (ApiFactory: SQLite, no network).",
+        "Sign in as mladenci twice to get token A and token B.",
+        "Change the password with token B, then check that the old password now fails and the new one works.",
+        "Call GET and PUT /api/auth/me with token A.",
+        "Sign in as salon, then as admin reset salon's password through PUT /api/users/{id} with newPassword.",
+        "Call GET /api/auth/me and GET /api/bookings with the salon token issued before the reset.",
+        "Control: as admin, set isActive=false for a user that has an outstanding token, then call GET /api/auth/me with that token."
+      ],
+      "observed_result": "In a network-less sandbox with the in-memory SQLite API, all 3 verifier tests passed. change-password returned 204. Login with the old password returned 401 and with the new password 200. Token A then got 200 on GET /api/auth/me (username mladenci) and 200 on PUT /api/auth/me. Token A's own change-password attempt with the old password got 400. The admin reset PUT /api/users/2 returned 200, and login with salon's old password returned 401. The salon token issued before the reset then got 200 on GET /api/auth/me (mustChangePassword=true) and 200 on GET /api/bookings. Control: after admin deactivation of user 3, that user's earlier token got 401 on GET /api/auth/me."
+    },
+    "remediation": {
+      "strategy": "Bind each JWT to a per-user credential version and check it on every request. (1) Add a random SecurityStamp column to User (backend/Planiraj.Services/Database/Entities.cs) with an EF migration and set it on create. (2) Rotate it inside PasswordHasher.SetPassword, which covers ChangePasswordAsync, the admin reset and insert. Also rotate it in UserService.BeforeUpdateAsync when Role or IsActive changes, and in AuthService.GoogleLoginAsync when a GoogleId is first linked to an existing account. (3) Add the stamp as a claim in TokenService.CreateToken; pass it separately instead of adding it to the public UserDto. (4) In Program.cs OnTokenValidated, replace IsActiveAsync with a check of u.Id == userId && u.IsActive && u.DeletedAt == null && u.SecurityStamp == stampClaim, and fail tokens that lack the claim. (5) Have POST /api/auth/change-password return a fresh AuthResponse and have frontend AuthService.changePassword store it, so the owner's current tab stays signed in while every other token is rejected. Optionally add an authenticated sign-out-everywhere endpoint that only rotates the stamp. (6) For /api/hubs/chat, enable CloseOnAuthenticationExpiration in the MapHub options and abort the user's open hub connections when the stamp rotates. Add regression tests in backend/Planiraj.Tests: after a self change or an admin reset, a token issued earlier gets 401 on GET /api/auth/me, and the token returned by change-password gets 200."
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "The attacker must already have stolen a valid bearer token for the victim, and the account must be one whose owner or admin reacts by changing the password."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "This defeats the main recovery action for one account. The attacker keeps full read and write access (PII, profile, bookings, chat, and salon management for vendors) after the owner's change or the admin's reset, for the rest of the token's 8-hour life. The blast radius is one account for a bounded time, and admin deactivation still works as a revocation path."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Every trace and evidence line was re-read at commit 6c5a1f8, and the result was reproduced independently in a network-less sandbox for both the self-service change and the admin reset, with a passing deactivation control."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "rate-limit-client-ip-depends-on-proxy-topology",
+    "title": "Login brute-force limit can be bypassed or turned into a global lockout depending on proxy configuration",
+    "description": "The auth rate-limit policy (10 per minute) on login, register, google and google/salon is keyed on HttpContext.Connection.RemoteIpAddress. Nothing else limits password guessing: there is no per-account lockout or failed-attempt counter (AuthService.ValidateCredentialsAsync), and LoginRequest has no other throttling. Mode true (RateLimit:TrustForwardedHeaders=true): UseForwardedHeaders runs before the limiter, and KnownIPNetworks and KnownProxies are cleared, so X-Forwarded-For is accepted from any peer. With the default ForwardLimit of 1, the rightmost entry becomes RemoteIpAddress. If Kestrel can be reached without going through the proxy, or a proxy passes the client's X-Forwarded-For through without appending to it, an attacker sends a new value with each request and gets a fresh 10-per-minute budget each time, so online password guessing is effectively unlimited. Behind a single proxy that appends, the rightmost entry is set by the proxy and spoofing fails. Mode false (the default, appsettings.json) behind a reverse proxy, or mode true behind more than one appending hop: every client lands in the partition of the proxy's IP. Ten requests a minute from any anonymous client then return 429 to every user's login, registration and Google sign-in, and the global 120/min guest limit is shared too. Both modes, and the conditions for using them, are documented in RateLimits.cs:18-21 and backend/README.md:276-279. Whether production follows that guidance cannot be seen from the repository.",
+    "claimed_root_cause": "The auth limiter partitions on a client IP whose trustworthiness depends entirely on the deployment topology. The only trusted-proxy option empties KnownProxies and KnownIPNetworks instead of pinning them to the real proxy, so the safe use of true depends on the origin being unreachable except through one appending proxy, which the network must enforce.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 70,
+        "scope": "AuthController.Login",
+        "description": "Anonymous POST /api/auth/login has [EnableRateLimiting(RateLimits.Auth)]; register (83), google (38) and google/salon (48) use the same policy."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 158,
+        "scope": "pipeline",
+        "description": "UseForwardedHeaders runs only when TrustForwardedHeaders is true, before UseRateLimiter (line 187), so a rewritten RemoteIpAddress reaches the limiter."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Auth/RateLimits.cs",
+        "line": 71,
+        "scope": "AddPlanirajRateLimits",
+        "description": "KnownIPNetworks (71) and KnownProxies (72) are cleared, so X-Forwarded-For is honored from any peer. ForwardLimit stays at its default of 1, so the rightmost entry wins."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.API/Auth/RateLimits.cs",
+        "line": 87,
+        "scope": "RateLimits.ClientIp",
+        "description": "The partition key is Connection.RemoteIpAddress after forwarded-header processing: the attacker-chosen value in mode true with direct reachability, or the proxy's address in mode false behind a proxy."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.API/Auth/RateLimits.cs",
+        "line": 61,
+        "description": "Auth policy: a fixed window of AuthPermitPerMinute (10) for each auth:ClientIp partition."
+      },
+      {
+        "file": "backend/Planiraj.API/Auth/RateLimits.cs",
+        "line": 19,
+        "description": "Code comment: true only behind a proxy that sets X-Forwarded-For and when the API is not directly reachable from the internet, otherwise anyone can fake their IP. The control depends on the operator following this."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 279,
+        "description": "The README admits that behind a proxy without TrustForwardedHeaders all users share the proxy's IP and would quickly get 429."
+      },
+      {
+        "file": "backend/Planiraj.API/appsettings.json",
+        "line": 30,
+        "description": "Committed default: TrustForwardedHeaders false. The production value and topology are not in the repository."
+      },
+      {
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 38,
+        "description": "A failed password check just returns null. There is no failed-attempt counter or account lockout, so the per-IP limiter is the only protection against password guessing."
+      }
+    ],
+    "blockers": [
+      "The production RateLimit:TrustForwardedHeaders value is not in the repository.",
+      "The hosting topology is not in the repository: whether a reverse proxy, CDN or PaaS front end sits in front of Kestrel, how many proxy hops append to X-Forwarded-For, and whether the Kestrel port or origin hostname can be reached from the internet without passing through the proxy."
+    ],
+    "validation_plan": {
+      "local": "In a disposable copy of the repo (not the working tree), add an xUnit class modeled on backend/Planiraj.Tests/RateLimitTests.cs. Use a LimitedApiFactory variant with RateLimit:AuthPermitPerMinute=3 and SQLite in-memory, and send POST /api/auth/login with dummy credentials {login:'x', password:'wrong'}. (A) Set RateLimit:TrustForwardedHeaders=true and send 6 logins, each with a distinct X-Forwarded-For (198.51.100.1 to .6). Expect all 401 and no 429 (spoofing works when the peer is untrusted and reaches the app directly). (B) Same setting, 4 logins with 'X-Forwarded-For: 198.51.100.N, 203.0.113.9', varying only the leftmost entry. Expect 429 on the 4th, which shows that with ForwardLimit=1 a single appending proxy defeats spoofing. (C) Set TrustForwardedHeaders=false and use two HttpClients from the same TestServer, which share one peer address like users behind a proxy. Client A makes 3 failed logins; expect client B's first login to return 429. Make no network calls outside the in-process TestServer.",
+      "deployment": "The owner checks their own configuration; no audit traffic is sent to the deployment. (1) Read the production value of RateLimit:TrustForwardedHeaders (appsettings override or the RateLimit__TrustForwardedHeaders environment variable). (2) In the hosting, firewall or security-group settings, check whether the Kestrel port, VM IP or default PaaS hostname accepts internet traffic that bypasses the reverse proxy or CDN. (3) Confirm how many proxies are in front of the app and that each one appends to X-Forwarded-For rather than passing a client-supplied header through (for example nginx $proxy_add_x_forwarded_for, or Cloudflare). (4) In the API's own logs, check whether 429s on /api/auth/* share one RemoteIpAddress across many users. Outcome: the bypass is confirmed if the value is true and the origin is directly reachable, or the proxy passes the header through. The lockout is confirmed if the value is false behind a proxy, or true behind more than one appending hop. The lead is rejected if the value is true, the origin accepts only the proxy, and there is exactly one appending hop. Fix: set KnownProxies/KnownIPNetworks (and ForwardLimit) to the real proxy addresses instead of clearing them, and consider a per-account failed-login limit."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "seed-enabled-default-publishes-admin-credentials",
+    "title": "Shipped production configuration seeds an Admin account with a publicly documented password",
+    "description": "appsettings.json is the base configuration file loaded in every environment, and it sets Seed:Enabled to true. Program.cs:211 also defaults the flag to true and does not check the environment. There is no appsettings.Production.json, and appsettings.Development.json does not change Seed. On the first start against an empty database, DbSeeder creates three accounts: admin/Admin123! (Admin), salon/Salon123! (Vendor) and mladenci/Mladenci123! (Couple). All three have MustChangePassword=false. The passwords are constants in DbSeeder.cs and are published in backend/README.md and frontend/README.md. The seeder is also the only place the code creates an Admin account or the cities, categories and plans the app needs. The README's production note mentions only Jwt:Key and the connection string. A deployment that keeps these defaults therefore has an Admin account that any anonymous user can log in to with the published password.",
+    "root_cause": "Demo seeding is opt-out instead of opt-in. The base configuration used in production enables it, and the code has no environment check. The seeder creates privileged accounts with hard-coded, publicly documented passwords and does not force a password change. It is also the only bootstrap path for an Admin account and for reference data.",
+    "intended_behavior": "A production database must never contain accounts whose credentials are known outside the operator. Demo users and vendors should be seeded only when explicitly enabled in a Development or test environment. Any production bootstrap admin must use operator-supplied secret credentials and be forced to change them at first login.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 71,
+        "scope": "AuthController.Login",
+        "description": "[AllowAnonymous] POST /api/auth/login accepts {login, password} from any unauthenticated client. The only throttle is the auth rate limit of 10 requests per minute per IP."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 36,
+        "scope": "AuthService.ValidateCredentialsAsync",
+        "description": "Looks up the user by username or e-mail. The login 'admin' matches the seeded Admin row."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 38,
+        "scope": "AuthService.ValidateCredentialsAsync",
+        "description": "Checks the supplied password against the stored PBKDF2 hash. The check succeeds because the hash was derived from the public constant 'Admin123!'."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Seed/DbSeeder.cs",
+        "line": 265,
+        "scope": "DbSeeder.SeedAsync",
+        "description": "At startup the seeder created username 'admin' with UserRole.Admin and the AdminPassword constant. CreateUser hashes it at line 443."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 117,
+        "scope": "AuthController.CreateAuthResponse",
+        "description": "Issues a JWT for the matched user and returns it to the anonymous caller."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+        "line": 66,
+        "scope": "TokenService.CreateToken",
+        "description": "Signs the role claim 'Admin'. The API accepts it on every admin-only operation, for example GET /api/users (UserService.cs:28)."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.API/appsettings.json",
+        "line": 48,
+        "description": "\"Enabled\": true under \"Seed\" in the base configuration. No appsettings.Production.json exists, and appsettings.Development.json does not override Seed."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 156,
+        "description": "InitializeDatabaseAsync runs on every start, before any request is served."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 211,
+        "description": "The seeding gate is GetValue(\"Seed:Enabled\", true) with no IsDevelopment check. A missing key also seeds."
+      },
+      {
+        "file": "backend/Planiraj.Services/Seed/DbSeeder.cs",
+        "line": 225,
+        "description": "The only skip condition is that a user row already exists, so any new database is seeded."
+      },
+      {
+        "file": "backend/Planiraj.Services/Seed/DbSeeder.cs",
+        "line": 17,
+        "description": "public const string AdminPassword = \"Admin123!\". VendorPassword \"Salon123!\" and CouplePassword \"Mladenci123!\" are on lines 18-19."
+      },
+      {
+        "file": "backend/Planiraj.Services/Seed/DbSeeder.cs",
+        "line": 440,
+        "description": "Seeded users get MustChangePassword = false, so neither the API nor the SPA guard (frontend/src/app/core/auth.ts:213) forces a password change."
+      },
+      {
+        "file": "backend/Planiraj.Services/Seed/DbSeeder.cs",
+        "line": 231,
+        "description": "Cities, categories and subscription plans are created only here. The migrations contain no InsertData and the model has no HasData, so the seeder is the only bootstrap for reference data and for any Admin account."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 95,
+        "description": "Publishes Administrator admin / admin@planiraj.ba / Admin123!. Line 99 gives the exact login request."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 289,
+        "description": "The production note covers only Jwt:Key and the connection string, not seeding. Line 33 describes seeding an empty database as normal start behavior."
+      },
+      {
+        "file": "frontend/README.md",
+        "line": 47,
+        "description": "Also publishes admin / Admin123!, salon / Salon123! and mladenci / Mladenci123!."
+      },
+      {
+        "file": "backend/Planiraj.Services/Services/UserService.cs",
+        "line": 107,
+        "description": "An Admin can set a new password on any user with PUT /api/users/{id} (newPassword). Admin access therefore becomes takeover of any account."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "None. The attacker is an anonymous network client of the API."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "The API runs with the shipped appsettings.json and Seed__Enabled=false is not set. This is the default: no production-specific configuration file exists, and the README's production notes do not mention seeding."
+      },
+      {
+        "kind": "data_state",
+        "description": "The database had no users at the first start while seeding was enabled, which is normal for a new deployment. The seeded accounts remain even if seeding is disabled later."
+      },
+      {
+        "kind": "data_state",
+        "description": "The operator has not changed or removed the seeded admin password. Nothing in the code or docs requires them to."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anonymous internet user with no account who has read the public README.",
+      "payloads": [
+        "POST /api/auth/login {\"login\":\"admin\",\"password\":\"Admin123!\"}",
+        "GET /api/users?pageSize=100 with header Authorization: Bearer <token from the login response>"
+      ],
+      "instructions": [
+        "Start the API in the Production environment with the shipped appsettings.json, an operator-supplied Jwt:Key, and an empty database with migrations applied. Do not set Seed:Enabled anywhere.",
+        "Send the login payload without credentials.",
+        "Call GET /api/users with the returned token, then call it again without a token as a control."
+      ],
+      "observed_result": "Verifier test VerifySeed_ShippedProductionConfig ran on a scratch copy in a network-less namespace with an empty in-memory SQLite database. The environment was Production, and the test did not set Seed:Enabled; its effective value True came from \"JsonConfigurationProvider for 'appsettings.json'\", and no Development file was loaded. Anonymous POST /api/auth/login with admin/Admin123! returned 200 with user.role=Admin and mustChangePassword=false. GET /api/users with that token returned 200 with totalCount=3. The same request without a token returned 401. Controls: with Seed:Enabled=false the same login returned 401; with appsettings.json removed (key absent) it returned 200. All 3 tests passed."
+    },
+    "remediation": {
+      "strategy": "Make seeding opt-in and limited to Development, and give production a separate, safe bootstrap. (1) Set Seed:Enabled to false in appsettings.json, change Program.cs:211 to GetValue(\"Seed:Enabled\", false), and set it to true in appsettings.Development.json (the test ApiFactory already sets it). (2) In InitializeDatabaseAsync, do not create demo users or vendors unless app.Environment.IsDevelopment(); if seeding is requested elsewhere, log an error and skip or fail the start. (3) Split reference data (cities, categories, subscription plans) from demo users and vendors, so production can seed only reference data. (4) For the first production admin, read the username, e-mail and password from operator-supplied secrets (environment variables), refuse to start if they are missing or weak, and set MustChangePassword = true. (5) Mark the README credentials as local-development only and add Seed__Enabled=false to the production notes. (6) Any deployment that has already run the seeder must delete or reset the admin, salon and mladenci accounts, because changing the flag does not remove them. Add a regression test that a Production start with the shipped configuration creates no users."
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "The only requirements are that a deployment kept the shipped defaults on its first start and that nobody changed the admin password afterwards. That is the default path: the base file enables seeding, the seeder is the only bootstrap for an Admin account and for reference data, the production notes never mention seeding, and nothing forces a password change. The credentials appear in both READMEs. Whether any specific live deployment overrode these defaults was not checked."
+      },
+      "impact": {
+        "score": "critical",
+        "reason": "An unauthenticated actor gets full Admin authority. They can read every user's e-mail and phone number and all bookings, and set a new password on any account (UserService.cs:107) and then log in as that user. They can also create more Admin users, change vendor ownership and moderate reviews."
+      },
+      "overall_severity": "critical"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "The full source path was traced, and the result was reproduced independently offline in the Production environment, with the seed flag taken from the shipped appsettings.json. Negative (Seed:Enabled=false) and key-absent controls behave as the source predicts. The only unverified fact is the state of any real deployment, and it is stated as a condition."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "vendor-upload-storage-unbounded",
+    "title": "Salon accounts can store unlimited, never-reclaimed upload files on the API host disk",
+    "description": "Any verified Google account can become a Vendor through the anonymous POST /api/auth/google/salon, create one salon (published immediately) and then call POST /api/uploads/vendors/{id} repeatedly. Each request writes a new GUID-named file (up to Uploads:MaxSizeMb = 5 MB) under ContentRootPath/uploads/vendors/{id} on the API host. Nothing limits the number of files or bytes per salon, there is no upload-specific rate policy, and nothing ever deletes a file: unreferenced uploads, images removed from the gallery and replaced logos all stay on disk and stay publicly served. The only throughput bound is the global fixed-window limiter of 120 requests per minute per user, so one account can add at most about 600 MB per minute if its bandwidth allows, and each extra Google account adds its own budget. Admin unpublishing the salon (Vendor.IsActive = false) does not stop uploads; only deactivating the user does. Verdict reasoning: the missing aggregate bound and the retention are source-visible and were reproduced offline under the shipped rate-limit defaults. None of the unknown deployment controls removes the bound failure. LocalFileStorage is the only IFileStorage registered, so object storage needs a code change. A reverse-proxy body limit caps only the size of each request, not the total kept. Disk size only changes how long exhaustion takes. Severity is low because the attacker must upload every byte that is stored (no amplification) over a sustained period, needs a Vendor account, and is easy to attribute and clean up (one folder per salon, immediate token rejection on user deactivation). Disk exhaustion itself was not exercised.",
+    "root_cause": "UploadsController.UploadVendorImage writes a new persistent file on every authorized request with only a per-file size cap: there is no per-vendor count or byte quota, no upload-specific rate limit, no tracking of whether a file is referenced, and no deletion or cleanup path anywhere in the backend.",
+    "intended_behavior": "Storage per salon is bounded by file count and total bytes, uploads have their own rate limit, and files no longer referenced by a VendorImage.Url or Vendor.LogoUrl are deleted (immediately on unreference or by a cleanup job after a grace period).",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/Planiraj.API/Controllers/AuthController.cs",
+        "line": 49,
+        "scope": "AuthController.GoogleSalon",
+        "description": "Anonymous POST /api/auth/google/salon accepts any valid Google ID token (only the auth limiter of 10/min per IP applies)."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/AuthService.cs",
+        "line": 134,
+        "scope": "AuthService.GoogleLoginAsync",
+        "description": "A new Google identity is created as an active account with Role = Vendor; no approval step."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.Services/Services/VendorService.cs",
+        "line": 151,
+        "scope": "VendorService.BeforeInsertAsync",
+        "description": "The Vendor creates its own salon (one per account, lines 149-150), owned by itself and active immediately."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/Planiraj.API/Controllers/UploadsController.cs",
+        "line": 26,
+        "scope": "UploadsController.UploadVendorImage",
+        "description": "Only an owner-or-admin check (no Vendor.IsActive check), a 5 MB per-file cap (line 30) and a magic-byte sniff; no count or byte quota before saving (line 41)."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/Planiraj.API/Uploads/FileStorage.cs",
+        "line": 31,
+        "scope": "LocalFileStorage.SaveAsync",
+        "description": "File.Create writes a new GUID-named file under ContentRootPath/uploads/vendors/{id} on the API host for every request; no code path ever deletes it."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/Planiraj.API/Auth/RateLimits.cs",
+        "line": 13,
+        "description": "PermitPerMinute defaults to 120; the global limiter partitioned per user (lines 54-58) is the only throughput bound on uploads; no upload-specific policy exists."
+      },
+      {
+        "file": "backend/Planiraj.API/appsettings.json",
+        "line": 17,
+        "description": "Uploads:MaxSizeMb is 5, a per-file cap only."
+      },
+      {
+        "file": "backend/Planiraj.API/Controllers/UploadsController.cs",
+        "line": 23,
+        "description": "RequestSizeLimit of 20 MB per request; one file is saved per request; no aggregate limit."
+      },
+      {
+        "file": "backend/Planiraj.Services/Helpers/AccessRules.cs",
+        "line": 16,
+        "description": "EnsureCanManageVendorAsync reads only OwnerUserId, so a salon unpublished by an admin can still upload."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 42,
+        "description": "LocalFileStorage is the only IFileStorage registration; uploads always go to local disk."
+      },
+      {
+        "file": "backend/Planiraj.API/Uploads/FileStorage.cs",
+        "line": 24,
+        "description": "RootPath is under the API ContentRootPath (default Planiraj.API/uploads), on the API host filesystem."
+      },
+      {
+        "file": "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+        "line": 55,
+        "description": "Deleting a VendorImage (or a Vendor) removes only the database row; no File.Delete or cleanup job exists in backend source."
+      },
+      {
+        "file": "backend/README.md",
+        "line": 284,
+        "description": "Open item acknowledges that an uploaded file stays on disk when the image is removed from the gallery."
+      },
+      {
+        "file": "backend/Planiraj.API/Program.cs",
+        "line": 108,
+        "description": "Recovery control: a deactivated user's token is rejected on every request (observed 401), but stored files remain."
+      },
+      {
+        "file": "backend/Planiraj.API/appsettings.json",
+        "line": 12,
+        "description": "Google:ClientId ships empty; AuthController lines 55-56 return 503 until it is configured, so self-registration depends on deployment configuration."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Attacker needs a Vendor account that owns a salon: any verified Google account via the salon sign-in page, or any admin-provisioned vendor account."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "Google:ClientId must be configured for self-registration (shipped empty, endpoint returns 503 until set); the README documents Google as the salon sign-up path."
+      },
+      {
+        "kind": "environmental_dependency",
+        "description": "Uploads:Root is on finite local disk of the API host; disk size sets time to exhaustion, and whether logs, temp files or a database share that filesystem sets collateral impact."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Internet user with a free Google account (verified e-mail), acting as a newly self-registered salon.",
+      "payloads": [
+        "POST /api/auth/google/salon {\"credential\":\"<Google ID token>\"}",
+        "POST /api/vendors {\"name\":\"X\",\"cityId\":1}",
+        "POST /api/uploads/vendors/{id} multipart file=<70-byte 1x1 PNG>, repeated",
+        "POST /api/vendorimages {\"vendorId\":{id},\"url\":\"<returned url>\"} then DELETE /api/vendorimages/{imageId}",
+        "Admin: PUT /api/vendors/{id}/admin {\"ownerUserId\":{userId},\"isActive\":false}; PUT /api/users/{userId} {...,\"isActive\":false}"
+      ],
+      "instructions": [
+        "Sign in on the salon page with a Google account and create the salon.",
+        "Upload a few tiny PNGs without attaching them to the gallery; list uploads/vendors/{id} and GET /api/vendorimages?vendorId={id}.",
+        "Attach one upload to the gallery, delete that gallery image, and list the folder again.",
+        "As admin, unpublish the salon and upload once more; then deactivate the user and upload once more.",
+        "Repeat sign-up with a second Google account and upload to its own salon."
+      ],
+      "observed_result": "Offline xUnit run (network namespace with loopback only, SQLite, temp UploadRoot) with the shipped rate-limit defaults enabled (120/min per user, 10/min auth): a second salon for the same account returned 400; 6 uploads all returned 200, leaving 6 files on disk (70 bytes each) while the gallery totalCount was 0; an unreferenced file was served to an anonymous GET with 200; attaching one upload and deleting the gallery row returned 204 but the folder still held 6 files and the URL still served 200; after the admin unpublished the salon an upload still returned 200 (7 files); after the admin deactivated the user the upload returned 401 and the 7 files remained; a second Google account created its own salon and stored 2 more (9 total); a Couple account got 403. Disk exhaustion was not exercised."
+    },
+    "remediation": {
+      "strategy": "In UploadsController, enforce a per-vendor quota (maximum file count and total bytes under vendors/{id}) before saving, and reject uploads for inactive salons. Add a dedicated, tighter rate-limit policy for /api/uploads. Track references: delete the file when a VendorImage is deleted or its Url or Vendor.LogoUrl changes, and add a periodic job that removes files under vendors/{id} not referenced by VendorImages.Url or Vendor.LogoUrl after a grace period (and the whole folder when a vendor is deleted). Put Uploads:Root on a dedicated, quota-limited volume or object storage and monitor free space."
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Free Google accounts and a simple script suffice once Google sign-in is enabled, but every stored byte must be uploaded (at most 5 MB per request, 120 requests per minute per account) over a sustained period, and the abuse is tied to a visible salon and its own folder."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Persistent shared-disk consumption with no automatic reclamation: once the uploads filesystem is full, every salon's uploads fail, and anything else on that filesystem can fail too. There is no confidentiality or integrity effect, and recovery is straightforward (deactivate the user, delete vendors/{id})."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "medium",
+      "reason": "The missing aggregate bound, the lack of any deletion path and the retention were confirmed in source and reproduced offline under shipped rate limits. Whether Google sign-in is enabled, the disk size and what shares the filesystem are deployment facts that affect likelihood and collateral but not the bound failure."
+    }
+  }
+]
