@@ -44,7 +44,7 @@ Ime i opis se čitaju iz `core/brand.ts`. Bez `SITE_URL` adrese su relativne (sa
 dostupan, prave se samo opće stranice, sitemap i robots.txt. Statične stranice novih ponuđača nastaju pri sljedećem buildu,
 pa prerender treba pokretati pri svakom deployu (sitemap sa servera ih ima odmah). U aplikaciji isto radi `core/seo.ts` (stranica ponuđača).
 
-Test nalozi (iz seed-a): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`, a svaki drugi salon osim
+Test nalozi (iz seed-a, postoje samo kad backend radi u `Development` okruženju): `admin / Admin123!`, `salon / Salon123!`, `mladenci / Mladenci123!`, a svaki drugi salon osim
 „Sala Panorama“ ima vlasnika `salon-{slug} / Salon123!` (npr. `salon-foto-trenutak`; vidi backend README).
 
 ## Saloni

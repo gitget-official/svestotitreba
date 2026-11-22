@@ -30,7 +30,8 @@ Potrebno: **.NET 10 SDK** i **SQL Server** (Express, Developer ili LocalDB).
    ```bash
    dotnet run --project Planiraj.API --launch-profile http
    ```
-   Pri pokretanju se migracije primjenjuju automatski, a prazna baza se puni seed podacima.
+   Pri pokretanju se migracije primjenjuju automatski. U razvoju (`Development`) se prazna baza puni demo
+   podacima; u produkciji samo šifarnicima (vidi "Produkcija" ispod).
 4. Swagger: http://localhost:5080/swagger
 
 Testovi (ne trebaju SQL Server ni Google):
@@ -80,6 +81,9 @@ Jedan Google nalog je ili mladenci ili salon, nikad oboje.
 - Upload: `POST /api/uploads/vendors/{vendorId}` (multipart, polje `file`), smije vlasnik tog salona ili admin.
   Prima JPG, PNG i WebP (provjera po sadržaju fajla, ne po imenu) do `Uploads:MaxSizeMb` (zadano 5 MB) i vraća
   `{ url }`. Ta adresa se zatim šalje kao slika galerije (`/api/vendorimages`) ili logo salona.
+- Salon može imati najviše `Uploads:MaxFilesPerVendor` fajlova (zadano 100). Kad je limit dostignut, prvo se brišu
+  fajlovi stariji od `Uploads:OrphanGraceMinutes` (zadano 60) koje ne koristi nijedna slika galerije ni logo;
+  ako ih i dalje ima previše, upload vraća 400. Upload ima i vlastito ograničenje (`RateLimit:UploadPermitPerMinute`).
 - Fajlovi se čuvaju na disku (`Uploads:Root`, zadano `Planiraj.API/uploads`, nije u gitu) i serviraju na
   `/api/uploads/...` uz dugo keširanje. `Uploads:PublicBaseUrl` se postavlja samo ako se slike serviraju sa druge
   adrese (npr. CDN). Za produkciju taj folder mora biti trajan i uključen u backup; kasnije se može preći na
@@ -88,7 +92,11 @@ Jedan Google nalog je ili mladenci ili salon, nikad oboje.
 E-mail na Google nalogu mora biti potvrđen. `GET /api/auth/config` vraća client id (ili `null` kad nije podešen,
 pa frontend ne prikazuje dugme).
 
-## Test nalozi (seed)
+## Test nalozi (seed, samo za razvoj)
+
+Ovi nalozi se prave **samo u `Development` okruženju** (`Seed:Enabled` je `true` samo u
+`appsettings.Development.json`). Izvan razvoja se `Seed:Enabled` zanemaruje, a API u logu upozori ako baza ima
+neki od ovih naloga sa javnom lozinkom.
 
 | Uloga | Korisničko ime | E-mail | Lozinka |
 |---|---|---|---|
@@ -273,6 +281,7 @@ Sekcija `RateLimit` u `appsettings.json`:
 | `PermitPerMinute` | `120` | Zahtjeva u minuti po korisniku (prijavljen) ili po IP adresi (gost) |
 | `AuthPermitPerMinute` | `10` | Pokušaja prijave i registracije (`login`, `register`, `google`) u minuti po IP adresi |
 | `ChatPermitPerMinute` | `30` | Poslanih poruka u minuti po korisniku |
+| `UploadPermitPerMinute` | `20` | Uploadovanih slika u minuti po korisniku |
 | `TrustForwardedHeaders` | `false` | `true` samo iza proxyja koji postavlja `X-Forwarded-For` (nginx, Cloudflare) i kad API nije direktno dostupan sa interneta |
 
 Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. Iza proxyja bez
@@ -281,9 +290,31 @@ Prekoračenje vraća `429` sa zaglavljem `Retry-After` i porukom na bosanskom. I
 ## Otvoreno / sljedeće
 
 - Odluke #3 (filter dostupnosti) i #4 (ko smije ostaviti recenziju) implementirane su privremeno, uz `@TODO` u kodu
-- Brisanje uploadovanog fajla sa diska kad se slika ukloni iz galerije (sada ostaje na disku)
+- Brisanje uploadovanog fajla odmah kad se slika ukloni iz galerije (sada se briše tek kad salon dostigne limit)
 - AI planiranje (faza 4), naplata pretplata (faza 5)
 - Poruke: obavijesti kad je preglednik zatvoren (Web Push), prilozi (slike), prijava neželjenih poruka
 - E-mail: reset zaboravljene lozinke i pozivnica za salon, podsjetnici (zahtjev bez odgovora, termin za 7 dana),
   obavijesti o recenzijama, postavke obavijesti po korisniku
-- Produkcija: `Jwt:Key` i connection string preko varijabli okruženja, ne u `appsettings`
+- E-mail potvrda pri samostalnoj registraciji, MFA za administratore (vidi `docs/security/`)
+
+## Produkcija
+
+Sigurnosna revizija i lista provjera (OWASP, ISO 27001): `docs/security/`. Prije prvog pokretanja:
+
+- `ASPNETCORE_ENVIRONMENT=Production` (zadano). Demo nalozi i demo ponuđači se tada **ne** prave; prazna baza dobija
+  samo gradove, kategorije i planove pretplate.
+- Tajne preko varijabli okruženja, nikad u `appsettings`: `Jwt__Key` (novi nasumični ključ, najmanje 32 znaka;
+  razvojni ključ iz `appsettings.Development.json` API odbija), `ConnectionStrings__PlanirajDb`
+  (sa `Encrypt=True;TrustServerCertificate=False`), `Email__Smtp__Password`.
+- Prvi administrator: `Bootstrap__AdminUsername`, `Bootstrap__AdminEmail`, `Bootstrap__AdminPassword`
+  (najmanje 12 znakova). Pravi se samo dok u bazi nema nijednog administratora i mora promijeniti lozinku pri
+  prvoj prijavi. Poslije toga se te varijable mogu ukloniti.
+- `Cors__Origins__0` = adresa frontenda, `AllowedHosts` = domena API-ja.
+- Iza reverse proxyja (nginx, Cloudflare...): `RateLimit__TrustForwardedHeaders=true` samo ako API nije
+  dostupan direktno sa interneta (vidi "Ograničenje broja zahtjeva").
+- Frontend hosting treba slati `Content-Security-Policy` (uz `frame-ancestors 'none'`), `Strict-Transport-Security`,
+  `X-Content-Type-Options: nosniff` i `Referrer-Policy`. API ih šalje sam.
+
+Promjena lozinke, reset lozinke od strane admina, promjena uloge ili aktivnosti i povezivanje Google naloga
+poništavaju sve ranije izdane tokene tog korisnika (`User.SecurityStamp`). `POST /api/auth/change-password`
+zato vraća novu sesiju (`{ token, expiresAt, user }`).

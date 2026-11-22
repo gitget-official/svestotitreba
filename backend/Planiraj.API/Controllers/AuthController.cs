@@ -60,7 +60,7 @@ public class AuthController : ControllerBase
             return Unauthorized(new { status = 401, message = "Prijava preko Googlea nije uspjela. Pokušajte ponovo." });
 
         var (user, isNew) = await login(identity);
-        var response = CreateAuthResponse(user);
+        var response = await CreateAuthResponseAsync(user);
         response.IsNew = isNew;
         return response;
     }
@@ -74,7 +74,7 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized(new { status = 401, message = "Pogrešno korisničko ime ili lozinka." });
 
-        return CreateAuthResponse(user);
+        return await CreateAuthResponseAsync(user);
     }
 
     /// <summary>Samostalna registracija mladenaca (FR-2). Ponuđačima nalog kreira administrator.</summary>
@@ -84,7 +84,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
         var user = await _authService.RegisterCoupleAsync(request);
-        return CreateAuthResponse(user);
+        return await CreateAuthResponseAsync(user);
     }
 
     [Authorize]
@@ -104,17 +104,23 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Promjena lozinke poništava sve ranije izdane tokene (npr. ukradeni ili na drugom uređaju);
+    /// odgovor nosi novi token, pa ova sesija ostaje prijavljena.
+    /// </summary>
     [Authorize]
     [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    public async Task<ActionResult<AuthResponse>> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         await _authService.ChangePasswordAsync(request);
-        return NoContent();
+        return await CreateAuthResponseAsync(await _authService.GetCurrentAsync());
     }
 
-    private AuthResponse CreateAuthResponse(UserDto user)
+    private async Task<AuthResponse> CreateAuthResponseAsync(UserDto user)
     {
-        var (token, expiresAt) = _tokenService.CreateToken(user);
+        var stamp = await _authService.GetActiveSecurityStampAsync(user.Id)
+                    ?? throw new Planiraj.Model.Exceptions.ForbiddenException("Nalog je deaktiviran.");
+        var (token, expiresAt) = _tokenService.CreateToken(user, stamp);
         return new AuthResponse { Token = token, ExpiresAt = expiresAt, User = user };
     }
 }

@@ -76,13 +76,9 @@ export class AuthService {
     return this.http.put<User>(`${this.url}/me`, request).pipe(tap((user) => this.patchUser(user)));
   }
 
-  changePassword(request: ChangePasswordRequest): Observable<void> {
-    return this.http.post<void>(`${this.url}/change-password`, request).pipe(
-      tap(() => {
-        const user = this.user();
-        if (user) this.patchUser({ ...user, mustChangePassword: false });
-      }),
-    );
+  /** Promjena lozinke poništava sve stare tokene; backend vraća novu sesiju za ovaj preglednik. */
+  changePassword(request: ChangePasswordRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.url}/change-password`, request).pipe(tap((r) => this.store(r)));
   }
 
   /** Briše vlastiti profil (samo mladenci), briše lokalne kopije plana i Sačuvanog i odjavljuje. */
@@ -176,7 +172,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = auth.token();
 
-  const request = token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+  // Token ide samo našem API-ju, nikad trećoj strani (npr. ako se kasnije doda poziv drugog servisa).
+  const toApi = req.url.startsWith(`${environment.apiUrl}/`);
+  const request = token && toApi ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
 
   return next(request).pipe(
     catchError((error: unknown) => {

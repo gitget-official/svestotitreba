@@ -107,6 +107,11 @@ public class UserService
             PasswordHasher.SetPassword(entity, request.NewPassword);
             entity.MustChangePassword = true;
         }
+
+        // Uloga je u tokenu: promjena uloge ili aktivnosti mora poništiti tokene izdane sa starim pravima.
+        var entry = Context.Entry(entity);
+        if (entry.Property(u => u.Role).OriginalValue != entity.Role || entry.Property(u => u.IsActive).OriginalValue != entity.IsActive)
+            SecurityStamps.Rotate(entity);
     }
 
     protected override Task BeforeDeleteAsync(User entity)

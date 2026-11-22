@@ -64,6 +64,8 @@ builder.Services.AddPlanirajEmail(builder.Configuration, builder.Environment);
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.Configure<JwtSettings>(jwtSection);
 var jwt = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
+if (!builder.Environment.IsDevelopment())
+    JwtSettings.EnsureNotDevelopmentKey(jwt.Key, builder.Environment.ContentRootPath);
 
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
@@ -90,7 +92,8 @@ builder.Services
             NameClaimType = AppClaims.Name,
             RoleClaimType = AppClaims.Role
         };
-        // Token važi samo dok nalog postoji i aktivan je: obrisan ili isključen nalog odmah gubi pristup.
+        // Token važi samo dok nalog postoji, aktivan je i ima isti sigurnosni pečat: obrisan ili isključen nalog,
+        // promjena lozinke ili uloge i povezivanje Googlea odmah poništavaju ranije izdane tokene.
         options.Events = new JwtBearerEvents
         {
             // WebSocket ne može poslati zaglavlje Authorization, pa SignalR šalje token u adresi (samo za hubove).
@@ -104,9 +107,11 @@ builder.Services
             OnTokenValidated = async ctx =>
             {
                 var sub = ctx.Principal?.FindFirst(AppClaims.UserId)?.Value;
+                var tokenStamp = ctx.Principal?.FindFirst(AppClaims.SecurityStamp)?.Value;
                 var auth = ctx.HttpContext.RequestServices.GetRequiredService<IAuthService>();
-                if (!int.TryParse(sub, out var userId) || !await auth.IsActiveAsync(userId))
-                    ctx.Fail("Nalog više nije aktivan.");
+                var currentStamp = int.TryParse(sub, out var userId) ? await auth.GetActiveSecurityStampAsync(userId) : null;
+                if (currentStamp == null || tokenStamp == null || !string.Equals(currentStamp, tokenStamp, StringComparison.Ordinal))
+                    ctx.Fail("Sesija više ne važi. Prijavite se ponovo.");
             }
         };
     });
@@ -156,6 +161,18 @@ var app = builder.Build();
 await InitializeDatabaseAsync(app);
 
 if (rateLimit.TrustForwardedHeaders) app.UseForwardedHeaders();
+
+// Sigurnosna zaglavlja za sve odgovore API-ja (JSON i slike). CSP samo izvan razvoja, jer Swagger UI treba skripte.
+app.Use(async (ctx, next) =>
+{
+    var headers = ctx.Response.Headers;
+    headers.XContentTypeOptions = "nosniff";
+    headers.XFrameOptions = "DENY";
+    headers["Referrer-Policy"] = "no-referrer";
+    if (!app.Environment.IsDevelopment())
+        headers.ContentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'";
+    await next();
+});
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -167,6 +184,7 @@ if (app.Environment.IsDevelopment())
 // U razvoju frontend proxy gađa http://localhost:5080, pa preusmjeravanje na HTTPS ne smije biti aktivno.
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 // Slike koje su saloni uploadovali (vidi UploadsController); keširaju se dugo jer svaka ima jedinstveno ime.
@@ -187,7 +205,8 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHub<ChatHub>(ChatHub.Path);
+// Otvorena WebSocket veza se zatvara kad token istekne (inače bi ostala otvorena i poslije isteka sesije).
+app.MapHub<ChatHub>(ChatHub.Path, o => o.CloseOnAuthenticationExpiration = true);
 
 app.Run();
 
@@ -208,11 +227,33 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 
     await db.Database.MigrateAsync();
 
-    if (app.Configuration.GetValue("Seed:Enabled", true))
+    // Demo podaci (nalozi admin/salon/mladenci sa javnim lozinkama iz README-a) samo u razvoju.
+    var demo = app.Configuration.GetValue("Seed:Enabled", false);
+    if (demo && !app.Environment.IsDevelopment())
     {
-        await DbSeeder.SeedAsync(db);
-        logger.LogInformation("Baza je spremna (migracije primijenjene, seed provjeren).");
+        logger.LogError("Seed:Enabled se zanemaruje izvan razvoja: demo nalozi imaju javne lozinke. Pune se samo šifarnici.");
+        demo = false;
     }
+
+    if (demo)
+        await DbSeeder.SeedAsync(db);
+    else
+        await DbSeeder.SeedReferenceDataAsync(db);
+
+    // Prvi administrator na novoj bazi: podaci iz tajni okruženja (Bootstrap__AdminUsername/Email/Password).
+    var bootstrap = app.Configuration.GetSection("Bootstrap");
+    if (await DbSeeder.BootstrapAdminAsync(db, bootstrap["AdminUsername"], bootstrap["AdminEmail"], bootstrap["AdminPassword"]))
+        logger.LogWarning("Napravljen je prvi administrator iz Bootstrap postavki; lozinku mora promijeniti pri prvoj prijavi.");
+    else if (!await db.Users.AnyAsync(u => u.Role == Planiraj.Model.Enums.UserRole.Admin))
+        logger.LogWarning("Nema administratora. Postavite Bootstrap__AdminUsername, Bootstrap__AdminEmail i Bootstrap__AdminPassword.");
+
+    if (!app.Environment.IsDevelopment())
+    {
+        foreach (var login in await DbSeeder.FindDemoAccountsAsync(db))
+            logger.LogCritical("Nalog {Login} ima javnu demo lozinku iz README-a. Promijenite lozinku ili obrišite nalog.", login);
+    }
+
+    logger.LogInformation("Baza je spremna (migracije primijenjene, početni podaci provjereni).");
 }
 
 /// <summary>Za integracione testove (WebApplicationFactory).</summary>

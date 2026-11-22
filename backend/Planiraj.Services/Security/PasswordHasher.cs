@@ -27,10 +27,23 @@ public static class PasswordHasher
         return CryptographicOperations.FixedTimeEquals(computed, Convert.FromBase64String(hash));
     }
 
+    /// <summary>Postavlja lozinku i poništava sve ranije izdane tokene (nova lozinka = nove sesije).</summary>
     public static void SetPassword(User user, string password)
     {
         var (hash, salt) = Hash(password);
         user.PasswordHash = hash;
         user.PasswordSalt = salt;
+        SecurityStamps.Rotate(user);
     }
+}
+
+/// <summary>
+/// Sigurnosni pečat korisnika: ide u JWT kao claim "sst" i provjerava se pri svakom zahtjevu.
+/// Nova vrijednost znači da svi tokeni izdani prije toga više ne važe.
+/// </summary>
+public static class SecurityStamps
+{
+    public static string New() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+
+    public static void Rotate(User user) => user.SecurityStamp = New();
 }
