@@ -8,6 +8,10 @@ public class UploadSettings
     /// <summary>Javna adresa fajlova; prazno = "/api/uploads" na istoj domeni kao API (radi i kroz proxy frontenda).</summary>
     public string PublicBaseUrl { get; set; } = "";
     public int MaxSizeMb { get; set; } = 5;
+    /// <summary>Najviše fajlova po salonu (galerija + logo + još nesačuvani uploadi).</summary>
+    public int MaxFilesPerVendor { get; set; } = 100;
+    /// <summary>Uploadovan fajl koji nijedna slika ni logo ne koristi briše se tek nakon ovoliko minuta (vrijeme da se sačuva).</summary>
+    public int OrphanGraceMinutes { get; set; } = 60;
 }
 
 /// <summary>Čuvanje slika. Sada na disku servera; kasnije se može zamijeniti npr. Cloudflare R2 bez izmjena kontrolera.</summary>
@@ -15,6 +19,15 @@ public interface IFileStorage
 {
     /// <summary>Sačuva fajl i vrati njegovu javnu adresu.</summary>
     Task<string> SaveAsync(string folder, string extension, Stream content, CancellationToken ct = default);
+
+    /// <summary>Broj sačuvanih fajlova u folderu.</summary>
+    int Count(string folder);
+
+    /// <summary>
+    /// Briše fajlove iz foldera koje <paramref name="isReferenced"/> ne prepoznaje (po imenu fajla) i koji su stariji od
+    /// <paramref name="minAge"/>. Vraća broj fajlova koji su ostali.
+    /// </summary>
+    int DeleteUnreferenced(string folder, Func<string, bool> isReferenced, TimeSpan minAge);
 }
 
 public class LocalFileStorage(UploadSettings settings, IWebHostEnvironment env) : IFileStorage
@@ -33,6 +46,29 @@ public class LocalFileStorage(UploadSettings settings, IWebHostEnvironment env) 
 
         var baseUrl = string.IsNullOrWhiteSpace(settings.PublicBaseUrl) ? RequestPath : settings.PublicBaseUrl.TrimEnd('/');
         return $"{baseUrl}/{folder.Replace('\\', '/')}/{name}";
+    }
+
+    public int Count(string folder)
+    {
+        var dir = Path.Combine(RootPath, folder);
+        return Directory.Exists(dir) ? Directory.GetFiles(dir).Length : 0;
+    }
+
+    public int DeleteUnreferenced(string folder, Func<string, bool> isReferenced, TimeSpan minAge)
+    {
+        var dir = Path.Combine(RootPath, folder);
+        if (!Directory.Exists(dir)) return 0;
+        var cutoff = DateTime.UtcNow - minAge;
+        var remaining = 0;
+        foreach (var path in Directory.GetFiles(dir))
+        {
+            var info = new FileInfo(path);
+            if (!isReferenced(info.Name) && info.LastWriteTimeUtc <= cutoff && info.LinkTarget == null)
+                info.Delete();
+            else
+                remaining++;
+        }
+        return remaining;
     }
 }
 

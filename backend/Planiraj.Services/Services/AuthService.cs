@@ -109,7 +109,17 @@ public class AuthService : IAuthService
                     throw new UserException("Ova e-mail adresa pripada salonu. Prijavite se na stranici za salone.");
                 if (user.Role != role)
                     throw new UserException("Ovaj nalog se prijavljuje korisničkim imenom i lozinkom.");
+
+                // Samostalna registracija mladenaca ne provjerava vlasništvo nad e-mailom, pa je lozinku mogao
+                // postaviti neko drugi (pre-hijacking). Google je upravo dokazao vlasništvo: lozinka i svi ranije
+                // izdani tokeni prestaju važiti. Salone pravi administrator, pa njihova lozinka ostaje.
+                if (user.Role == UserRole.Couple)
+                {
+                    user.PasswordHash = string.Empty;
+                    user.PasswordSalt = string.Empty;
+                }
                 user.GoogleId = identity.Subject;
+                SecurityStamps.Rotate(user);
             }
         }
 
@@ -131,6 +141,7 @@ public class AuthService : IAuthService
             Email = email,
             Username = await UniqueUsernameAsync(email),
             GoogleId = identity.Subject,
+            SecurityStamp = SecurityStamps.New(),
             Role = role,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -266,8 +277,11 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
-    public Task<bool> IsActiveAsync(int userId) =>
-        _context.Users.AnyAsync(u => u.Id == userId && u.IsActive && u.DeletedAt == null);
+    public Task<string?> GetActiveSecurityStampAsync(int userId) =>
+        _context.Users.AsNoTracking()
+            .Where(u => u.Id == userId && u.IsActive && u.DeletedAt == null)
+            .Select(u => (string?)u.SecurityStamp)
+            .FirstOrDefaultAsync();
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 

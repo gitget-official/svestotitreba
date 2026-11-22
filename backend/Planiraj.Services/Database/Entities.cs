@@ -24,6 +24,12 @@ public class User : BaseEntity
     /// <summary>Googleov stalni identifikator naloga ("sub" iz ID tokena); null ako nalog nije povezan sa Googleom.</summary>
     public string? GoogleId { get; set; }
 
+    /// <summary>
+    /// Nasumična vrijednost koja ide u svaki JWT. Mijenja se pri promjeni lozinke, uloge ili aktivnosti i pri
+    /// povezivanju Googlea, pa svi ranije izdani tokeni odmah prestaju važiti (vidi SecurityStamps).
+    /// </summary>
+    public string SecurityStamp { get; set; } = string.Empty;
+
     public UserRole Role { get; set; }
     public bool IsActive { get; set; } = true;
     /// <summary>Ponuđač mora promijeniti lozinku pri prvoj prijavi (FR-3).</summary>

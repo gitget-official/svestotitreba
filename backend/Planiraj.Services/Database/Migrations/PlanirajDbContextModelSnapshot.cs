@@ -517,6 +517,13 @@ namespace Planiraj.Services.Database.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)

@@ -78,8 +78,11 @@ public interface IAuthService
     /// uz zahtjeve i lične podatke. Recenzije ostaju, ali bez imena ("Obrisan korisnik").
     /// </summary>
     Task DeleteAccountAsync();
-    /// <summary>True ako korisnik postoji, aktivan je i nije obrisan (provjera uz svaki token).</summary>
-    Task<bool> IsActiveAsync(int userId);
+    /// <summary>
+    /// Sigurnosni pečat korisnika koji postoji, aktivan je i nije obrisan; null inače. Provjerava se uz svaki token
+    /// i upisuje u novi token pri prijavi.
+    /// </summary>
+    Task<string?> GetActiveSecurityStampAsync(int userId);
 }
 
 /// <summary>Provjerava Google ID token (potpis, izdavač, rok, publika) i vraća podatke o osobi; null ako token ne valja.</summary>

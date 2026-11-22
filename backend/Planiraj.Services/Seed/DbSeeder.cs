@@ -220,6 +220,111 @@ public static class DbSeeder
             60, 260)
     ];
 
+    /// <summary>
+    /// Produkcija: samo šifarnici (gradovi, kategorije, planovi pretplate), svaki samo ako mu je tabela prazna.
+    /// Bez korisnika i bez demo ponuđača.
+    /// </summary>
+    public static async Task SeedReferenceDataAsync(PlanirajDbContext db)
+    {
+        if (!await db.Cities.AnyAsync())
+            db.Cities.AddRange(Cities.Select(CreateCity));
+        if (!await db.ServiceCategories.AnyAsync())
+            db.ServiceCategories.AddRange(Categories.Select(CreateCategory));
+        if (!await db.SubscriptionPlans.AnyAsync())
+        {
+            var (standard, premium) = CreatePlans();
+            db.SubscriptionPlans.AddRange(standard, premium);
+        }
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Najkraća lozinka prvog administratora.</summary>
+    public const int BootstrapPasswordMinLength = 12;
+
+    /// <summary>
+    /// Prvi administrator na bazi bez administratora, iz tajni okruženja (ne iz koda). Mora promijeniti lozinku
+    /// pri prvoj prijavi. Vraća true ako je nalog napravljen; bez sve tri vrijednosti ne radi ništa.
+    /// </summary>
+    public static async Task<bool> BootstrapAdminAsync(PlanirajDbContext db, string? username, string? email, string? password)
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password))
+            return false;
+        if (await db.Users.AnyAsync(u => u.Role == UserRole.Admin))
+            return false;
+        if (password.Length < BootstrapPasswordMinLength || DemoPasswords.Contains(password))
+            throw new InvalidOperationException(
+                $"Bootstrap:AdminPassword mora imati najmanje {BootstrapPasswordMinLength} znakova i ne smije biti demo lozinka.");
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var login = username.Trim();
+        if (await db.Users.AnyAsync(u => u.Email == normalizedEmail || u.Username == login))
+            throw new InvalidOperationException("Bootstrap: korisnik sa tim e-mailom ili korisničkim imenom već postoji.");
+
+        var admin = new User
+        {
+            FirstName = "Administrator",
+            LastName = "Planiraj",
+            Email = normalizedEmail,
+            Username = login,
+            Role = UserRole.Admin,
+            IsActive = true,
+            MustChangePassword = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        PasswordHasher.SetPassword(admin, password);
+        db.Users.Add(admin);
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    private static readonly string[] DemoPasswords = [AdminPassword, VendorPassword, CouplePassword];
+
+    /// <summary>Aktivni demo nalozi (admin, salon, mladenci) koji još imaju javnu lozinku iz README-a.</summary>
+    public static async Task<List<string>> FindDemoAccountsAsync(PlanirajDbContext db)
+    {
+        var demo = new Dictionary<string, string> { ["admin"] = AdminPassword, ["salon"] = VendorPassword, ["mladenci"] = CouplePassword };
+        var logins = demo.Keys.ToArray();
+        var users = await db.Users.AsNoTracking()
+            .Where(u => logins.Contains(u.Username) && u.IsActive && u.PasswordHash != "")
+            .Select(u => new { u.Username, u.PasswordHash, u.PasswordSalt })
+            .ToListAsync();
+        return users.Where(u => PasswordHasher.Verify(demo[u.Username], u.PasswordHash, u.PasswordSalt))
+            .Select(u => u.Username)
+            .ToList();
+    }
+
+    private static City CreateCity(CitySeed c) => new() { Name = c.Name, Latitude = c.Latitude, Longitude = c.Longitude };
+
+    private static ServiceCategory CreateCategory(CategorySeed c) => new()
+    {
+        Name = c.Name,
+        Slug = c.Slug,
+        Description = c.Description,
+        SortOrder = c.SortOrder,
+        IsActive = true
+    };
+
+    private static (SubscriptionPlan Standard, SubscriptionPlan Premium) CreatePlans() => (
+        new SubscriptionPlan
+        {
+            Name = "Standard",
+            Description = "Oznaka \"istaknuto\" i viša pozicija u pretrazi.",
+            Price = 49,
+            DurationDays = 30,
+            PriorityWeight = 1,
+            IsActive = true
+        },
+        new SubscriptionPlan
+        {
+            Name = "Premium",
+            Description = "Najviša pozicija u pretrazi i prioritet u AI preporukama.",
+            Price = 99,
+            DurationDays = 30,
+            PriorityWeight = 2,
+            IsActive = true
+        });
+
+    /// <summary>Razvoj: kompletni demo podaci (nalozi sa javnim lozinkama, ponuđači, recenzije, rezervacije, poruke).</summary>
     public static async Task SeedAsync(PlanirajDbContext db)
     {
         if (await db.Users.AnyAsync())
@@ -228,37 +333,13 @@ public static class DbSeeder
         var now = DateTime.UtcNow;
 
         // ---------- Šifarnici ----------
-        var cities = Cities.ToDictionary(c => c.Name, c => new City { Name = c.Name, Latitude = c.Latitude, Longitude = c.Longitude });
+        var cities = Cities.ToDictionary(c => c.Name, CreateCity);
         db.Cities.AddRange(cities.Values);
 
-        var categories = Categories.ToDictionary(c => c.Slug, c => new ServiceCategory
-        {
-            Name = c.Name,
-            Slug = c.Slug,
-            Description = c.Description,
-            SortOrder = c.SortOrder,
-            IsActive = true
-        });
+        var categories = Categories.ToDictionary(c => c.Slug, CreateCategory);
         db.ServiceCategories.AddRange(categories.Values);
 
-        var standardPlan = new SubscriptionPlan
-        {
-            Name = "Standard",
-            Description = "Oznaka \"istaknuto\" i viša pozicija u pretrazi.",
-            Price = 49,
-            DurationDays = 30,
-            PriorityWeight = 1,
-            IsActive = true
-        };
-        var premiumPlan = new SubscriptionPlan
-        {
-            Name = "Premium",
-            Description = "Najviša pozicija u pretrazi i prioritet u AI preporukama.",
-            Price = 99,
-            DurationDays = 30,
-            PriorityWeight = 2,
-            IsActive = true
-        };
+        var (standardPlan, premiumPlan) = CreatePlans();
         db.SubscriptionPlans.AddRange(standardPlan, premiumPlan);
 
         // ---------- Korisnici ----------

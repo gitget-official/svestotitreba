@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Planiraj.API.Auth;
 using Planiraj.API.Uploads;
 using Planiraj.Services.Database;
 using Planiraj.Services.Helpers;
@@ -21,6 +24,7 @@ public class UploadsController(IFileStorage storage, UploadSettings settings, Pl
 
     [HttpPost("vendors/{vendorId:int}")]
     [RequestSizeLimit(20 * 1024 * 1024)]
+    [EnableRateLimiting(RateLimits.Upload)]
     public async Task<ActionResult<UploadResult>> UploadVendorImage(int vendorId, IFormFile? file, CancellationToken ct)
     {
         await AccessRules.EnsureCanManageVendorAsync(context, currentUser, vendorId);
@@ -37,8 +41,33 @@ public class UploadsController(IFileStorage storage, UploadSettings settings, Pl
         if (extension == null)
             return BadRequest(new { status = 400, message = "Dozvoljene su samo slike JPG, PNG i WebP." });
 
+        // Ograničen prostor po salonu: kad je limit dostignut, prvo se brišu stari fajlovi koje nijedna slika
+        // ni logo ne koriste (npr. obrisane slike galerije ili upload koji nikad nije sačuvan).
+        var folder = Path.Combine("vendors", vendorId.ToString());
+        if (storage.Count(folder) >= settings.MaxFilesPerVendor)
+        {
+            var used = await ReferencedFileNamesAsync(vendorId, ct);
+            var remaining = storage.DeleteUnreferenced(folder, used.Contains, TimeSpan.FromMinutes(settings.OrphanGraceMinutes));
+            if (remaining >= settings.MaxFilesPerVendor)
+                return BadRequest(new
+                {
+                    status = 400,
+                    message = $"Salon može imati najviše {settings.MaxFilesPerVendor} slika. Obrišite slike koje ne koristite pa pokušajte ponovo."
+                });
+        }
+
         stream.Position = 0;
-        var url = await storage.SaveAsync(Path.Combine("vendors", vendorId.ToString()), extension, stream, ct);
+        var url = await storage.SaveAsync(folder, extension, stream, ct);
         return new UploadResult(url);
+    }
+
+    /// <summary>Imena fajlova (GUID.ext) koje koriste slike galerije i logo ovog salona.</summary>
+    private async Task<HashSet<string>> ReferencedFileNamesAsync(int vendorId, CancellationToken ct)
+    {
+        var urls = await context.VendorImages.Where(i => i.VendorId == vendorId).Select(i => i.Url).ToListAsync(ct);
+        var logo = await context.Vendors.Where(v => v.Id == vendorId).Select(v => v.LogoUrl).FirstOrDefaultAsync(ct);
+        if (logo != null) urls.Add(logo);
+        return urls.Select(u => u.Split('?', '#')[0]).Select(u => u[(u.LastIndexOf('/') + 1)..])
+            .Where(n => n.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 }

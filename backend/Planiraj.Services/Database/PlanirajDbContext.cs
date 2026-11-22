@@ -38,6 +38,7 @@ public class PlanirajDbContext(DbContextOptions<PlanirajDbContext> options) : Db
             e.HasIndex(x => x.Email).IsUnique();
             e.HasIndex(x => x.Username).IsUnique();
             e.Property(x => x.GoogleId).HasMaxLength(64);
+            e.Property(x => x.SecurityStamp).HasMaxLength(64).IsRequired().HasDefaultValue(string.Empty);
             e.HasIndex(x => x.GoogleId).IsUnique().HasFilter("[GoogleId] IS NOT NULL");
             e.HasOne(x => x.City).WithMany().HasForeignKey(x => x.CityId);
         });

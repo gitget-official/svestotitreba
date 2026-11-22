@@ -1,0 +1,1186 @@
+[
+  {
+    "coverage_id": ".github%2Fworkflows%2Fci.yml%23jobs::.github%2Fworkflows%2Fci.yml%23permissions::profile%2Fquick%2Fall-in-scope-subsystems::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": ".github/workflows/ci.yml#jobs",
+      "boundary": ".github/workflows/ci.yml#permissions",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "CI workflow",
+    "boundary": "Workflow token scope and action pinning",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Mutable and unbound build inputs",
+    "starting_paths": [
+      ".github/workflows/ci.yml",
+      "frontend/package-lock.json",
+      "frontend/package.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      ".github/workflows/ci.yml",
+      "frontend/package-lock.json",
+      "frontend/package.json"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          ".github/workflows/ci.yml",
+          "frontend/package-lock.json",
+          "frontend/package.json"
+        ],
+        "invariant": "Mutable and unbound build inputs invariant on Workflow token scope and action pinning",
+        "method": "source",
+        "result": "push/pull_request triggers only (no pull_request_target), no secrets used; lockfile + npm ci.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Pin actions to commit SHAs and add 'permissions: contents: read'.",
+      "Run npm audit fix: vite 8.3.0-8.3.2 (dev server) and fast-uri advisories."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FAuth%2FRateLimits.cs%23ClientIp::backend%2FPlaniraj.API%2FAuth%2FRateLimits.cs%23TrustForwardedHeaders::profile%2Fquick%2Fall-in-scope-subsystems::WEB-PROTOCOL-AND-AUTH.md%23Host%20and%20forwarded-header%20trust",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Auth/RateLimits.cs#ClientIp",
+      "boundary": "backend/Planiraj.API/Auth/RateLimits.cs#TrustForwardedHeaders",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "WEB-PROTOCOL-AND-AUTH.md#Host and forwarded-header trust"
+    },
+    "surface": "Rate-limit partition key from connection IP / X-Forwarded-For",
+    "boundary": "Forwarded-header trust switch",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Host and forwarded-header trust",
+    "starting_paths": [
+      "backend/Planiraj.API/Auth/RateLimits.cs",
+      "backend/Planiraj.API/Program.cs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#Host and forwarded-header trust",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/RateLimits.cs",
+      "backend/Planiraj.API/Program.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Auth/RateLimits.cs",
+          "backend/Planiraj.API/Program.cs"
+        ],
+        "invariant": "Auth limiter partitions on the real client address",
+        "method": "source",
+        "result": "TrustForwardedHeaders=true clears KnownProxies/KnownIPNetworks (any peer may set X-Forwarded-For); false behind a proxy collapses all clients into the proxy IP. Correct value depends on hosting topology not in repo.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "rate-limit-client-ip-depends-on-proxy-topology"
+    ],
+    "unresolved": [
+      "Hosting topology (reverse proxy / direct exposure) is not in the repository"
+    ],
+    "parent_hardening_notes": [],
+    "parent_decisions": [
+      {
+        "fingerprint": "rate-limit-client-ip-depends-on-proxy-topology",
+        "verdict": "needs_validation",
+        "verifier": "verify-nv",
+        "severity": null
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FAuthController.cs%23POST%20%2Fapi%2Fauth%2Fchange-password::backend%2FPlaniraj.API%2FProgram.cs%23JwtBearerEvents.OnTokenValidated::profile%2Fquick%2Fall-in-scope-subsystems::WEB-PROTOCOL-AND-AUTH.md%23Session%20fixation%20and%20invalidation",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/AuthController.cs#POST /api/auth/change-password",
+      "boundary": "backend/Planiraj.API/Program.cs#JwtBearerEvents.OnTokenValidated",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "WEB-PROTOCOL-AND-AUTH.md#Session fixation and invalidation"
+    },
+    "surface": "POST /api/auth/change-password, PUT /api/users/{id} (password reset)",
+    "boundary": "Per-request JWT acceptance check",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Session fixation and invalidation",
+    "starting_paths": [
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.Services/Services/AuthService.cs",
+      "backend/Planiraj.Services/Services/UserService.cs",
+      "backend/Planiraj.API/Auth/AuthInfrastructure.cs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#Session fixation and invalidation",
+      "WEB-PROTOCOL-AND-AUTH.md#JWT verification and claim binding",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.Services/Services/AuthService.cs",
+      "backend/Planiraj.Services/Services/UserService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Program.cs",
+          "backend/Planiraj.Services/Services/AuthService.cs",
+          "backend/Planiraj.Services/Services/UserService.cs"
+        ],
+        "invariant": "Credential change must revoke previously issued sessions",
+        "method": "local",
+        "result": "Token issued before change-password and before admin password reset still returns 200 on /api/auth/me.",
+        "artifact": "agents/parent/artifacts/poc-run.log"
+      },
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Program.cs",
+          "backend/Planiraj.API/Auth/AuthInfrastructure.cs"
+        ],
+        "invariant": "JWT signature/issuer/audience/lifetime pinned server-side",
+        "method": "source",
+        "result": "HS256 symmetric key >= 32 chars, ValidateIssuer/Audience/Lifetime true, ClockSkew 1 min, account IsActive checked per request.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "jwt-not-revoked-on-password-change"
+    ],
+    "unresolved": [],
+    "parent_hardening_notes": [],
+    "parent_decisions": [
+      {
+        "fingerprint": "jwt-not-revoked-on-password-change",
+        "verdict": "confirmed",
+        "verifier": "verify-token",
+        "severity": "low"
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FAuthController.cs%23POST%20%2Fapi%2Fauth%2Fgoogle::backend%2FPlaniraj.Services%2FServices%2FAuthService.cs%23GoogleLoginAsync::profile%2Fquick%2Fall-in-scope-subsystems::WEB-PROTOCOL-AND-AUTH.md%23Account%20linking%20and%20identity%20collision",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/AuthController.cs#POST /api/auth/google",
+      "boundary": "backend/Planiraj.Services/Services/AuthService.cs#GoogleLoginAsync",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "WEB-PROTOCOL-AND-AUTH.md#Account linking and identity collision"
+    },
+    "surface": "POST /api/auth/google and /api/auth/register (anonymous)",
+    "boundary": "Google identity to existing-account linking by e-mail",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Account linking and identity collision",
+    "starting_paths": [
+      "backend/Planiraj.API/Controllers/AuthController.cs",
+      "backend/Planiraj.Services/Services/AuthService.cs",
+      "backend/Planiraj.API/Auth/GoogleTokenValidator.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#Account linking and identity collision",
+      "WEB-PROTOCOL-AND-AUTH.md#OAuth/OIDC request and callback binding",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/GoogleTokenValidator.cs",
+      "backend/Planiraj.API/Controllers/AuthController.cs",
+      "backend/Planiraj.Services/Services/AuthService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Controllers/AuthController.cs",
+          "backend/Planiraj.Services/Services/AuthService.cs"
+        ],
+        "invariant": "A Google login may only bind to an account whose existing credentials were proven by the same e-mail owner",
+        "method": "local",
+        "result": "Self-registration stores an unverified e-mail with a password; a later Google login for that e-mail links into the same row and the pre-registered password keeps working (attacker reads victim's phone number).",
+        "artifact": "agents/parent/artifacts/poc-run.log"
+      },
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Auth/GoogleTokenValidator.cs"
+        ],
+        "invariant": "Google ID token signature, issuer, audience and expiry are verified",
+        "method": "source",
+        "result": "GoogleJsonWebSignature.ValidateAsync with Audience = configured ClientId; email_verified enforced in AuthService.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "google-login-links-unverified-self-registered-account"
+    ],
+    "unresolved": [],
+    "parent_hardening_notes": [],
+    "parent_decisions": [
+      {
+        "fingerprint": "google-login-links-unverified-self-registered-account",
+        "verdict": "confirmed",
+        "verifier": "verify-prehijack",
+        "severity": "medium"
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FAuthController.cs%23POST%20%2Fapi%2Fauth%2Flogin::backend%2FPlaniraj.API%2FProgram.cs%23InitializeDatabaseAsync::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Obvious%20things",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/AuthController.cs#POST /api/auth/login",
+      "boundary": "backend/Planiraj.API/Program.cs#InitializeDatabaseAsync",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Obvious things"
+    },
+    "surface": "POST /api/auth/login (anonymous)",
+    "boundary": "Startup seeding gated by Seed:Enabled",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Obvious things: seed credentials working in production",
+    "starting_paths": [
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.Services/Seed/DbSeeder.cs",
+      "backend/Planiraj.API/appsettings.json"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Controllers/AuthController.cs",
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.API/appsettings.json",
+      "backend/Planiraj.Services/Seed/DbSeeder.cs",
+      "backend/README.md"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Program.cs",
+          "backend/Planiraj.API/appsettings.json",
+          "backend/Planiraj.Services/Seed/DbSeeder.cs",
+          "backend/Planiraj.API/Controllers/AuthController.cs",
+          "backend/README.md"
+        ],
+        "invariant": "Production configuration must not create accounts with source-published passwords",
+        "method": "local",
+        "result": "Production-environment in-memory API with shipped appsettings.json seeds admin/Admin123! (Admin, MustChangePassword=false); anonymous login returns an Admin JWT that lists all users.",
+        "artifact": "agents/parent/artifacts/poc-run.log"
+      }
+    ],
+    "result_fingerprints": [
+      "seed-enabled-default-publishes-admin-credentials"
+    ],
+    "unresolved": [],
+    "parent_hardening_notes": [],
+    "parent_decisions": [
+      {
+        "fingerprint": "seed-enabled-default-publishes-admin-credentials",
+        "verdict": "confirmed",
+        "verifier": "verify-seed",
+        "severity": "critical"
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FBaseControllers.cs%23BaseCRUDController::backend%2FPlaniraj.Services%2FBase%2FBaseCRUDService.cs%23AuthorizeWriteAsync::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/BaseControllers.cs#BaseCRUDController",
+      "boundary": "backend/Planiraj.Services/Base/BaseCRUDService.cs#AuthorizeWriteAsync",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "All CRUD controllers (users, vendors, offerings, images, hours, reviews, bookings, lookups)",
+    "boundary": "Per-entity owner/admin checks in services",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs",
+      "backend/Planiraj.Services/Services/VendorContentServices.cs",
+      "backend/Planiraj.Services/Services/ReviewService.cs",
+      "backend/Planiraj.Services/Services/BookingService.cs",
+      "backend/Planiraj.Services/Services/UserService.cs",
+      "backend/Planiraj.Services/Services/LookupServices.cs",
+      "backend/Planiraj.Services/Helpers/AccessRules.cs",
+      "backend/Planiraj.API/Auth/PublicRead.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/PublicRead.cs",
+      "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+      "backend/Planiraj.Services/Helpers/AccessRules.cs",
+      "backend/Planiraj.Services/Services/BookingService.cs",
+      "backend/Planiraj.Services/Services/LookupServices.cs",
+      "backend/Planiraj.Services/Services/ReviewService.cs",
+      "backend/Planiraj.Services/Services/UserService.cs",
+      "backend/Planiraj.Services/Services/VendorContentServices.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+          "backend/Planiraj.Services/Services/VendorService.cs",
+          "backend/Planiraj.Services/Services/VendorContentServices.cs",
+          "backend/Planiraj.Services/Services/ReviewService.cs",
+          "backend/Planiraj.Services/Services/BookingService.cs",
+          "backend/Planiraj.Services/Services/UserService.cs",
+          "backend/Planiraj.Services/Services/LookupServices.cs",
+          "backend/Planiraj.Services/Helpers/AccessRules.cs",
+          "backend/Planiraj.API/Auth/PublicRead.cs"
+        ],
+        "invariant": "Access control invariant on Per-entity owner/admin checks in services",
+        "method": "source",
+        "result": "Every write re-checks owner/admin on the stored entity; inserts check ownership of request.VendorId; PublicRead only opens Get/GetById; read filters hide inactive/pending rows.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Double-booking race: EnsureSlotAvailableAsync then SaveChanges is non-atomic; add a filtered unique index on (VendorId, EventDate, StartTime) WHERE Status=Confirmed."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FConversationsController.cs%23%2Fapi%2Fconversations::backend%2FPlaniraj.Services%2FServices%2FChatService.cs%23Visible::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/ConversationsController.cs#/api/conversations",
+      "boundary": "backend/Planiraj.Services/Services/ChatService.cs#Visible",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "Chat REST + SignalR hub",
+    "boundary": "Conversation participant scoping",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "backend/Planiraj.Services/Services/ChatService.cs",
+      "backend/Planiraj.API/Chat/ChatHub.cs",
+      "backend/Planiraj.API/Controllers/ConversationsController.cs",
+      "backend/Planiraj.API/Program.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Cross-site WebSocket request use",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Chat/ChatHub.cs",
+      "backend/Planiraj.API/Controllers/ConversationsController.cs",
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.Services/Services/ChatService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.Services/Services/ChatService.cs",
+          "backend/Planiraj.API/Chat/ChatHub.cs",
+          "backend/Planiraj.API/Controllers/ConversationsController.cs",
+          "backend/Planiraj.API/Program.cs"
+        ],
+        "invariant": "Access control invariant on Conversation participant scoping",
+        "method": "source",
+        "result": "All reads/writes go through Visible(viewer); admin excluded; hub is receive-only, bearer token (not cookie) so no cross-site WebSocket use.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Set HubOptions/endpoint CloseOnAuthenticationExpiration so long-lived sockets end when the token expires or account is disabled.",
+      "access_token travels in the hub URL; make sure the reverse proxy does not log query strings."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FControllers%2FUploadsController.cs%23POST%20%2Fapi%2Fuploads%2Fvendors%2F%7BvendorId%7D::backend%2FPlaniraj.Services%2FHelpers%2FAccessRules.cs%23EnsureCanManageVendorAsync::profile%2Fquick%2Fall-in-scope-subsystems::RESOURCE-EXHAUSTION-AND-AVAILABILITY.md%23Quota-accounting%20scope%20and%20reset%20gaps",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Controllers/UploadsController.cs#POST /api/uploads/vendors/{vendorId}",
+      "boundary": "backend/Planiraj.Services/Helpers/AccessRules.cs#EnsureCanManageVendorAsync",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps"
+    },
+    "surface": "POST /api/uploads/vendors/{vendorId} (any Vendor, self-registered via Google)",
+    "boundary": "Vendor ownership check on upload",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Quota-accounting scope and reset gaps",
+    "starting_paths": [
+      "backend/Planiraj.API/Controllers/UploadsController.cs",
+      "backend/Planiraj.API/Uploads/FileStorage.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Quota-accounting scope and reset gaps",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Unbounded buffering and cardinality",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/RateLimits.cs",
+      "backend/Planiraj.API/Controllers/UploadsController.cs",
+      "backend/Planiraj.API/Uploads/FileStorage.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Controllers/UploadsController.cs",
+          "backend/Planiraj.API/Uploads/FileStorage.cs",
+          "backend/Planiraj.API/Auth/RateLimits.cs",
+          "backend/Planiraj.Services/Services/VendorService.cs"
+        ],
+        "invariant": "Persistent per-vendor storage must be bounded and unreferenced files reclaimed",
+        "method": "local",
+        "result": "25 uploads from a fresh Google-registered salon are all retained and served although none is referenced; no File.Delete exists in backend source.",
+        "artifact": "agents/parent/artifacts/poc-run.log"
+      },
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Controllers/UploadsController.cs",
+          "backend/Planiraj.API/Uploads/FileStorage.cs"
+        ],
+        "invariant": "Uploaded bytes cannot escape the uploads root or execute as active content",
+        "method": "source",
+        "result": "Folder is vendors/{int}; name is a GUID; extension from magic-byte sniffing (jpg/png/webp); served with nosniff.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "vendor-upload-storage-unbounded"
+    ],
+    "unresolved": [],
+    "parent_hardening_notes": [],
+    "parent_decisions": [
+      {
+        "fingerprint": "vendor-upload-storage-unbounded",
+        "verdict": "confirmed",
+        "verifier": "verify-upload",
+        "severity": "low"
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FProgram.cs%23AddJwtBearer::backend%2FPlaniraj.API%2FProgram.cs%23TokenValidationParameters::profile%2Fquick%2Fall-in-scope-subsystems::WEB-PROTOCOL-AND-AUTH.md%23JWT%20verification%20and%20claim%20binding",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Program.cs#AddJwtBearer",
+      "boundary": "backend/Planiraj.API/Program.cs#TokenValidationParameters",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "WEB-PROTOCOL-AND-AUTH.md#JWT verification and claim binding"
+    },
+    "surface": "Bearer token on every API request",
+    "boundary": "JWT validation parameters",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "JWT verification and claim binding",
+    "starting_paths": [
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+      "backend/Planiraj.API/appsettings.Development.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#JWT verification and claim binding",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.API/appsettings.Development.json"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Program.cs",
+          "backend/Planiraj.API/Auth/AuthInfrastructure.cs",
+          "backend/Planiraj.API/appsettings.Development.json"
+        ],
+        "invariant": "JWT verification and claim binding invariant on JWT validation parameters",
+        "method": "source",
+        "result": "Algorithm/key pinned server-side (symmetric HS256), issuer/audience/lifetime validated, MapInboundClaims=false, role from server-issued claim.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "appsettings.Development.json commits a JWT key; refuse to start outside Development if Jwt:Key equals that value."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FProgram.cs%23UseCors::backend%2FPlaniraj.API%2FProgram.cs%23AddCors%20Frontend%20policy::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23Credentialed%20CORS%20trust",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Program.cs#UseCors",
+      "boundary": "backend/Planiraj.API/Program.cs#AddCors Frontend policy",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "CLIENT-SIDE.md#Credentialed CORS trust"
+    },
+    "surface": "Cross-origin API access",
+    "boundary": "CORS allow-list",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Credentialed CORS trust",
+    "starting_paths": [
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.API/appsettings.json"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Credentialed CORS trust",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Program.cs",
+      "backend/Planiraj.API/appsettings.json"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Program.cs",
+          "backend/Planiraj.API/appsettings.json"
+        ],
+        "invariant": "Credentialed CORS trust invariant on CORS allow-list",
+        "method": "source",
+        "result": "Explicit origin list, no AllowCredentials, no reflection.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": []
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2FUploads%2FFileStorage.cs%23SaveAsync::backend%2FPlaniraj.API%2FUploads%2FFileStorage.cs%23ImageSniffer::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/Uploads/FileStorage.cs#SaveAsync",
+      "boundary": "backend/Planiraj.API/Uploads/FileStorage.cs#ImageSniffer",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "Stored file paths and served uploads",
+    "boundary": "Path and content-type controls",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Resource and file handling (path traversal, SSRF, deserialization)",
+    "starting_paths": [
+      "backend/Planiraj.API/Uploads/FileStorage.cs",
+      "backend/Planiraj.API/Controllers/UploadsController.cs",
+      "backend/Planiraj.Services/Services/VendorContentServices.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Controllers/UploadsController.cs",
+      "backend/Planiraj.API/Uploads/FileStorage.cs",
+      "backend/Planiraj.Services/Services/VendorContentServices.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/Uploads/FileStorage.cs",
+          "backend/Planiraj.API/Controllers/UploadsController.cs",
+          "backend/Planiraj.Services/Services/VendorContentServices.cs"
+        ],
+        "invariant": "Resource and file handling (path traversal, SSRF, deserialization) invariant on Path and content-type controls",
+        "method": "source",
+        "result": "No user-controlled path segments; no server-side URL fetch (no SSRF); System.Text.Json only (no polymorphic deserialization).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "VendorImage.Url and Vendor.LogoUrl accept any string; restrict to the uploads base URL to stop third-party tracking images.",
+      "Re-encode or strip EXIF metadata from uploaded photos."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.API%2Fappsettings.json%23ConnectionStrings::.gitignore%23secrets::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.API/appsettings.json#ConnectionStrings",
+      "boundary": ".gitignore#secrets",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Cryptography and secrets"
+    },
+    "surface": "Configuration and secrets",
+    "boundary": "Secret handling",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Cryptography and secrets",
+    "starting_paths": [
+      "backend/Planiraj.API/appsettings.json",
+      "backend/Planiraj.API/appsettings.Development.json",
+      ".gitignore",
+      "backend/Planiraj.Services/Security/PasswordHasher.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Cryptography and secrets",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      ".gitignore",
+      "backend/Planiraj.API/appsettings.Development.json",
+      "backend/Planiraj.API/appsettings.json",
+      "backend/Planiraj.Services/Security/PasswordHasher.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.API/appsettings.json",
+          "backend/Planiraj.API/appsettings.Development.json",
+          ".gitignore",
+          "backend/Planiraj.Services/Security/PasswordHasher.cs"
+        ],
+        "invariant": "Cryptography and secrets invariant on Secret handling",
+        "method": "source",
+        "result": "PBKDF2-SHA256 100k iterations, 16-byte random salt, FixedTimeEquals; secrets via env vars; .gitignore covers .env/secrets.json.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Connection string uses TrustServerCertificate=True; production should use Encrypt=True with a validated certificate.",
+      "Raise PBKDF2 iterations toward OWASP 2023 guidance (600k for SHA-256) with rehash-on-login.",
+      "Password policy is length>=8 only; add a breached-password check and per-account throttling."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.Services%2FBase%2FBaseCRUDService.cs%23UpdateAsync::backend%2FPlaniraj.Model%2FRequests%2FRequests.cs%23%2AUpdateRequest::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.Services/Base/BaseCRUDService.cs#UpdateAsync",
+      "boundary": "backend/Planiraj.Model/Requests/Requests.cs#*UpdateRequest",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "Generic update: request.Adapt(entity)",
+    "boundary": "Update DTO field allow-list",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Business logic (mass assignment, state machine)",
+    "starting_paths": [
+      "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+      "backend/Planiraj.Model/Requests/Requests.cs",
+      "backend/Planiraj.Services/Mapping/MappingConfig.cs",
+      "backend/Planiraj.Services/Services/BookingService.cs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.Model/Requests/Requests.cs",
+      "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+      "backend/Planiraj.Services/Mapping/MappingConfig.cs",
+      "backend/Planiraj.Services/Services/BookingService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.Services/Base/BaseCRUDService.cs",
+          "backend/Planiraj.Model/Requests/Requests.cs",
+          "backend/Planiraj.Services/Mapping/MappingConfig.cs",
+          "backend/Planiraj.Services/Services/BookingService.cs"
+        ],
+        "invariant": "Business logic (mass assignment, state machine) invariant on Update DTO field allow-list",
+        "method": "source",
+        "result": "Update DTOs omit VendorId/OwnerUserId/Status/IsActive (vendor); booking status transitions guarded (Pending-only confirm/reject, open-only cancel).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": []
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.Services%2FBase%2FBaseService.cs%23AddFilter::Microsoft.EntityFrameworkCore%23LINQ%20parameterization::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.Services/Base/BaseService.cs#AddFilter",
+      "boundary": "Microsoft.EntityFrameworkCore#LINQ parameterization",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "Search/filter parameters (Fts, ids, sort)",
+    "boundary": "EF Core parameterized queries",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "backend/Planiraj.Services/Base/BaseService.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs",
+      "backend/Planiraj.Services/Services/UserService.cs",
+      "backend/Planiraj.Services/Email/EmailBuilder.cs",
+      "backend/Planiraj.Services/Email/IcsCalendar.cs",
+      "backend/Planiraj.API/Controllers/SitemapController.cs",
+      "frontend/scripts/prerender.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.API/Controllers/SitemapController.cs",
+      "backend/Planiraj.Services/Base/BaseService.cs",
+      "backend/Planiraj.Services/Email/EmailBuilder.cs",
+      "backend/Planiraj.Services/Email/IcsCalendar.cs",
+      "backend/Planiraj.Services/Services/UserService.cs",
+      "backend/Planiraj.Services/Services/VendorService.cs",
+      "frontend/scripts/prerender.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.Services/Base/BaseService.cs",
+          "backend/Planiraj.Services/Services/VendorService.cs",
+          "backend/Planiraj.Services/Services/UserService.cs",
+          "backend/Planiraj.Services/Email/EmailBuilder.cs",
+          "backend/Planiraj.Services/Email/IcsCalendar.cs",
+          "backend/Planiraj.API/Controllers/SitemapController.cs",
+          "frontend/scripts/prerender.mjs"
+        ],
+        "invariant": "Injection invariant on EF Core parameterized queries",
+        "method": "source",
+        "result": "No raw SQL; e-mail HTML encoded with HtmlEncoder; ICS escapes CR/LF/;/,; sitemap built with XElement; prerender escapes HTML and JSON-LD '<'.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "frontend/scripts/prerender.mjs uses String.replace with a string replacement containing vendor data; '$`'/\"$'\" sequences are interpreted. Use a function replacer."
+    ]
+  },
+  {
+    "coverage_id": "backend%2FPlaniraj.Services%2FServices%2FAuthService.cs%23DeleteAccountAsync::backend%2FPlaniraj.Services%2FEmail%2FEmailOutboxProcessor.cs%23RetentionDays::profile%2Fquick%2Fall-in-scope-subsystems::DATA-ISOLATION-AND-LIFECYCLE.md%23Retention%20and%20queued-work%20overrun",
+    "canonical_refs": {
+      "surface": "backend/Planiraj.Services/Services/AuthService.cs#DeleteAccountAsync",
+      "boundary": "backend/Planiraj.Services/Email/EmailOutboxProcessor.cs#RetentionDays",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun"
+    },
+    "surface": "Account deletion and data retention",
+    "boundary": "Deletion and retention lifecycle",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Retention and queued-work overrun",
+    "starting_paths": [
+      "backend/Planiraj.Services/Services/AuthService.cs",
+      "backend/Planiraj.Services/Email/EmailSettings.cs",
+      "backend/Planiraj.Services/Email/EmailOutboxProcessor.cs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Retention and queued-work overrun",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Soft-delete and tombstone bypass",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "backend/Planiraj.Services/Email/EmailOutboxProcessor.cs",
+      "backend/Planiraj.Services/Email/EmailSettings.cs",
+      "backend/Planiraj.Services/Services/AuthService.cs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "backend/Planiraj.Services/Services/AuthService.cs",
+          "backend/Planiraj.Services/Email/EmailSettings.cs",
+          "backend/Planiraj.Services/Email/EmailOutboxProcessor.cs"
+        ],
+        "invariant": "Retention and queued-work overrun invariant on Deletion and retention lifecycle",
+        "method": "source",
+        "result": "Deletion anonymizes user, removes favorites/plans/conversations, cancels future bookings, purges pending e-mails; JWT stops via IsActive/DeletedAt check; sent e-mails purged after 30 days.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Deleting a vendor does not delete its uploaded files from disk."
+    ]
+  },
+  {
+    "coverage_id": "frontend%2Fsrc%2Fapp%23templates::%40angular%2Fcore%23DomSanitizer::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23DOM-based%20XSS",
+    "canonical_refs": {
+      "surface": "frontend/src/app#templates",
+      "boundary": "@angular/core#DomSanitizer",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "CLIENT-SIDE.md#DOM-based XSS"
+    },
+    "surface": "Angular templates and DOM sinks",
+    "boundary": "Angular contextual escaping",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "DOM-based XSS",
+    "starting_paths": [
+      "frontend/src/app/shared/ui/icon.ts",
+      "frontend/src/app/shared/motion/puzzle.ts",
+      "frontend/src/app/pages/vendor-detail/vendor-detail.ts",
+      "frontend/src/app/pages/auth/auth-pages.ts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#DOM-based XSS",
+      "CLIENT-SIDE.md#Client-side navigation confusion",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "frontend/src/app/pages/auth/auth-pages.ts",
+      "frontend/src/app/pages/vendor-detail/vendor-detail.ts",
+      "frontend/src/app/shared/motion/puzzle.ts",
+      "frontend/src/app/shared/ui/icon.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "frontend/src/app/shared/ui/icon.ts",
+          "frontend/src/app/shared/motion/puzzle.ts",
+          "frontend/src/app/pages/vendor-detail/vendor-detail.ts",
+          "frontend/src/app/pages/auth/auth-pages.ts"
+        ],
+        "invariant": "DOM-based XSS invariant on Angular contextual escaping",
+        "method": "source",
+        "result": "bypassSecurityTrustHtml/innerHTML only with constant markup; vendor URLs bound via [href] (sanitized) and backend [Url] allows http/https/ftp only; povratak goes to router.navigateByUrl (in-app).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": []
+  },
+  {
+    "coverage_id": "frontend%2Fsrc%2Fapp%2Fcore%2Fauth.ts%23localStorage::frontend%2Fsrc%2Fapp%2Fcore%2Fauth.ts%23authInterceptor::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23Browser-storage%20disclosure%20and%20stale%20authorization",
+    "canonical_refs": {
+      "surface": "frontend/src/app/core/auth.ts#localStorage",
+      "boundary": "frontend/src/app/core/auth.ts#authInterceptor",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "CLIENT-SIDE.md#Browser-storage disclosure and stale authorization"
+    },
+    "surface": "JWT persisted in localStorage",
+    "boundary": "Token attachment scope",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Browser-storage disclosure and stale authorization",
+    "starting_paths": [
+      "frontend/src/app/core/auth.ts",
+      "frontend/src/app/core/chat-store.ts",
+      "frontend/src/environments/environment.ts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Browser-storage disclosure and stale authorization",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "frontend/src/app/core/auth.ts",
+      "frontend/src/app/core/chat-store.ts",
+      "frontend/src/environments/environment.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "frontend/src/app/core/auth.ts",
+          "frontend/src/app/core/chat-store.ts",
+          "frontend/src/environments/environment.ts"
+        ],
+        "invariant": "Browser-storage disclosure and stale authorization invariant on Token attachment scope",
+        "method": "source",
+        "result": "No XSS reader found; interceptor adds token to all HttpClient calls but every call is relative /api.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "parent_hardening_notes": [
+      "Any future XSS would read the 8-hour JWT; add a strict CSP and consider shorter tokens + refresh, or HttpOnly cookie sessions.",
+      "Restrict authInterceptor to requests whose URL starts with environment.apiUrl."
+    ]
+  },
+  {
+    "coverage_id": "frontend%2Fsrc%2Findex.html%23document::frontend%2Fangular.json%23hosting%20headers::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23Clickjacking",
+    "canonical_refs": {
+      "surface": "frontend/src/index.html#document",
+      "boundary": "frontend/angular.json#hosting headers",
+      "subsystem": "profile/quick/all-in-scope-subsystems",
+      "attack_class": "CLIENT-SIDE.md#Clickjacking"
+    },
+    "surface": "SPA document served by frontend hosting",
+    "boundary": "Frame-ancestors / CSP / HSTS at frontend host",
+    "subsystem": "All in-scope subsystems (quick profile)",
+    "attack_class": "Clickjacking",
+    "starting_paths": [
+      "frontend/src/index.html",
+      "frontend/angular.json",
+      "frontend/src/app/pages/profile/profile.ts"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Clickjacking",
+      "CLIENT-SIDE.md#DOM-based XSS",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model, prompt, RAG or tool-calling code exists; frontend/src/app/core/planner.ts is deterministic and AI planning is an open TODO in docs/zahtjevi-projekta.md."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "parent",
+    "reviewed_paths": [
+      "frontend/angular.json",
+      "frontend/src/index.html"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "parent",
+        "reviewed_paths": [
+          "frontend/src/index.html",
+          "frontend/angular.json"
+        ],
+        "invariant": "Sensitive SPA actions cannot be completed inside a cross-origin frame",
+        "method": "source",
+        "result": "No CSP/frame-ancestors/X-Frame-Options anywhere in repo; hosting config absent, so deployed headers are unknown.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "frontend-missing-frame-ancestors-and-csp"
+    ],
+    "unresolved": [
+      "Frontend hosting provider and its response headers are not in the repository"
+    ],
+    "parent_hardening_notes": [
+      "Frontend host should send CSP (frame-ancestors 'none'), HSTS, nosniff, Referrer-Policy; verifier rejected the clickjacking impact because the session is a partitioned localStorage bearer token."
+    ],
+    "parent_decisions": [
+      {
+        "fingerprint": "frontend-missing-frame-ancestors-and-csp",
+        "verdict": "rejected",
+        "verifier": "verify-nv",
+        "severity": null
+      }
+    ]
+  }
+]
