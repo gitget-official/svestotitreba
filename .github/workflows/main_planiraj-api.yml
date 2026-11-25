@@ -1,5 +1,6 @@
+# Deploy backenda (backend/Planiraj.API) na Azure Web App planiraj-api.
+# Pokreće se samo kad se na main promijeni nešto u backend/ (ili ovaj fajl); testovi moraju proći prije deploya.
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
 
 name: Build and deploy ASP.Net Core app to Azure Web App - planiraj-api
 
@@ -7,33 +8,47 @@ on:
   push:
     branches:
       - 'main'
+    paths:
+      - 'backend/**'
+      - '.github/workflows/main_planiraj-api.yml'
   workflow_dispatch:
+
+# Dva deploya nikad ne idu istovremeno; novi čeka da prethodni završi.
+concurrency:
+  group: deploy-planiraj-api
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up .NET Core
+      - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
+          dotnet-version: '10.0.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Build
+        run: dotnet build Planiraj.sln --configuration Release
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Test
+        run: dotnet test Planiraj.sln --configuration Release --no-build
+
+      - name: Publish API
+        run: dotnet publish Planiraj.API/Planiraj.API.csproj --configuration Release --no-build --output ${{ runner.temp }}/api
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{ runner.temp }}/api
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,7 +62,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -62,4 +77,3 @@ jobs:
           app-name: 'planiraj-api'
           slot-name: 'Production'
           package: .
-          
