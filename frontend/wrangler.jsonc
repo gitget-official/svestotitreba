@@ -1,0 +1,14 @@
+// Frontend na Cloudflare Workers (samo statični fajlovi, bez koda workera).
+// Cloudflare: Workers & Pages -> svadbeno -> Settings -> Build: Path = frontend, Deploy command = npx wrangler deploy.
+// "name" mora biti isto kao ime Workera u Cloudflare panelu.
+{
+  "name": "svadbeno",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist/frontend/browser",
+    // nepoznate putanje (npr. /istrazi, /prijava) vraćaju index.html, pa Angular router preuzima
+    "not_found_handling": "single-page-application",
+    // prerenderovane stranice (ponudjaci/{id}-{slug}/index.html) se serviraju na adresi bez kose crte na kraju
+    "html_handling": "drop-trailing-slash"
+  }
+}
