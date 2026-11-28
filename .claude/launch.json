@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "start"],
       "port": 4200
+    },
+    {
+      "name": "frontend-azure",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "start", "--", "--configuration", "production"],
+      "port": 4200
     }
   ]
 }

@@ -15,6 +15,16 @@ npm test           # unit testovi (Vitest): planer, linkovi, množina, Sačuvano
 `ng serve` prosljeđuje sve `/api` pozive na backend `http://localhost:5080` (vidi `proxy.conf.json`),
 pa prvo pokrenite API (`dotnet run --project Planiraj.API --launch-profile http` u folderu `backend`).
 
+Adresa API-ja zavisi od okruženja (`src/environments/`):
+
+| Okruženje | Komanda | API |
+|---|---|---|
+| Razvoj | `npm start`, `npm test` | `/api` kroz proxy na lokalni backend (`environment.development.ts`) |
+| Produkcija | `npm run build` | Azure Web App `https://planiraj-api-f5bgc2aefpcrches.swedencentral-01.azurewebsites.net/api` (`environment.ts`) |
+
+Lokalni frontend protiv Azure backenda: `npx ng serve --configuration production` (Azure `Cors__Origins` mora
+sadržati `http://localhost:4200`).
+
 Produkcijski build: `npm run build` → `dist/frontend/browser`. Server mora sve nepoznate putanje vraćati na
 `index.html` (SPA fallback), inače osvježavanje npr. `/istrazi` daje 404. Poslije prerendera (vidi ispod) postojeće
 fajlove, npr. `ponudjaci/6-sala-panorama/index.html`, server vraća direktno; većina statičnih hostinga to radi sama.
@@ -27,7 +37,7 @@ Poslije builda skripta `scripts/prerender.mjs` pravi statične stranice za pretr
 
 ```bash
 npm run build
-SITE_URL=https://prava-domena.ba API_URL=http://localhost:5080/api npm run prerender
+SITE_URL=https://prava-domena.ba API_URL=https://planiraj-api-f5bgc2aefpcrches.swedencentral-01.azurewebsites.net/api npm run prerender
 ```
 
 - `ponudjaci/{id}-{slug}/index.html` za svakog aktivnog ponuđača: naslov, opis, Open Graph (slika za WhatsApp,
